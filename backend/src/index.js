@@ -14,7 +14,7 @@ app.use(express.json());
 // Conexión a MongoDB
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('✅ Conectado a MongoDB'))
-  .catch(err => console.error('❌ Error al conectar a MongoDB:', err));
+  .catch(err => console.error('❌ Error al conectar a MongoDB', err));
 // Importar rutas
 const userRoutes = require('./routes/userRoutes');
 const projectRoutes = require('./routes/projectRoutes');
