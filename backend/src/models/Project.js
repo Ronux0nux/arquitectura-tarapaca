@@ -10,7 +10,7 @@ const projectSchema = new mongoose.Schema({
   },
   fechaInicio: { type: Date, required: true },
   fechaTermino: { type: Date, required: true },
-  subjefe: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  subencargado: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   equipo: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   ubicacion: { type: String },
   descripcion: { type: String },
