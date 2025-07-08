@@ -10,6 +10,44 @@ exports.getProjects = async (req, res) => {
   }
 };
 
+// Buscar proyectos con filtros
+exports.searchProjects = async (req, res) => {
+  try {
+    const { id, nombre, codigo, fechaInicio, fechaTermino } = req.query;
+    let query = {};
+
+    // Buscar por ID
+    if (id) {
+      query._id = id;
+    }
+
+    // Buscar por nombre (búsqueda parcial, insensible a mayúsculas)
+    if (nombre) {
+      query.nombre = { $regex: nombre, $options: 'i' };
+    }
+
+    // Buscar por código (búsqueda parcial, insensible a mayúsculas)
+    if (codigo) {
+      query.codigo = { $regex: codigo, $options: 'i' };
+    }
+
+    // Buscar por fecha de inicio
+    if (fechaInicio) {
+      query.fechaInicio = { $gte: new Date(fechaInicio) };
+    }
+
+    // Buscar por fecha de término
+    if (fechaTermino) {
+      query.fechaTermino = { $lte: new Date(fechaTermino) };
+    }
+
+    const projects = await Project.find(query).populate('equipo').populate('partidasApu.insumos.insumoId');
+    res.json(projects);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 // Crear nuevo proyecto
 exports.createProject = async (req, res) => {
   try {
