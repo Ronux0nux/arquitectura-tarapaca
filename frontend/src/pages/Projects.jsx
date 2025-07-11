@@ -17,7 +17,7 @@ export default function Proyectos() {
     codigo: '',
     fechaInicio: '',
     fechaTermino: '',
-    subjefe: '', // pondrás un ID válido manual por ahora
+    subjefe: '', // ID del coordinador encargado
     equipo: [],  // vacío por ahora
     descripcion: '',
     ubicacion: ''
@@ -271,11 +271,11 @@ export default function Proyectos() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">ID del Subjefe *</label>
+                  <label className="block text-sm font-medium mb-1">Coordinador Encargado *</label>
                   <input 
                     className="border p-2 w-full rounded" 
                     name="subjefe" 
-                    placeholder="ID del subjefe" 
+                    placeholder="ID del coordinador encargado" 
                     value={form.subjefe} 
                     onChange={handleChange}
                     required
