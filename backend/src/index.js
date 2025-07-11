@@ -11,7 +11,8 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-// Conexión a MongoDB
+// Conexión a MongoDB local esto no lo estoy usando, estoy usando MongoDB Atlas
+// se cambia la URL de conexión en el archivo .env y de ahi se conecta a MongoDB Atlas
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('✅ Conectado a MongoDB'))
   .catch(err => console.error('❌ Error al conectar a MongoDB', err));
@@ -22,6 +23,7 @@ const providerRoutes = require('./routes/providerRoutes');
 const cotizacionRoutes = require('./routes/cotizacionRoutes');
 const insumoRoutes = require('./routes/insumoRoutes');
 const datasetRoutes = require('./routes/datasetRoutes');
+const actaReunionRoutes = require('./routes/actaReunionRoutes');
 
 // Usar rutas API
 app.use('/api/users', userRoutes);
@@ -30,6 +32,7 @@ app.use('/api/providers', providerRoutes);
 app.use('/api/insumos', insumoRoutes);
 app.use('/api/cotizaciones', cotizacionRoutes);
 app.use('/api/dataset', datasetRoutes);
+app.use('/api/actas-reunion', actaReunionRoutes);
 
 // Ruta base de prueba (API)
 app.get('/api', (req, res) => {
