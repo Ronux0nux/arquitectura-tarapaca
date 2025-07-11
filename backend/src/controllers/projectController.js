@@ -3,7 +3,7 @@ const Project = require('../models/Project');
 // Obtener todos los proyectos
 exports.getProjects = async (req, res) => {
   try {
-    const projects = await Project.find().populate('equipo').populate('partidasApu.insumos.insumoId');
+    const projects = await Project.find().populate('equipo').populate('subencargado');
     res.json(projects);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -41,7 +41,7 @@ exports.searchProjects = async (req, res) => {
       query.fechaTermino = { $lte: new Date(fechaTermino) };
     }
 
-    const projects = await Project.find(query).populate('equipo').populate('partidasApu.insumos.insumoId');
+    const projects = await Project.find(query).populate('equipo').populate('subencargado');
     res.json(projects);
   } catch (err) {
     res.status(500).json({ error: err.message });
