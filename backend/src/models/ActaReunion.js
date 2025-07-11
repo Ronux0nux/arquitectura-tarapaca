@@ -1,5 +1,32 @@
 const mongoose = require('mongoose');
 
+const participanteSchema = new mongoose.Schema({
+  nombre: { 
+    type: String, 
+    required: true 
+  },
+  apellido: { 
+    type: String, 
+    required: true 
+  },
+  entidad: { 
+    type: String, 
+    required: true 
+  },
+  cargo: { 
+    type: String, 
+    required: true 
+  },
+  email: { 
+    type: String, 
+    required: true 
+  },
+  telefono: { 
+    type: String, 
+    required: true 
+  }
+});
+
 const actaReunionSchema = new mongoose.Schema({
   proyectoId: { 
     type: mongoose.Schema.Types.ObjectId, 
@@ -12,6 +39,10 @@ const actaReunionSchema = new mongoose.Schema({
   },
   fecha: { 
     type: Date, 
+    required: true 
+  },
+  lugar: { 
+    type: String, 
     required: true 
   },
   horaInicio: { 
@@ -34,9 +65,7 @@ const actaReunionSchema = new mongoose.Schema({
     type: String, 
     required: true 
   },
-  participantes: [{ 
-    type: String 
-  }],
+  asistencia: [participanteSchema],
   creadoPor: { 
     type: mongoose.Schema.Types.ObjectId, 
     ref: 'User', 
