@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 
 const Projects = () => {
+  // URL base del API - ajustar según el entorno
+  const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+  
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -29,19 +32,20 @@ const Projects = () => {
     ubicacion: '',
     fechaInicio: '',
     fechaTermino: '',
-    estado: 'En proceso',
-    subjefe: ''
+    estado: 'Planificación',
+    subencargado: ''
   });
 
-  const estados = ['En proceso', 'En ejecución', 'Finalizado', 'Pausado'];
+  const estados = ['Planificación', 'En ejecución', 'Finalizado'];
 
   // Cargar proyectos
   const fetchProjects = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:5000/api/projects');
+      const response = await fetch(`${API_BASE_URL}/projects`);
       const data = await response.json();
-      setProjects(data.projects || []);
+      // El backend devuelve directamente el array de proyectos
+      setProjects(data || []);
     } catch (error) {
       console.error('Error al cargar proyectos:', error);
     } finally {
@@ -62,12 +66,13 @@ const Projects = () => {
       if (searchFilters.fechaTermino) queryParams.append('fechaTermino', searchFilters.fechaTermino);
 
       const url = queryParams.toString() 
-        ? `http://localhost:5000/api/projects/search?${queryParams}`
-        : 'http://localhost:5000/api/projects';
+        ? `${API_BASE_URL}/projects/search?${queryParams}`
+        : `${API_BASE_URL}/projects`;
 
       const response = await fetch(url);
       const data = await response.json();
-      setProjects(data.projects || []);
+      // El backend devuelve directamente el array de proyectos
+      setProjects(data || []);
     } catch (error) {
       console.error('Error en búsqueda:', error);
     } finally {
@@ -79,13 +84,28 @@ const Projects = () => {
   const handleCreateProject = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch('http://localhost:5000/api/projects', {
+      // Validar que los campos requeridos estén presentes
+      if (!newProject.nombre || !newProject.codigo || !newProject.fechaInicio || !newProject.fechaTermino) {
+        alert('Por favor complete todos los campos requeridos (nombre, código, fechas)');
+        return;
+      }
+
+      // Crear un ObjectId temporal para el subencargado si no está vacío
+      const projectData = {
+        ...newProject,
+        // Si subencargado está vacío, usar un ObjectId temporal válido
+        subencargado: newProject.subencargado || '507f1f77bcf86cd799439011'
+      };
+
+      const response = await fetch(`${API_BASE_URL}/projects`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(newProject),
+        body: JSON.stringify(projectData),
       });
+
+      const result = await response.json();
 
       if (response.ok) {
         setShowCreateModal(false);
@@ -96,17 +116,18 @@ const Projects = () => {
           ubicacion: '',
           fechaInicio: '',
           fechaTermino: '',
-          estado: 'En proceso',
-          subjefe: ''
+          estado: 'Planificación',
+          subencargado: ''
         });
         fetchProjects();
         alert('Proyecto creado exitosamente');
       } else {
-        alert('Error al crear el proyecto');
+        console.error('Error del servidor:', result);
+        alert(`Error al crear el proyecto: ${result.error || 'Error desconocido'}`);
       }
     } catch (error) {
       console.error('Error al crear proyecto:', error);
-      alert('Error al crear el proyecto');
+      alert(`Error al crear el proyecto: ${error.message}`);
     }
   };
 
@@ -114,7 +135,7 @@ const Projects = () => {
   const fetchActasForProject = async (projectId) => {
     try {
       setLoadingActas(true);
-      const response = await fetch(`http://localhost:5000/api/actas-reunion/project/${projectId}`);
+      const response = await fetch(`${API_BASE_URL}/actas-reunion/project/${projectId}`);
       const data = await response.json();
       setActas(data.actas || []);
     } catch (error) {
@@ -322,7 +343,6 @@ const Projects = () => {
                         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                           project.estado === 'Finalizado' ? 'bg-green-100 text-green-800' :
                           project.estado === 'En ejecución' ? 'bg-blue-100 text-blue-800' :
-                          project.estado === 'Pausado' ? 'bg-red-100 text-red-800' :
                           'bg-yellow-100 text-yellow-800'
                         }`}>
                           {project.estado}
@@ -335,7 +355,7 @@ const Projects = () => {
                         {project.fechaTermino ? new Date(project.fechaTermino).toLocaleDateString() : 'No definida'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {project.subjefe || 'No asignado'}
+                        {project.subencargado || 'No asignado'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                         <button
@@ -473,15 +493,18 @@ const Projects = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Coordinador Encargado
+                  Subencargado/Coordinador *
                 </label>
                 <input
                   type="text"
-                  placeholder="Nombre del coordinador encargado"
-                  value={newProject.subjefe}
-                  onChange={(e) => setNewProject({...newProject, subjefe: e.target.value})}
+                  placeholder="ID del coordinador encargado (ObjectId)"
+                  value={newProject.subencargado}
+                  onChange={(e) => setNewProject({...newProject, subencargado: e.target.value})}
                   className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  Ingrese un ObjectId válido o déjelo vacío para usar uno temporal
+                </p>
               </div>
 
               <div className="flex justify-end space-x-4 pt-4">
@@ -537,7 +560,6 @@ const Projects = () => {
                   <span className={`ml-2 px-3 py-1 rounded-full text-sm font-medium ${
                     selectedProject.estado === 'Finalizado' ? 'bg-green-100 text-green-800' :
                     selectedProject.estado === 'En ejecución' ? 'bg-blue-100 text-blue-800' :
-                    selectedProject.estado === 'Pausado' ? 'bg-red-100 text-red-800' :
                     'bg-yellow-100 text-yellow-800'
                   }`}>
                     {selectedProject.estado}
@@ -556,7 +578,7 @@ const Projects = () => {
                 </div>
                 <div>
                   <span className="font-semibold text-gray-700">Coordinador Encargado:</span>
-                  <p className="text-gray-900">{selectedProject.subjefe || 'No asignado'}</p>
+                  <p className="text-gray-900">{selectedProject.subencargado || 'No asignado'}</p>
                 </div>
                 <div>
                   <span className="font-semibold text-gray-700">Ubicación:</span>
