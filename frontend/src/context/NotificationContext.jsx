@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 
 const NotificationContext = createContext();
 
@@ -117,7 +117,7 @@ export const NotificationProvider = ({ children }) => {
     });
   };
 
-  const value = {
+  const value = useMemo(() => ({
     notifications,
     addNotification,
     markAsRead,
@@ -132,7 +132,21 @@ export const NotificationProvider = ({ children }) => {
     notifyInfo,
     notifyCotizacion,
     notifyProvider
-  };
+  }), [
+    notifications,
+    addNotification,
+    markAsRead,
+    markAllAsRead,
+    removeNotification,
+    clearAllNotifications,
+    getUnreadCount,
+    notifySuccess,
+    notifyError,
+    notifyWarning,
+    notifyInfo,
+    notifyCotizacion,
+    notifyProvider
+  ]);
 
   // Hacer el servicio disponible globalmente
   useEffect(() => {

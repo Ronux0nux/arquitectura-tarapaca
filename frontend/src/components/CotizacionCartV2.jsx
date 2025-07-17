@@ -179,7 +179,7 @@ const CotizacionCartV2 = () => {
         fileName: fileName
       };
       
-      const cotizacionGuardada = guardarCotizacion(cotizacionData);
+      guardarCotizacion(cotizacionData);
       
       // Mostrar notificación de éxito
       const notification = document.createElement('div');

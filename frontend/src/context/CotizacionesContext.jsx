@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useNotifications } from './NotificationContext';
 
 const CotizacionesContext = createContext();
 
@@ -49,9 +48,9 @@ export const CotizacionesProvider = ({ children }) => {
     const nuevasCotizaciones = [nuevaCotizacion, ...cotizaciones];
     setCotizaciones(nuevasCotizaciones);
 
-    // Notificar sobre la nueva cotización
-    if (notificationService) {
-      notificationService.notifyCotizacion(
+    // Notificar sobre la nueva cotización (si está disponible)
+    if (typeof window !== 'undefined' && window.notificationService) {
+      window.notificationService.notifyCotizacion(
         `Nueva cotización creada con ${nuevaCotizacion.totalItems} items`,
         'Cotización Guardada'
       );
