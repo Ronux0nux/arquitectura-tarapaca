@@ -9,6 +9,7 @@ export default function Navbar() {
       <Link to="/providers">Proveedores</Link>
       <Link to="/insumos">Insumos</Link>
       <Link to="/cotizaciones">Cotizaciones</Link>
+      <Link to="/actas">Actas</Link>
       <Link to="/buscador">Buscador</Link>
     </nav>
   );

@@ -6,7 +6,9 @@ import Projects from "./pages/Projects";
 import Providers from "./pages/Providers";
 import Insumos from "./pages/Insumos";
 import Cotizaciones from "./pages/Cotizaciones";
-import BuscadorPage from './components/BuscadorPage';
+import ActasReunion from './pages/ActasReunion';
+import BuscadorPage from './pages/BuscadorPage';
+
 export default function App() {
   return (
     <Router>
@@ -18,6 +20,7 @@ export default function App() {
         <Route path="/providers" element={<Providers />} />
         <Route path="/insumos" element={<Insumos />} />
         <Route path="/cotizaciones" element={<Cotizaciones />} />
+        <Route path="/actas" element={<ActasReunion />} />
         <Route path="/buscador" element={<BuscadorPage />} />
       </Routes>
     </Router>
