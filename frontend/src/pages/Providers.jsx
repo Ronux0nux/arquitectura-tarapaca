@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNotifications } from '../context/NotificationContext';
 import providerService from '../services/ProviderService';
+import ProviderDataImporter from '../utils/providerDataImporter';
 
 export default function Providers() {
   const [providers, setProviders] = useState([]);
@@ -9,6 +10,9 @@ export default function Providers() {
   const [selectedProvider, setSelectedProvider] = useState(null);
   const [providerStats, setProviderStats] = useState({});
   const [loading, setLoading] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importData, setImportData] = useState('');
+  const [importType, setImportType] = useState('text');
   const { notifySuccess, notifyError, notifyInfo } = useNotifications();
 
   // Lista completa de proveedores con más información
@@ -118,9 +122,18 @@ export default function Providers() {
   ];
 
   useEffect(() => {
-    setProviders(allProviders);
-    setFilteredProviders(allProviders);
-    generateProviderStats();
+    // Cargar proveedores importados si existen
+    const importedProviders = ProviderDataImporter.loadProvidersFromLocalStorage();
+    if (importedProviders.length > 0) {
+      setProviders(importedProviders);
+      setFilteredProviders(importedProviders);
+      generateProviderStats(importedProviders);
+      notifyInfo(`Se cargaron ${importedProviders.length} proveedores desde datos importados`, 'Datos Cargados');
+    } else {
+      setProviders(allProviders);
+      setFilteredProviders(allProviders);
+      generateProviderStats(allProviders);
+    }
   }, []);
 
   useEffect(() => {
@@ -142,12 +155,12 @@ export default function Providers() {
     setFilteredProviders(filtered);
   };
 
-  const generateProviderStats = () => {
+  const generateProviderStats = (providerList = providers) => {
     const stats = {
-      total: allProviders.length,
-      active: allProviders.filter(p => p.status === 'activo').length,
-      avgRating: (allProviders.reduce((sum, p) => sum + p.rating, 0) / allProviders.length).toFixed(1),
-      categories: [...new Set(allProviders.flatMap(p => p.categories))].length
+      total: providerList.length,
+      active: providerList.filter(p => p.status === 'activo').length,
+      avgRating: providerList.length > 0 ? (providerList.reduce((sum, p) => sum + p.rating, 0) / providerList.length).toFixed(1) : '0.0',
+      categories: [...new Set(providerList.flatMap(p => p.categories))].length
     };
     setProviderStats(stats);
   };
@@ -183,6 +196,85 @@ export default function Providers() {
     setLoading(false);
   };
 
+  const handleImportData = () => {
+    if (!importData.trim()) {
+      notifyError('Por favor ingresa los datos a importar', 'Error de Importación');
+      return;
+    }
+
+    try {
+      let newProviders = [];
+      
+      switch (importType) {
+        case 'text':
+          newProviders = ProviderDataImporter.processRawProviderData(importData);
+          break;
+        case 'csv':
+          newProviders = ProviderDataImporter.processCsvProviderData(importData);
+          break;
+        case 'json':
+          newProviders = ProviderDataImporter.processJsonProviderData(importData);
+          break;
+        default:
+          notifyError('Tipo de importación no válido', 'Error de Importación');
+          return;
+      }
+
+      // Validar datos
+      const validation = ProviderDataImporter.validateProviders(newProviders);
+      
+      if (!validation.isValid) {
+        notifyError(`Errores encontrados: ${validation.errors.join(', ')}`, 'Error de Validación');
+        return;
+      }
+
+      if (validation.warnings.length > 0) {
+        notifyInfo(`Advertencias: ${validation.warnings.join(', ')}`, 'Advertencias de Importación');
+      }
+
+      // Guardar y actualizar
+      ProviderDataImporter.saveProvidersToLocalStorage(newProviders);
+      setProviders(newProviders);
+      setFilteredProviders(newProviders);
+      generateProviderStats(newProviders);
+      
+      notifySuccess(`Se importaron ${validation.validProviders} proveedores exitosamente`, 'Importación Completada');
+      setShowImportModal(false);
+      setImportData('');
+      
+    } catch (error) {
+      notifyError(`Error al procesar datos: ${error.message}`, 'Error de Importación');
+    }
+  };
+
+  const handleResetToDefault = () => {
+    localStorage.removeItem('importedProviders');
+    localStorage.removeItem('providersImportDate');
+    setProviders(allProviders);
+    setFilteredProviders(allProviders);
+    generateProviderStats(allProviders);
+    notifyInfo('Se restauraron los proveedores por defecto', 'Datos Restaurados');
+  };
+
+  const handleExportData = () => {
+    const dataToExport = {
+      providers: providers,
+      exportDate: new Date().toISOString(),
+      totalProviders: providers.length
+    };
+    
+    const dataStr = JSON.stringify(dataToExport, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `proveedores_${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+    
+    notifySuccess('Datos exportados exitosamente', 'Exportación Completada');
+  };
+
   const getRatingStars = (rating) => {
     const stars = [];
     for (let i = 1; i <= 5; i++) {
@@ -212,7 +304,38 @@ export default function Providers() {
     <div className="p-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">🏢 Gestión de Proveedores</h1>
+        <div className="flex justify-between items-center mb-2">
+          <h1 className="text-3xl font-bold text-gray-800">🏢 Gestión de Proveedores</h1>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowImportModal(true)}
+              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+              Importar PDF/Excel
+            </button>
+            <button
+              onClick={handleExportData}
+              className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Exportar
+            </button>
+            <button
+              onClick={handleResetToDefault}
+              className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Restaurar
+            </button>
+          </div>
+        </div>
         <p className="text-gray-600">Administra y busca proveedores para tus cotizaciones</p>
       </div>
 
@@ -499,6 +622,123 @@ export default function Providers() {
                 <div>
                   <h3 className="font-semibold text-gray-800 mb-2">Descripción</h3>
                   <p className="text-gray-600">{selectedProvider.description}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Import Modal */}
+      {showImportModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-bold text-gray-800">📄 Importar Datos de Proveedores</h2>
+                <button
+                  onClick={() => setShowImportModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <h3 className="font-semibold text-gray-800 mb-2">Formato de Datos</h3>
+                  <div className="flex gap-4 mb-4">
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        value="text"
+                        checked={importType === 'text'}
+                        onChange={(e) => setImportType(e.target.value)}
+                        className="mr-2"
+                      />
+                      Texto del PDF
+                    </label>
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        value="csv"
+                        checked={importType === 'csv'}
+                        onChange={(e) => setImportType(e.target.value)}
+                        className="mr-2"
+                      />
+                      CSV
+                    </label>
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        value="json"
+                        checked={importType === 'json'}
+                        onChange={(e) => setImportType(e.target.value)}
+                        className="mr-2"
+                      />
+                      JSON
+                    </label>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="font-semibold text-gray-800 mb-2">Instrucciones</h3>
+                  <div className="bg-blue-50 p-4 rounded-lg text-sm text-blue-800">
+                    {importType === 'text' && (
+                      <div>
+                        <p className="mb-2"><strong>Para texto del PDF:</strong></p>
+                        <ol className="list-decimal list-inside space-y-1">
+                          <li>Abre el archivo PDF "ListadoProveedoresVigentes-01-07-2025.pdf"</li>
+                          <li>Selecciona todo el texto (Ctrl+A) y cópialo (Ctrl+C)</li>
+                          <li>Pega el contenido en el área de texto abajo</li>
+                          <li>El sistema detectará automáticamente nombres, teléfonos, emails y direcciones</li>
+                        </ol>
+                      </div>
+                    )}
+                    {importType === 'csv' && (
+                      <div>
+                        <p className="mb-2"><strong>Para CSV:</strong></p>
+                        <p>Formato: Nombre,Teléfono,Email,Dirección,Sitio Web,Categorías,Descripción</p>
+                        <p className="mt-2">Las categorías deben estar separadas por ";"</p>
+                      </div>
+                    )}
+                    {importType === 'json' && (
+                      <div>
+                        <p className="mb-2"><strong>Para JSON:</strong></p>
+                        <p>Array de objetos con propiedades: nombre, telefono, email, direccion, categorias, etc.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="font-semibold text-gray-800 mb-2">Datos a Importar</h3>
+                  <textarea
+                    value={importData}
+                    onChange={(e) => setImportData(e.target.value)}
+                    placeholder={importType === 'text' ? "Pega aquí el contenido del PDF..." : 
+                                importType === 'csv' ? "Pega aquí los datos CSV..." : 
+                                "Pega aquí los datos JSON..."}
+                    className="w-full h-64 p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2">
+                  <button
+                    onClick={() => setShowImportModal(false)}
+                    className="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleImportData}
+                    disabled={!importData.trim()}
+                    className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
+                  >
+                    Importar Datos
+                  </button>
                 </div>
               </div>
             </div>
