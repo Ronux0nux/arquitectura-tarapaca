@@ -24,6 +24,7 @@ const cotizacionRoutes = require('./routes/cotizacionRoutes');
 const insumoRoutes = require('./routes/insumoRoutes');
 const datasetRoutes = require('./routes/datasetRoutes');
 const actaReunionRoutes = require('./routes/actaReunionRoutes');
+const searchRoutes = require('./routes/searchRoutes');
 
 // Usar rutas API
 app.use('/api/users', userRoutes);
@@ -33,6 +34,7 @@ app.use('/api/insumos', insumoRoutes);
 app.use('/api/cotizaciones', cotizacionRoutes);
 app.use('/api/dataset', datasetRoutes);
 app.use('/api/actas-reunion', actaReunionRoutes);
+app.use('/api/search', searchRoutes);
 
 // Ruta base de prueba (API)
 app.get('/api', (req, res) => {
