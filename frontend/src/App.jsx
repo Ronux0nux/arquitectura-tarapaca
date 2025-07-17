@@ -6,7 +6,7 @@ import Projects from "./pages/Projects";
 import Providers from "./pages/Providers";
 import Insumos from "./pages/Insumos";
 import Cotizaciones from "./pages/Cotizaciones";
-
+import BuscadorPage from './components/BuscadorPage';
 export default function App() {
   return (
     <Router>
@@ -18,6 +18,7 @@ export default function App() {
         <Route path="/providers" element={<Providers />} />
         <Route path="/insumos" element={<Insumos />} />
         <Route path="/cotizaciones" element={<Cotizaciones />} />
+        <Route path="/buscador" element={<BuscadorPage />} />
       </Routes>
     </Router>
   );
