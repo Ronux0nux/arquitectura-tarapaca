@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import { useCart } from '../context/CartContext';
 
 const BuscadorMateriales = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -7,6 +8,7 @@ const BuscadorMateriales = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [searchType, setSearchType] = useState('shopping');
+  const { addToCart } = useCart();
 
   // URL del API backend
   const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
@@ -51,6 +53,53 @@ const BuscadorMateriales = () => {
     if (e.key === 'Enter') {
       searchMaterials();
     }
+  };
+
+  const handleLinkClick = (url) => {
+    if (url) {
+      try {
+        window.open(url, '_blank', 'noopener,noreferrer');
+      } catch (error) {
+        console.error('Error al abrir el enlace:', error);
+        // Fallback: intentar navegar directamente
+        window.location.href = url;
+      }
+    } else {
+      console.warn('No hay enlace disponible para este resultado');
+    }
+  };
+
+  const handleAddToCart = (result) => {
+    const itemWithSearch = {
+      ...result,
+      searchTerm: searchTerm,
+      category: searchType === 'shopping' ? 'General' : 'Información'
+    };
+    addToCart(itemWithSearch);
+    
+    // Mostrar notificación
+    const notification = document.createElement('div');
+    notification.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50';
+    notification.textContent = '✓ Producto agregado al carrito';
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+      document.body.removeChild(notification);
+    }, 3000);
+  };
+
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text).then(() => {
+      // Mostrar notificación
+      const notification = document.createElement('div');
+      notification.className = 'fixed top-4 right-4 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg z-50';
+      notification.textContent = '📋 Información copiada';
+      document.body.appendChild(notification);
+      
+      setTimeout(() => {
+        document.body.removeChild(notification);
+      }, 2000);
+    });
   };
 
   return (
@@ -139,7 +188,11 @@ const BuscadorMateriales = () => {
                         className="w-full h-32 object-cover rounded-md"
                       />
                     )}
-                    <h4 className="font-semibold text-sm text-gray-800 line-clamp-2">
+                    <h4 className="font-semibold text-sm text-gray-800 overflow-hidden" style={{
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical'
+                    }}>
                       {result.title}
                     </h4>
                     {result.price && (
@@ -150,37 +203,79 @@ const BuscadorMateriales = () => {
                     <p className="text-xs text-gray-500">
                       {result.source}
                     </p>
-                    <a
-                      href={result.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-block w-full text-center bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors text-sm"
-                    >
-                      Ver producto
-                    </a>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <button
+                        onClick={() => handleAddToCart(result)}
+                        className="bg-green-600 text-white py-2 px-3 rounded-md hover:bg-green-700 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                      >
+                        🛒 Carrito
+                      </button>
+                      <button
+                        onClick={() => copyToClipboard(`${result.title} - ${result.price} - ${result.source}`)}
+                        className="bg-gray-600 text-white py-2 px-3 rounded-md hover:bg-gray-700 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-gray-500"
+                      >
+                        📋 Copiar
+                      </button>
+                      <button
+                        onClick={() => handleLinkClick(result.link)}
+                        disabled={!result.link}
+                        className={`py-2 px-3 rounded-md transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                          result.link 
+                            ? 'bg-blue-600 text-white hover:bg-blue-700 cursor-pointer' 
+                            : 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                        }`}
+                      >
+                        {result.link ? '🔗 Ver' : 'Sin enlace'}
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   // Card para resultados orgánicos
                   <div className="space-y-3">
-                    <h4 className="font-semibold text-sm text-blue-600 hover:text-blue-800">
-                      <a href={result.link} target="_blank" rel="noopener noreferrer">
+                    <h4 className={`font-semibold text-sm ${
+                      result.link 
+                        ? 'text-blue-600 hover:text-blue-800 cursor-pointer' 
+                        : 'text-gray-600 cursor-default'
+                    }`}>
+                      <span onClick={() => result.link && handleLinkClick(result.link)}>
                         {result.title}
-                      </a>
+                      </span>
                     </h4>
-                    <p className="text-xs text-gray-600 line-clamp-3">
+                    <p className="text-xs text-gray-600 overflow-hidden" style={{
+                      display: '-webkit-box',
+                      WebkitLineClamp: 3,
+                      WebkitBoxOrient: 'vertical'
+                    }}>
                       {result.snippet}
                     </p>
                     <p className="text-xs text-green-600">
                       {result.source}
                     </p>
-                    <a
-                      href={result.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-block w-full text-center bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700 transition-colors text-sm"
-                    >
-                      Ver información
-                    </a>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <button
+                        onClick={() => handleAddToCart(result)}
+                        className="bg-green-600 text-white py-2 px-3 rounded-md hover:bg-green-700 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                      >
+                        🛒 Carrito
+                      </button>
+                      <button
+                        onClick={() => copyToClipboard(`${result.title} - ${result.snippet} - ${result.source}`)}
+                        className="bg-gray-600 text-white py-2 px-3 rounded-md hover:bg-gray-700 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-gray-500"
+                      >
+                        📋 Copiar
+                      </button>
+                      <button
+                        onClick={() => handleLinkClick(result.link)}
+                        disabled={!result.link}
+                        className={`py-2 px-3 rounded-md transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-gray-500 ${
+                          result.link 
+                            ? 'bg-blue-600 text-white hover:bg-blue-700 cursor-pointer' 
+                            : 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                        }`}
+                      >
+                        {result.link ? '🔗 Ver' : 'Sin enlace'}
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

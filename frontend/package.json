@@ -11,6 +11,7 @@
     "axios": "^1.10.0",
     "csv": "^6.3.11",
     "csv-parser": "^3.2.0",
+    "file-saver": "^2.0.5",
     "handsontable": "^15.3.0",
     "multer": "^2.0.1",
     "react": "^19.1.0",
@@ -18,7 +19,8 @@
     "react-router-dom": "^7.6.2",
     "react-scripts": "5.0.1",
     "serpapi": "^2.1.0",
-    "web-vitals": "^2.1.4"
+    "web-vitals": "^2.1.4",
+    "xlsx": "^0.18.5"
   },
   "scripts": {
     "start": "react-scripts start",
