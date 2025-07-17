@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { useCart } from '../context/CartContext';
+import { useCotizaciones } from '../context/CotizacionesContext';
 
 const BuscadorMateriales = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -8,7 +9,9 @@ const BuscadorMateriales = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [searchType, setSearchType] = useState('shopping');
+  const [showDatabaseResults, setShowDatabaseResults] = useState(false);
   const { addToCart } = useCart();
+  const { buscarEnDatabase, getProductosMasUsados } = useCotizaciones();
 
   // URL del API backend
   const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
@@ -19,6 +22,18 @@ const BuscadorMateriales = () => {
       return;
     }
 
+    // Primero buscar en la base de datos local
+    const databaseResults = buscarEnDatabase(searchTerm);
+    
+    if (databaseResults.length > 0) {
+      setShowDatabaseResults(true);
+      setResults(databaseResults);
+      setError('');
+      return;
+    }
+
+    // Si no hay resultados en la base de datos, buscar en SerpApi
+    setShowDatabaseResults(false);
     setLoading(true);
     setError('');
     setResults([]);
@@ -80,11 +95,13 @@ const BuscadorMateriales = () => {
     // Mostrar notificación
     const notification = document.createElement('div');
     notification.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50';
-    notification.textContent = '✓ Producto agregado al carrito';
+    notification.textContent = showDatabaseResults ? '✓ Producto agregado desde base de datos' : '✓ Producto agregado al carrito';
     document.body.appendChild(notification);
     
     setTimeout(() => {
-      document.body.removeChild(notification);
+      if (document.body.contains(notification)) {
+        document.body.removeChild(notification);
+      }
     }, 3000);
   };
 
@@ -168,26 +185,77 @@ const BuscadorMateriales = () => {
         )}
       </div>
 
+      {/* Productos más usados */}
+      {!loading && results.length === 0 && !searchTerm && (
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h3 className="text-xl font-semibold text-gray-800 mb-4">
+            🔥 Productos Más Usados en tus Cotizaciones
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {getProductosMasUsados(6).map((producto, index) => (
+              <div key={producto.id || index} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                <div className="space-y-3">
+                  <h4 className="font-semibold text-sm text-gray-800 overflow-hidden" style={{
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical'
+                  }}>
+                    {producto.title}
+                  </h4>
+                  <p className="text-lg font-bold text-green-600">
+                    {producto.price || 'Consultar'}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {producto.source}
+                  </p>
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                      Usado {producto.vecesUsado || 1} veces
+                    </span>
+                    <button
+                      onClick={() => handleAddToCart(producto)}
+                      className="bg-green-600 text-white py-1 px-3 rounded-md hover:bg-green-700 transition-colors text-sm"
+                    >
+                      🛒 Agregar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          {getProductosMasUsados().length === 0 && (
+            <div className="text-center py-8">
+              <p className="text-gray-500">No tienes productos en tu base de datos aún</p>
+              <p className="text-gray-400 text-sm mt-2">
+                Busca y exporta cotizaciones para crear tu base de datos
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Resultados */}
       {results.length > 0 && (
         <div className="bg-white rounded-lg shadow-md p-6">
           <h3 className="text-xl font-semibold text-gray-800 mb-4">
-            Resultados de búsqueda ({results.length})
+            {showDatabaseResults ? (
+              <span className="flex items-center gap-2">
+                🗄️ Resultados de tu base de datos ({results.length})
+                <span className="text-sm bg-green-100 text-green-800 px-2 py-1 rounded">
+                  Productos previamente usados
+                </span>
+              </span>
+            ) : (
+              `Resultados de búsqueda en internet (${results.length})`
+            )}
           </h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {results.map((result, index) => (
-              <div key={index} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                {result.type === 'shopping' ? (
-                  // Card para resultados de shopping
+              <div key={result.id || index} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                {showDatabaseResults ? (
+                  // Card para resultados de base de datos
                   <div className="space-y-3">
-                    {result.thumbnail && (
-                      <img 
-                        src={result.thumbnail} 
-                        alt={result.title}
-                        className="w-full h-32 object-cover rounded-md"
-                      />
-                    )}
                     <h4 className="font-semibold text-sm text-gray-800 overflow-hidden" style={{
                       display: '-webkit-box',
                       WebkitLineClamp: 2,
@@ -195,15 +263,21 @@ const BuscadorMateriales = () => {
                     }}>
                       {result.title}
                     </h4>
-                    {result.price && (
-                      <p className="text-lg font-bold text-green-600">
-                        {result.price}
-                      </p>
-                    )}
+                    <p className="text-lg font-bold text-green-600">
+                      {result.price || 'Consultar'}
+                    </p>
                     <p className="text-xs text-gray-500">
                       {result.source}
                     </p>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">
+                        Usado {result.vecesUsado || 1} veces
+                      </span>
+                      <span className="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded">
+                        {result.category || 'General'}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <button
                         onClick={() => handleAddToCart(result)}
                         className="bg-green-600 text-white py-2 px-3 rounded-md hover:bg-green-700 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
@@ -216,67 +290,110 @@ const BuscadorMateriales = () => {
                       >
                         📋 Copiar
                       </button>
-                      <button
-                        onClick={() => handleLinkClick(result.link)}
-                        disabled={!result.link}
-                        className={`py-2 px-3 rounded-md transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                          result.link 
-                            ? 'bg-blue-600 text-white hover:bg-blue-700 cursor-pointer' 
-                            : 'bg-gray-400 text-gray-200 cursor-not-allowed'
-                        }`}
-                      >
-                        {result.link ? '🔗 Ver' : 'Sin enlace'}
-                      </button>
                     </div>
                   </div>
                 ) : (
-                  // Card para resultados orgánicos
-                  <div className="space-y-3">
-                    <h4 className={`font-semibold text-sm ${
-                      result.link 
-                        ? 'text-blue-600 hover:text-blue-800 cursor-pointer' 
-                        : 'text-gray-600 cursor-default'
-                    }`}>
-                      <span onClick={() => result.link && handleLinkClick(result.link)}>
+                  // Cards originales para resultados de internet
+                  result.type === 'shopping' ? (
+                    // Card para resultados de shopping
+                    <div className="space-y-3">
+                      {result.thumbnail && (
+                        <img 
+                          src={result.thumbnail} 
+                          alt={result.title}
+                          className="w-full h-32 object-cover rounded-md"
+                        />
+                      )}
+                      <h4 className="font-semibold text-sm text-gray-800 overflow-hidden" style={{
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical'
+                      }}>
                         {result.title}
-                      </span>
-                    </h4>
-                    <p className="text-xs text-gray-600 overflow-hidden" style={{
-                      display: '-webkit-box',
-                      WebkitLineClamp: 3,
-                      WebkitBoxOrient: 'vertical'
-                    }}>
-                      {result.snippet}
-                    </p>
-                    <p className="text-xs text-green-600">
-                      {result.source}
-                    </p>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                      <button
-                        onClick={() => handleAddToCart(result)}
-                        className="bg-green-600 text-white py-2 px-3 rounded-md hover:bg-green-700 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                      >
-                        🛒 Carrito
-                      </button>
-                      <button
-                        onClick={() => copyToClipboard(`${result.title} - ${result.snippet} - ${result.source}`)}
-                        className="bg-gray-600 text-white py-2 px-3 rounded-md hover:bg-gray-700 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-gray-500"
-                      >
-                        📋 Copiar
-                      </button>
-                      <button
-                        onClick={() => handleLinkClick(result.link)}
-                        disabled={!result.link}
-                        className={`py-2 px-3 rounded-md transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-gray-500 ${
-                          result.link 
-                            ? 'bg-blue-600 text-white hover:bg-blue-700 cursor-pointer' 
-                            : 'bg-gray-400 text-gray-200 cursor-not-allowed'
-                        }`}
-                      >
-                        {result.link ? '🔗 Ver' : 'Sin enlace'}
-                      </button>
+                      </h4>
+                      {result.price && (
+                        <p className="text-lg font-bold text-green-600">
+                          {result.price}
+                        </p>
+                      )}
+                      <p className="text-xs text-gray-500">
+                        {result.source}
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <button
+                          onClick={() => handleAddToCart(result)}
+                          className="bg-green-600 text-white py-2 px-3 rounded-md hover:bg-green-700 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                        >
+                          🛒 Carrito
+                        </button>
+                        <button
+                          onClick={() => copyToClipboard(`${result.title} - ${result.price} - ${result.source}`)}
+                          className="bg-gray-600 text-white py-2 px-3 rounded-md hover:bg-gray-700 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-gray-500"
+                        >
+                          📋 Copiar
+                        </button>
+                        <button
+                          onClick={() => handleLinkClick(result.link)}
+                          disabled={!result.link}
+                          className={`py-2 px-3 rounded-md transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                            result.link 
+                              ? 'bg-blue-600 text-white hover:bg-blue-700 cursor-pointer' 
+                              : 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                          }`}
+                        >
+                          {result.link ? '🔗 Ver' : 'Sin enlace'}
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    // Card para resultados orgánicos
+                    <div className="space-y-3">
+                      <h4 className={`font-semibold text-sm ${
+                        result.link 
+                          ? 'text-blue-600 hover:text-blue-800 cursor-pointer' 
+                          : 'text-gray-600 cursor-default'
+                      }`}>
+                        <span onClick={() => result.link && handleLinkClick(result.link)}>
+                          {result.title}
+                        </span>
+                      </h4>
+                      <p className="text-xs text-gray-600 overflow-hidden" style={{
+                        display: '-webkit-box',
+                        WebkitLineClamp: 3,
+                        WebkitBoxOrient: 'vertical'
+                      }}>
+                        {result.snippet}
+                      </p>
+                      <p className="text-xs text-green-600">
+                        {result.source}
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <button
+                          onClick={() => handleAddToCart(result)}
+                          className="bg-green-600 text-white py-2 px-3 rounded-md hover:bg-green-700 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                        >
+                          🛒 Carrito
+                        </button>
+                        <button
+                          onClick={() => copyToClipboard(`${result.title} - ${result.snippet} - ${result.source}`)}
+                          className="bg-gray-600 text-white py-2 px-3 rounded-md hover:bg-gray-700 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-gray-500"
+                        >
+                          📋 Copiar
+                        </button>
+                        <button
+                          onClick={() => handleLinkClick(result.link)}
+                          disabled={!result.link}
+                          className={`py-2 px-3 rounded-md transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-gray-500 ${
+                            result.link 
+                              ? 'bg-blue-600 text-white hover:bg-blue-700 cursor-pointer' 
+                              : 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                          }`}
+                        >
+                          {result.link ? '🔗 Ver' : 'Sin enlace'}
+                        </button>
+                      </div>
+                    </div>
+                  )
                 )}
               </div>
             ))}
@@ -311,10 +428,12 @@ const BuscadorMateriales = () => {
         </ul>
         
         <div className="mt-4 p-3 bg-blue-50 rounded-md border border-blue-200">
-          <h5 className="font-semibold text-blue-800 mb-1">🛒 Carrito de Cotizaciones</h5>
+          <h5 className="font-semibold text-blue-800 mb-1">🛒 Sistema Inteligente de Cotizaciones</h5>
           <p className="text-sm text-blue-700">
-            Haz clic en "🛒 Carrito" para agregar productos y crear cotizaciones organizadas. 
-            Accede al carrito desde el botón en la barra superior o el botón flotante en la esquina inferior derecha.
+            • Primero busca en tu base de datos de productos ya usados<br/>
+            • Si no encuentra, busca en internet con SerpApi<br/>
+            • Cada cotización exportada mejora tu base de datos<br/>
+            • Accede al historial completo desde la barra superior
           </p>
         </div>
       </div>

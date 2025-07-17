@@ -70,13 +70,27 @@ const DemoCarrito = () => {
         <h2 className="text-2xl font-bold text-gray-800 mb-4">🛒 Demo del Carrito de Cotizaciones</h2>
         
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-          <h3 className="font-semibold text-blue-800 mb-2">¿Cómo funciona?</h3>
-          <ul className="text-sm text-blue-700 space-y-1">
-            <li>• Haz clic en "🛒 Agregar al carrito" para agregar productos</li>
-            <li>• Ve el contador en la barra superior o el botón flotante</li>
-            <li>• Haz clic en "Carrito" para ver y gestionar productos</li>
-            <li>• Exporta a Excel para crear cotizaciones y APUs</li>
-          </ul>
+          <h3 className="font-semibold text-blue-800 mb-2">🏗️ Nuevo: Carrito Profesional</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <h4 className="font-medium text-blue-700 mb-2">📊 Exporta Excel igual a tu archivo manual:</h4>
+              <ul className="text-sm text-blue-600 space-y-1">
+                <li>✅ Hoja PPTO con estructura por capítulos</li>
+                <li>✅ Hoja APU con análisis detallado</li>
+                <li>✅ Hoja RECURSOS con base de datos completa</li>
+                <li>✅ Mismos campos y formato que tu Excel</li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-medium text-blue-700 mb-2">🔄 Funcionalidades mejoradas:</h4>
+              <ul className="text-sm text-blue-600 space-y-1">
+                <li>• Editar cantidades, unidades y categorías</li>
+                <li>• Agregar observaciones por producto</li>
+                <li>• Cálculos automáticos de totales</li>
+                <li>• Resumen financiero del proyecto</li>
+              </ul>
+            </div>
+          </div>
         </div>
 
         <div className="flex justify-between items-center mb-4">
@@ -132,25 +146,25 @@ const DemoCarrito = () => {
           <div>
             <h4 className="font-medium text-gray-700 mb-2">1. Agregar productos</h4>
             <p className="text-sm text-gray-600">
-              Haz clic en "🛒 Agregar al carrito" en los productos que te interesen.
+              Haz clic en "🛒 Agregar al carrito" para incorporar productos a tu cotización.
             </p>
           </div>
           <div>
-            <h4 className="font-medium text-gray-700 mb-2">2. Gestionar carrito</h4>
+            <h4 className="font-medium text-gray-700 mb-2">2. Gestionar carrito profesional</h4>
             <p className="text-sm text-gray-600">
-              Ve al carrito para editar cantidades, categorías y agregar notas.
+              Edita cantidades, unidades, categorías y observaciones como en tu Excel.
             </p>
           </div>
           <div>
             <h4 className="font-medium text-gray-700 mb-2">3. Información del proyecto</h4>
             <p className="text-sm text-gray-600">
-              Completa el nombre del proyecto y cliente en el carrito.
+              Completa nombre del proyecto y cliente para generar cotización profesional.
             </p>
           </div>
           <div>
-            <h4 className="font-medium text-gray-700 mb-2">4. Exportar Excel</h4>
+            <h4 className="font-medium text-gray-700 mb-2">4. Exportar Excel igual al manual</h4>
             <p className="text-sm text-gray-600">
-              Genera archivo Excel con cotización completa y APU base.
+              Genera archivo con hojas PPTO, APU y RECURSOS idénticas a tu formato.
             </p>
           </div>
         </div>
