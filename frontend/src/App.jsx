@@ -9,6 +9,7 @@ import Insumos from "./pages/Insumos";
 import Cotizaciones from "./pages/Cotizaciones";
 import ActasReunion from './pages/ActasReunion';
 import BuscadorPage from './pages/BuscadorPage';
+import DemoCarrito from './pages/DemoCarrito';
 import CotizacionCart from './components/CotizacionCart';
 import CartButton from './components/CartButton';
 
@@ -26,6 +27,7 @@ export default function App() {
           <Route path="/cotizaciones" element={<Cotizaciones />} />
           <Route path="/actas" element={<ActasReunion />} />
           <Route path="/buscador" element={<BuscadorPage />} />
+          <Route path="/demo-carrito" element={<DemoCarrito />} />
         </Routes>
         <CotizacionCart />
         <CartButton />

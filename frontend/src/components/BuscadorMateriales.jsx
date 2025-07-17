@@ -309,6 +309,14 @@ const BuscadorMateriales = () => {
           <li>• Los resultados incluyen precios y proveedores de Chile</li>
           <li>• Puedes comparar precios entre diferentes proveedores</li>
         </ul>
+        
+        <div className="mt-4 p-3 bg-blue-50 rounded-md border border-blue-200">
+          <h5 className="font-semibold text-blue-800 mb-1">🛒 Carrito de Cotizaciones</h5>
+          <p className="text-sm text-blue-700">
+            Haz clic en "🛒 Carrito" para agregar productos y crear cotizaciones organizadas. 
+            Accede al carrito desde el botón en la barra superior o el botón flotante en la esquina inferior derecha.
+          </p>
+        </div>
       </div>
     </div>
   );

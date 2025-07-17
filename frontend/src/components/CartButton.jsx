@@ -5,8 +5,6 @@ const CartButton = () => {
   const { getCartCount, toggleCart } = useCart();
   const count = getCartCount();
 
-  if (count === 0) return null;
-
   return (
     <button
       onClick={toggleCart}
