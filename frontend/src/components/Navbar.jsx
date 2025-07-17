@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { useCart } from '../context/CartContext';
+import NotificationBell from './NotificationBell';
 
 export default function Navbar() {
   const { getCartCount, toggleCart } = useCart();
@@ -15,8 +16,11 @@ export default function Navbar() {
       <Link to="/cotizaciones">Cotizaciones</Link>
       <Link to="/actas">Actas</Link>
       <Link to="/buscador">Buscador</Link>
-      <Link to="/historial" className="bg-purple-600 hover:bg-purple-700 px-2 py-1 rounded text-sm">📊 Historial</Link>
-      <Link to="/demo-carrito" className="bg-green-600 hover:bg-green-700 px-2 py-1 rounded text-sm">🛒 Demo Carrito</Link>
+      <Link to="/configuracion" className="bg-gray-600 hover:bg-gray-700 px-2 py-1 rounded text-sm">⚙️ Config</Link>
+      <Link to="/Demo de cotizaciones" className="bg-green-600 hover:bg-green-700 px-2 py-1 rounded text-sm">🛒 Demo Carrito</Link>
+      
+      {/* Campana de notificaciones */}
+      <NotificationBell />
       
       <button
         onClick={toggleCart}

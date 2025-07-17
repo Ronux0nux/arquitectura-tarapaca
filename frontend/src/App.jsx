@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { CartProvider } from './context/CartContext';
 import { CotizacionesProvider } from './context/CotizacionesContext';
+import { NotificationProvider } from './context/NotificationContext';
 import Navbar from "./components/Navbar";
 import Home from "./pages/Home";
 import Users from "./pages/Users";
@@ -12,12 +13,14 @@ import ActasReunion from './pages/ActasReunion';
 import BuscadorPage from './pages/BuscadorPage';
 import DemoCarrito from './pages/DemoCarrito';
 import HistorialCotizaciones from './pages/HistorialCotizaciones';
+import ConfiguracionPage from './pages/ConfiguracionPage';
 import CotizacionCartV2 from './components/CotizacionCartV2';
 import CartButton from './components/CartButton';
 
 export default function App() {
   return (
-    <CartProvider>
+    <NotificationProvider>
+      <CartProvider>
       <CotizacionesProvider>
         <Router>
           <Navbar />
@@ -32,11 +35,13 @@ export default function App() {
             <Route path="/buscador" element={<BuscadorPage />} />
             <Route path="/demo-carrito" element={<DemoCarrito />} />
             <Route path="/historial" element={<HistorialCotizaciones />} />
+            <Route path="/configuracion" element={<ConfiguracionPage />} />
           </Routes>
           <CotizacionCartV2 />
           <CartButton />
         </Router>
       </CotizacionesProvider>
     </CartProvider>
+    </NotificationProvider>
   );
 }

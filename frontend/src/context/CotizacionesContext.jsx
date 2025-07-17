@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useNotifications } from './NotificationContext';
 
 const CotizacionesContext = createContext();
 
@@ -47,6 +48,14 @@ export const CotizacionesProvider = ({ children }) => {
 
     const nuevasCotizaciones = [nuevaCotizacion, ...cotizaciones];
     setCotizaciones(nuevasCotizaciones);
+
+    // Notificar sobre la nueva cotización
+    if (notificationService) {
+      notificationService.notifyCotizacion(
+        `Nueva cotización creada con ${nuevaCotizacion.totalItems} items`,
+        'Cotización Guardada'
+      );
+    }
     localStorage.setItem('cotizaciones_historial', JSON.stringify(nuevasCotizaciones));
 
     // Actualizar base de datos de productos
