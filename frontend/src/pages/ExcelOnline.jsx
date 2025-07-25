@@ -83,11 +83,43 @@ const ExcelOnline = () => {
     };
   };
 
-  // Cargar datos del Excel
+  // Inicializar plantillas localmente (sin cargar archivos)
   useEffect(() => {
-    loadExcelTemplate();
+    initializeLocalTemplates();
     loadProjects();
   }, []);
+
+  const initializeLocalTemplates = () => {
+    setLoading(true);
+    try {
+      // Crear plantillas vacías localmente
+      const templates = {
+        'PRESUPUESTO': [
+          ['Ítem', 'Partida', 'Unidad', 'Cantidad', 'P.U', 'Total', 'Observaciones', 'Proyecto'],
+          // Fila vacía para comenzar a editar
+          ['', '', '', '', '', '', '', '']
+        ],
+        'APU': [
+          ['Actividad', 'Recurso', 'Tipo', 'Unidad', 'Cantidad', 'P.U', 'Total', 'Fuente'],
+          // Fila vacía para comenzar a editar
+          ['', '', '', '', '', '', '', '']
+        ],
+        'RECURSOS': [
+          ['Código', 'Recurso', 'Unidad', 'Precio', 'Fuente', 'Categoría', 'Fecha', 'Estado'],
+          // Fila vacía para comenzar a editar
+          ['', '', '', '', '', '', '', '']
+        ]
+      };
+      
+      setExcelData(templates);
+      setSheetNames(['PRESUPUESTO', 'APU', 'RECURSOS']);
+    } catch (error) {
+      console.error('Error inicializando plantillas:', error);
+      alert('Error inicializando plantillas');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const loadExcelTemplate = async () => {
     setLoading(true);
@@ -336,12 +368,12 @@ const ExcelOnline = () => {
   if (!excelData) {
     return (
       <div className="text-center py-12">
-        <h2 className="text-xl font-semibold mb-4">No se pudo cargar las plantillas Excel</h2>
+        <h2 className="text-xl font-semibold mb-4">Cargando plantillas Excel...</h2>
         <button 
-          onClick={loadExcelTemplate}
+          onClick={initializeLocalTemplates}
           className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
         >
-          Reintentar
+          🔄 Inicializar Plantillas
         </button>
       </div>
     );
