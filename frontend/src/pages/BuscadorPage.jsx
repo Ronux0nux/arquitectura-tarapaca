@@ -2,20 +2,24 @@ import React, { useState } from 'react';
 import BuscadorMateriales from '../components/BuscadorMateriales';
 import { useCotizaciones } from '../context/CotizacionesContext';
 import { useCart } from '../context/CartContext';
+import { formatPrice } from '../utils/priceUtils';
 
 const BuscadorPage = () => {
   const [activeTab, setActiveTab] = useState('buscar');
+  const [filtroOrigen, setFiltroOrigen] = useState('todos'); // 'todos', 'serpapi', 'manual'
   const { productosDatabase, getProductosMasUsados, getProductosRecientes } = useCotizaciones();
   const { addToCart } = useCart();
 
-  const formatPrice = (price) => {
-    if (!price || price === 'Precio no disponible') return 'Precio no disponible';
-    if (typeof price === 'string' && price.includes('$')) return price;
-    return `$${price}`;
-  };
-
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('es-CL');
+  };
+
+  // Filtrar productos por origen
+  const getProductosFiltrados = () => {
+    if (filtroOrigen === 'todos') return productosDatabase;
+    if (filtroOrigen === 'serpapi') return productosDatabase.filter(p => p.origenBusqueda === 'SERPAPI');
+    if (filtroOrigen === 'manual') return productosDatabase.filter(p => !p.origenBusqueda || p.origenBusqueda !== 'SERPAPI');
+    return productosDatabase;
   };
 
   const handleAddToCart = (producto) => {
@@ -47,6 +51,23 @@ const BuscadorPage = () => {
             {producto.title}
           </h3>
           <p className="text-sm text-gray-600 mb-2">{producto.source}</p>
+          {/* Origen del producto */}
+          <div className="flex flex-wrap gap-1 mb-2">
+            {producto.origenBusqueda === 'SERPAPI' ? (
+              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-purple-100 text-purple-800">
+                🌐 SERPAPI
+              </span>
+            ) : (
+              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
+                🛒 Manual
+              </span>
+            )}
+            {producto.searchTerm && (
+              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
+                🔍 {producto.searchTerm}
+              </span>
+            )}
+          </div>
           <div className="flex items-center justify-between">
             <span className="text-lg font-semibold text-green-600">
               {formatPrice(producto.price)}
@@ -96,7 +117,7 @@ const BuscadorPage = () => {
             <nav className="flex space-x-8 px-6">
               {[
                 { id: 'buscar', label: 'Buscar Materiales' },
-                { id: 'historial', label: `Historial (${productosDatabase.length})` },
+                { id: 'historial', label: `Dataset (${productosDatabase.length})` },
                 { id: 'mas-usados', label: 'Más Usados' },
                 { id: 'recientes', label: 'Recientes' }
               ].map((tab) => (
@@ -121,26 +142,67 @@ const BuscadorPage = () => {
               <BuscadorMateriales />
             )}
 
-            {/* Tab: Historial */}
+            {/* Tab: Dataset */}
             {activeTab === 'historial' && (
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-semibold">Todos los Productos Guardados</h3>
+                  <h3 className="text-lg font-semibold">📊 Dataset de Productos</h3>
                   <span className="text-sm text-gray-500">
-                    {productosDatabase.length} productos en total
+                    {getProductosFiltrados().length} de {productosDatabase.length} productos
                   </span>
                 </div>
+
+                {/* Filtros */}
+                <div className="flex gap-2 mb-4">
+                  <button
+                    onClick={() => setFiltroOrigen('todos')}
+                    className={`px-3 py-1 rounded-full text-sm ${
+                      filtroOrigen === 'todos'
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    🌍 Todos ({productosDatabase.length})
+                  </button>
+                  <button
+                    onClick={() => setFiltroOrigen('serpapi')}
+                    className={`px-3 py-1 rounded-full text-sm ${
+                      filtroOrigen === 'serpapi'
+                        ? 'bg-purple-500 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    🌐 SERPAPI ({productosDatabase.filter(p => p.origenBusqueda === 'SERPAPI').length})
+                  </button>
+                  <button
+                    onClick={() => setFiltroOrigen('manual')}
+                    className={`px-3 py-1 rounded-full text-sm ${
+                      filtroOrigen === 'manual'
+                        ? 'bg-green-500 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    🛒 Manuales ({productosDatabase.filter(p => !p.origenBusqueda || p.origenBusqueda !== 'SERPAPI').length})
+                  </button>
+                </div>
                 
-                {productosDatabase.length === 0 ? (
+                {getProductosFiltrados().length === 0 ? (
                   <div className="text-center py-12">
                     <div className="text-gray-400 mb-4">
                       <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2 2v-5m16 0h-2M4 13h2" />
                       </svg>
                     </div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">No hay productos guardados</h3>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                      {filtroOrigen === 'todos' ? 'Dataset vacío' : `No hay productos ${filtroOrigen === 'serpapi' ? 'de SERPAPI' : 'manuales'}`}
+                    </h3>
                     <p className="text-gray-500 mb-4">
-                      Busca materiales y agrégalos al carrito para que aparezcan en tu historial
+                      {filtroOrigen === 'serpapi' 
+                        ? 'Busca materiales con SERPAPI para que se guarden automáticamente en tu dataset. Cada búsqueda (ej: "ladrillos", "cemento") agregará productos aquí.'
+                        : filtroOrigen === 'manual'
+                        ? 'Agrega productos al carrito desde búsquedas para que aparezcan como productos manuales.'
+                        : 'Busca materiales con SERPAPI para que se guarden automáticamente en tu dataset. Cada búsqueda (ej: "ladrillos", "cemento") agregará productos aquí.'
+                      }
                     </p>
                     <button
                       onClick={() => setActiveTab('buscar')}
@@ -151,7 +213,7 @@ const BuscadorPage = () => {
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {productosDatabase.map((producto) => (
+                    {getProductosFiltrados().map((producto) => (
                       <ProductCard key={producto.id} producto={producto} showStats={true} />
                     ))}
                   </div>
