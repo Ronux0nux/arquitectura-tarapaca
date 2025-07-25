@@ -30,11 +30,11 @@ const ExcelOnline = () => {
       return {
         colHeaders: ['Item', 'Descripción', 'Cantidad', 'Precio Unit.', 'Precio Total', 'Proveedor', 'Categoría'],
         columns: [
-          { type: 'numeric', width: 60 },
+          { type: 'text', width: 60 },
           { type: 'text', width: 300 },
-          { type: 'numeric', width: 80 },
-          { type: 'numeric', numericFormat: { pattern: '$0,0' }, width: 100 },
-          { type: 'numeric', numericFormat: { pattern: '$0,0' }, width: 100 },
+          { type: 'text', width: 80 },
+          { type: 'text', width: 100 },
+          { type: 'text', width: 100 },
           { type: 'text', width: 150 },
           { type: 'text', width: 120 }
         ]
@@ -47,10 +47,10 @@ const ExcelOnline = () => {
         columns: [
           { type: 'text', width: 300 },
           { type: 'dropdown', source: ['MATERIAL', 'MANO DE OBRA', 'EQUIPO', 'SUBCONTRATO'], width: 120 },
-          { type: 'numeric', width: 80 },
+          { type: 'text', width: 80 },
           { type: 'dropdown', source: ['UND', 'M2', 'M3', 'KG', 'TON', 'ML', 'GL'], width: 80 },
-          { type: 'numeric', numericFormat: { pattern: '$0,0' }, width: 100 },
-          { type: 'numeric', numericFormat: { pattern: '$0,0' }, width: 100 },
+          { type: 'text', width: 100 },
+          { type: 'text', width: 100 },
           { type: 'text', width: 150 }
         ]
       };
@@ -62,9 +62,9 @@ const ExcelOnline = () => {
         columns: [
           { type: 'text', width: 300 },
           { type: 'text', width: 150 },
-          { type: 'numeric', numericFormat: { pattern: '$0,0' }, width: 100 },
+          { type: 'text', width: 100 },
           { type: 'text', width: 120 },
-          { type: 'date', width: 100 },
+          { type: 'text', width: 100 },
           { type: 'dropdown', source: ['SERPAPI', 'Manual', 'Importado'], width: 100 }
         ]
       };
@@ -95,19 +95,19 @@ const ExcelOnline = () => {
       // Crear plantillas vacías localmente
       const templates = {
         'PRESUPUESTO': [
-          ['Ítem', 'Partida', 'Unidad', 'Cantidad', 'P.U', 'Total', 'Observaciones', 'Proyecto'],
+          ['Item', 'Descripción', 'Cantidad', 'Precio Unit.', 'Precio Total', 'Proveedor', 'Categoría'],
           // Fila vacía para comenzar a editar
-          ['', '', '', '', '', '', '', '']
+          ['', '', '', '', '', '', '']
         ],
         'APU': [
-          ['Actividad', 'Recurso', 'Tipo', 'Unidad', 'Cantidad', 'P.U', 'Total', 'Fuente'],
+          ['Descripción', 'Tipo', 'Cantidad', 'Unidad', 'Precio Unit.', 'Precio Total', 'Proveedor'],
           // Fila vacía para comenzar a editar
-          ['', '', '', '', '', '', '', '']
+          ['', '', '', '', '', '', '']
         ],
         'RECURSOS': [
-          ['Código', 'Recurso', 'Unidad', 'Precio', 'Fuente', 'Categoría', 'Fecha', 'Estado'],
+          ['Descripción', 'Proveedor', 'Precio', 'Categoría', 'Fecha', 'Origen'],
           // Fila vacía para comenzar a editar
-          ['', '', '', '', '', '', '', '']
+          ['', '', '', '', '', '']
         ]
       };
       
@@ -410,6 +410,12 @@ const ExcelOnline = () => {
                 ))}
               </select>
               
+              <button
+                onClick={loadExcelTemplate}
+                className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 transition-colors"
+              >
+                🔄 Cargar del Servidor
+              </button>
               <button
                 onClick={() => setShowDatasetPanel(!showDatasetPanel)}
                 className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 transition-colors"
