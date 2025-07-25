@@ -2,10 +2,11 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { CartProvider } from './context/CartContext';
 import { CotizacionesProvider } from './context/CotizacionesContext';
 import { NotificationProvider } from './context/NotificationContext';
-import Navbar from "./components/Navbar";
+import NavbarResponsive from "./components/NavbarResponsive";
 import Home from "./pages/Home";
 import Users from "./pages/Users";
 import Projects from "./pages/Projects";
+import ProjectMaterials from "./pages/ProjectMaterials";
 import Providers from "./pages/Providers";
 import Insumos from "./pages/Insumos";
 import Cotizaciones from "./pages/Cotizaciones";
@@ -23,17 +24,19 @@ export default function App() {
       <CartProvider>
       <CotizacionesProvider>
         <Router>
-          <Navbar />
+          <NavbarResponsive />
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/users" element={<Users />} />
             <Route path="/projects" element={<Projects />} />
+            <Route path="/projects/:id/materiales" element={<ProjectMaterials />} />
             <Route path="/providers" element={<Providers />} />
             <Route path="/insumos" element={<Insumos />} />
             <Route path="/cotizaciones" element={<Cotizaciones />} />
             <Route path="/actas" element={<ActasReunion />} />
             <Route path="/buscador" element={<BuscadorPage />} />
             <Route path="/demo-carrito" element={<DemoCarrito />} />
+            <Route path="/Demo de cotizaciones" element={<DemoCarrito />} />
             <Route path="/historial" element={<HistorialCotizaciones />} />
             <Route path="/configuracion" element={<ConfiguracionPage />} />
           </Routes>

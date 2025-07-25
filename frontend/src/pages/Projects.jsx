@@ -366,6 +366,13 @@ const Projects = () => {
                         </button>
                         <span className="text-gray-300">|</span>
                         <button
+                          onClick={() => window.open(`/projects/${project._id}/materiales`, '_blank')}
+                          className="text-blue-600 hover:text-blue-900 font-medium"
+                        >
+                          📦 Materiales
+                        </button>
+                        <span className="text-gray-300">|</span>
+                        <button
                           onClick={() => handleViewActas(project)}
                           className="text-green-600 hover:text-green-900 font-medium"
                         >
