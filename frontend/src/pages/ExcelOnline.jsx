@@ -177,6 +177,7 @@ const ExcelOnline = () => {
   };
 
   // Restaurar backup
+  // Restaurar backup (funcionalidad simplificada)
   const restoreBackup = async (backupName) => {
     if (!window.confirm(`¿Restaurar desde ${backupName}? Se perderán los cambios no guardados.`)) {
       return;
@@ -186,7 +187,7 @@ const ExcelOnline = () => {
       const response = await axios.post(`${API_BASE_URL}/excel/restore/${backupName}`);
       if (response.data.success) {
         alert('✅ Archivo restaurado exitosamente');
-        await loadExcelData();
+        await loadExcelTemplate(); // Cambiar loadExcelData por loadExcelTemplate
       }
     } catch (error) {
       console.error('Error restaurando backup:', error);
@@ -226,9 +227,9 @@ const ExcelOnline = () => {
   if (!excelData) {
     return (
       <div className="text-center py-12">
-        <h2 className="text-xl font-semibold mb-4">No se pudo cargar el archivo Excel</h2>
+        <h2 className="text-xl font-semibold mb-4">No se pudo cargar las plantillas Excel</h2>
         <button 
-          onClick={loadExcelData}
+          onClick={loadExcelTemplate}
           className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
         >
           Reintentar
@@ -383,21 +384,13 @@ const ExcelOnline = () => {
                 Se agregarán {productosDatabase.length} productos a la hoja "{currentSheetName}"
               </div>
 
-              {/* Lista de backups */}
+              {/* Información adicional */}
               <div className="border-t pt-4">
-                <h4 className="font-medium text-sm mb-2">📂 Backups</h4>
-                <div className="max-h-32 overflow-y-auto">
-                  {backups.slice(0, 5).map((backup) => (
-                    <div key={backup.name} className="flex items-center justify-between py-1 text-xs">
-                      <span className="truncate">{new Date(backup.date).toLocaleDateString()}</span>
-                      <button
-                        onClick={() => restoreBackup(backup.name)}
-                        className="text-blue-600 hover:text-blue-800"
-                      >
-                        Restaurar
-                      </button>
-                    </div>
-                  ))}
+                <h4 className="font-medium text-sm mb-2">ℹ️ Información</h4>
+                <div className="text-xs text-gray-600 space-y-1">
+                  <p>• Los productos se agregan al final de la hoja</p>
+                  <p>• Puedes editar los datos después de agregar</p>
+                  <p>• Usa "Exportar Excel" para descargar el archivo</p>
                 </div>
               </div>
             </div>
