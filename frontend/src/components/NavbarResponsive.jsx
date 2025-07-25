@@ -95,13 +95,10 @@ export default function NavbarResponsive() {
 
             <Separator />
 
-            {/* Gestión de proyectos */}
+            {/* Gestión de construcción */}
             <div className="flex items-center gap-2">
-              <span className="text-blue-200 text-sm font-medium">Proyectos</span>
+              <span className="text-blue-200 text-sm font-medium">Construcción</span>
               <NavLink to="/projects">Proyectos</NavLink>
-              <NavLink to="/insumos">Insumos</NavLink>
-              <NavLink to="/cotizaciones">Cotizaciones</NavLink>
-              <NavLink to="/actas">Actas</NavLink>
             </div>
 
             <Separator />
@@ -175,12 +172,9 @@ export default function NavbarResponsive() {
                 <NavLink to="/providers" onClick={closeMenu}>Proveedores</NavLink>
               </DropdownGroup>
 
-              {/* Gestión de proyectos */}
-              <DropdownGroup title="Proyectos" groupKey="projects">
+              {/* Gestión de construcción */}
+              <DropdownGroup title="Construcción" groupKey="construction">
                 <NavLink to="/projects" onClick={closeMenu}>Proyectos</NavLink>
-                <NavLink to="/insumos" onClick={closeMenu}>Insumos</NavLink>
-                <NavLink to="/cotizaciones" onClick={closeMenu}>Cotizaciones</NavLink>
-                <NavLink to="/actas" onClick={closeMenu}>Actas</NavLink>
               </DropdownGroup>
 
               {/* Herramientas */}

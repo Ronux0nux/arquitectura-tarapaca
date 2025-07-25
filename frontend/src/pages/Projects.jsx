@@ -10,10 +10,13 @@ const Projects = () => {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showActasModal, setShowActasModal] = useState(false);
   const [showActaDetailsModal, setShowActaDetailsModal] = useState(false);
+  const [showMaterialesModal, setShowMaterialesModal] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
   const [selectedActa, setSelectedActa] = useState(null);
   const [actas, setActas] = useState([]);
   const [loadingActas, setLoadingActas] = useState(false);
+  const [cotizaciones, setCotizaciones] = useState([]);
+  const [loadingCotizaciones, setLoadingCotizaciones] = useState(false);
   
   // Estados para búsqueda avanzada
   const [searchFilters, setSearchFilters] = useState({
@@ -146,6 +149,21 @@ const Projects = () => {
     }
   };
 
+  // Cargar cotizaciones/materiales de un proyecto
+  const fetchCotizacionesForProject = async (projectId) => {
+    try {
+      setLoadingCotizaciones(true);
+      const response = await fetch(`${API_BASE_URL}/cotizaciones/project/${projectId}`);
+      const data = await response.json();
+      setCotizaciones(data.cotizaciones || []);
+    } catch (error) {
+      console.error('Error al cargar cotizaciones:', error);
+      setCotizaciones([]);
+    } finally {
+      setLoadingCotizaciones(false);
+    }
+  };
+
   // Manejar filtros de búsqueda
   const handleFilterChange = (field, value) => {
     setSearchFilters(prev => ({
@@ -176,6 +194,13 @@ const Projects = () => {
     setSelectedProject(project);
     setShowActasModal(true);
     fetchActasForProject(project._id);
+  };
+
+  // Ver materiales cotizados del proyecto
+  const handleViewMateriales = (project) => {
+    setSelectedProject(project);
+    setShowMaterialesModal(true);
+    fetchCotizacionesForProject(project._id);
   };
 
   // Ver detalles de un acta específica
@@ -366,7 +391,7 @@ const Projects = () => {
                         </button>
                         <span className="text-gray-300">|</span>
                         <button
-                          onClick={() => window.open(`/projects/${project._id}/materiales`, '_blank')}
+                          onClick={() => handleViewMateriales(project)}
                           className="text-blue-600 hover:text-blue-900 font-medium"
                         >
                           Materiales
@@ -770,6 +795,148 @@ const Projects = () => {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para materiales cotizados del proyecto */}
+      {showMaterialesModal && selectedProject && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg w-full max-w-5xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold">
+                Materiales Cotizados - {selectedProject.nombre}
+              </h2>
+              <button 
+                onClick={() => setShowMaterialesModal(false)}
+                className="text-gray-500 hover:text-gray-700 text-2xl"
+              >
+                ×
+              </button>
+            </div>
+            
+            {loadingCotizaciones ? (
+              <div className="text-center py-8">
+                <div className="spinner-border animate-spin inline-block w-8 h-8 border-4 rounded-full" role="status"></div>
+                <p className="mt-2">Cargando cotizaciones...</p>
+              </div>
+            ) : cotizaciones.length === 0 ? (
+              <div className="text-center py-12 text-gray-500">
+                <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                </svg>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No hay materiales cotizados</h3>
+                <p>Este proyecto aún no tiene materiales cotizados para proceso de aprobación.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="mb-4 flex justify-between items-center">
+                  <p className="text-gray-600">
+                    Total de cotizaciones: <span className="font-semibold">{cotizaciones.length}</span>
+                  </p>
+                  <div className="text-sm text-gray-500">
+                    <span className="inline-block w-3 h-3 bg-yellow-400 rounded-full mr-1"></span> En proceso
+                    <span className="inline-block w-3 h-3 bg-green-400 rounded-full mr-1 ml-4"></span> Aprobado
+                    <span className="inline-block w-3 h-3 bg-red-400 rounded-full mr-1 ml-4"></span> Rechazado
+                  </div>
+                </div>
+                
+                {cotizaciones.map((cotizacion) => (
+                  <div key={cotizacion._id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="text-lg font-semibold text-gray-900">
+                            Cotización #{cotizacion.numero || cotizacion._id.slice(-6)}
+                          </h3>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            cotizacion.estado === 'aprobado' 
+                              ? 'bg-green-100 text-green-800' 
+                              : cotizacion.estado === 'rechazado'
+                              ? 'bg-red-100 text-red-800'
+                              : 'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {cotizacion.estado === 'aprobado' ? 'Aprobado' : 
+                             cotizacion.estado === 'rechazado' ? 'Rechazado' : 'En Proceso'}
+                          </span>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600 mb-3">
+                          <div>
+                            <span className="font-medium">Proveedor:</span>
+                            <p>{cotizacion.proveedor?.nombre || 'No asignado'}</p>
+                          </div>
+                          <div>
+                            <span className="font-medium">Fecha solicitud:</span>
+                            <p>{cotizacion.fechaSolicitud ? new Date(cotizacion.fechaSolicitud).toLocaleDateString() : 'No definida'}</p>
+                          </div>
+                          <div>
+                            <span className="font-medium">Fecha vencimiento:</span>
+                            <p>{cotizacion.fechaVencimiento ? new Date(cotizacion.fechaVencimiento).toLocaleDateString() : 'No definida'}</p>
+                          </div>
+                          <div>
+                            <span className="font-medium">Total estimado:</span>
+                            <p className="font-semibold text-green-600">
+                              ${cotizacion.precioTotal?.toLocaleString() || 'Por calcular'}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        {cotizacion.items && cotizacion.items.length > 0 && (
+                          <div className="mt-3">
+                            <span className="font-medium text-sm text-gray-700">Materiales incluidos:</span>
+                            <div className="mt-2 bg-gray-50 p-3 rounded">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                {cotizacion.items.slice(0, 4).map((item, index) => (
+                                  <div key={index} className="text-sm">
+                                    <span className="font-medium">{item.cantidad}x</span> {item.descripcion}
+                                    <span className="text-green-600 ml-2">${item.precioUnitario?.toLocaleString()}</span>
+                                  </div>
+                                ))}
+                                {cotizacion.items.length > 4 && (
+                                  <div className="text-sm text-gray-500 italic">
+                                    +{cotizacion.items.length - 4} materiales más...
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {cotizacion.observaciones && (
+                          <div className="mt-3">
+                            <span className="font-medium text-sm text-gray-700">Observaciones:</span>
+                            <p className="text-gray-700 text-sm mt-1">{cotizacion.observaciones}</p>
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="ml-4 flex flex-col gap-2">
+                        <button
+                          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors text-sm"
+                          onClick={() => {
+                            // Aquí podrías agregar funcionalidad para ver detalles completos
+                            console.log('Ver detalles de cotización:', cotizacion);
+                          }}
+                        >
+                          Ver Detalles
+                        </button>
+                        {cotizacion.estado === 'pendiente' && (
+                          <div className="flex flex-col gap-1">
+                            <button className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition-colors text-xs">
+                              Aprobar
+                            </button>
+                            <button className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors text-xs">
+                              Rechazar
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
