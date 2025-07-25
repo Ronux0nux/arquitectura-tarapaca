@@ -16,7 +16,7 @@ export default function NavbarResponsive() {
   };
 
   // Componente para enlaces con indicador de página activa
-  const NavLink = ({ to, children, className = "", icon = "", onClick }) => {
+  const NavLink = ({ to, children, className = "", onClick }) => {
     const active = isActive(to);
     return (
       <Link
@@ -29,7 +29,6 @@ export default function NavbarResponsive() {
           ${className}
         `}
       >
-        {icon && <span>{icon}</span>}
         {children}
         {active && (
           <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-white rounded-full"></div>
@@ -44,7 +43,7 @@ export default function NavbarResponsive() {
   );
 
   // Componente para dropdown en móvil
-  const DropdownGroup = ({ title, icon, children, groupKey }) => {
+  const DropdownGroup = ({ title, children, groupKey }) => {
     const isOpen = activeDropdown === groupKey;
     return (
       <div className="relative">
@@ -52,7 +51,6 @@ export default function NavbarResponsive() {
           onClick={() => setActiveDropdown(isOpen ? null : groupKey)}
           className="flex items-center gap-2 px-3 py-2 hover:bg-blue-700 rounded-md w-full text-left"
         >
-          <span>{icon}</span>
           <span className="text-sm font-medium">{title}</span>
           <svg
             className={`w-4 h-4 ml-auto transition-transform ${isOpen ? 'rotate-180' : ''}`}
@@ -82,39 +80,38 @@ export default function NavbarResponsive() {
       <div className="px-4 py-4">
         <div className="flex items-center justify-between">
           {/* Logo/Home */}
-          <NavLink to="/" icon="🏠" className="font-bold text-lg">
+          <NavLink to="/" className="font-bold text-lg">
             Home
           </NavLink>
 
           {/* Desktop Navigation */}
           <div className="hidden lg:flex items-center gap-2 flex-1 justify-center">
-            {/* 🧑‍💼 Administración */}
+            {/* Administración */}
             <div className="flex items-center gap-2">
-              <span className="text-blue-200 text-sm font-medium">👥</span>
-              <NavLink to="/users" icon="👨‍💼">Usuarios</NavLink>
-              <NavLink to="/providers" icon="🏢">Proveedores</NavLink>
+              <span className="text-blue-200 text-sm font-medium">Admin</span>
+              <NavLink to="/users">Usuarios</NavLink>
+              <NavLink to="/providers">Proveedores</NavLink>
             </div>
 
             <Separator />
 
-            {/* 📊 Gestión de proyectos */}
+            {/* Gestión de proyectos */}
             <div className="flex items-center gap-2">
-              <span className="text-blue-200 text-sm font-medium">📊</span>
-              <NavLink to="/projects" icon="🏗️">Proyectos</NavLink>
-              <NavLink to="/insumos" icon="📦">Insumos</NavLink>
-              <NavLink to="/cotizaciones" icon="💰">Cotizaciones</NavLink>
-              <NavLink to="/actas" icon="📄">Actas</NavLink>
+              <span className="text-blue-200 text-sm font-medium">Proyectos</span>
+              <NavLink to="/projects">Proyectos</NavLink>
+              <NavLink to="/insumos">Insumos</NavLink>
+              <NavLink to="/cotizaciones">Cotizaciones</NavLink>
+              <NavLink to="/actas">Actas</NavLink>
             </div>
 
             <Separator />
 
-            {/* 🔎 Herramientas */}
+            {/* Herramientas */}
             <div className="flex items-center gap-2">
-              <span className="text-blue-200 text-sm font-medium">🔧</span>
-              <NavLink to="/buscador" icon="🔍">Buscador</NavLink>
+              <span className="text-blue-200 text-sm font-medium">Tools</span>
+              <NavLink to="/buscador">Buscador</NavLink>
               <NavLink 
                 to="/configuracion" 
-                icon="⚙️"
                 className="bg-gray-600 hover:bg-gray-700"
               >
                 Config
@@ -123,12 +120,11 @@ export default function NavbarResponsive() {
 
             <Separator />
 
-            {/* 🛒 Compras */}
+            {/* Compras */}
             <div className="flex items-center gap-2">
-              <span className="text-blue-200 text-sm font-medium">🛒</span>
+              <span className="text-blue-200 text-sm font-medium">Compras</span>
               <NavLink 
                 to="/Demo de cotizaciones" 
-                icon="🛍️"
                 className="bg-green-600 hover:bg-green-700"
               >
                 Demo
@@ -174,25 +170,24 @@ export default function NavbarResponsive() {
           <div className="lg:hidden mt-4 border-t border-blue-500 pt-4">
             <div className="space-y-2">
               {/* Administración */}
-              <DropdownGroup title="Administración" icon="👥" groupKey="admin">
-                <NavLink to="/users" icon="👨‍💼" onClick={closeMenu}>Usuarios</NavLink>
-                <NavLink to="/providers" icon="🏢" onClick={closeMenu}>Proveedores</NavLink>
+              <DropdownGroup title="Administración" groupKey="admin">
+                <NavLink to="/users" onClick={closeMenu}>Usuarios</NavLink>
+                <NavLink to="/providers" onClick={closeMenu}>Proveedores</NavLink>
               </DropdownGroup>
 
               {/* Gestión de proyectos */}
-              <DropdownGroup title="Proyectos" icon="📊" groupKey="projects">
-                <NavLink to="/projects" icon="🏗️" onClick={closeMenu}>Proyectos</NavLink>
-                <NavLink to="/insumos" icon="📦" onClick={closeMenu}>Insumos</NavLink>
-                <NavLink to="/cotizaciones" icon="💰" onClick={closeMenu}>Cotizaciones</NavLink>
-                <NavLink to="/actas" icon="📄" onClick={closeMenu}>Actas</NavLink>
+              <DropdownGroup title="Proyectos" groupKey="projects">
+                <NavLink to="/projects" onClick={closeMenu}>Proyectos</NavLink>
+                <NavLink to="/insumos" onClick={closeMenu}>Insumos</NavLink>
+                <NavLink to="/cotizaciones" onClick={closeMenu}>Cotizaciones</NavLink>
+                <NavLink to="/actas" onClick={closeMenu}>Actas</NavLink>
               </DropdownGroup>
 
               {/* Herramientas */}
-              <DropdownGroup title="Herramientas" icon="🔧" groupKey="tools">
-                <NavLink to="/buscador" icon="🔍" onClick={closeMenu}>Buscador</NavLink>
+              <DropdownGroup title="Herramientas" groupKey="tools">
+                <NavLink to="/buscador" onClick={closeMenu}>Buscador</NavLink>
                 <NavLink 
                   to="/configuracion" 
-                  icon="⚙️" 
                   className="bg-gray-600 hover:bg-gray-700"
                   onClick={closeMenu}
                 >
@@ -201,10 +196,9 @@ export default function NavbarResponsive() {
               </DropdownGroup>
 
               {/* Compras */}
-              <DropdownGroup title="Compras" icon="🛒" groupKey="shopping">
+              <DropdownGroup title="Compras" groupKey="shopping">
                 <NavLink 
                   to="/Demo de cotizaciones" 
-                  icon="🛍️"
                   className="bg-green-600 hover:bg-green-700"
                   onClick={closeMenu}
                 >

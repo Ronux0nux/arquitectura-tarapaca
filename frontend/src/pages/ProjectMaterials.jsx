@@ -102,12 +102,12 @@ export default function ProjectMaterials() {
       </div>
 
       {/* Resumen de estadísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white p-6 rounded-lg shadow-md">
           <div className="flex items-center">
             <div className="flex-shrink-0">
               <div className="w-8 h-8 bg-blue-100 rounded-md flex items-center justify-center">
-                <span className="text-blue-600 font-semibold">💰</span>
+                <span className="text-blue-600 font-semibold">$</span>
               </div>
             </div>
             <div className="ml-4">
@@ -122,7 +122,7 @@ export default function ProjectMaterials() {
           <div className="flex items-center">
             <div className="flex-shrink-0">
               <div className="w-8 h-8 bg-green-100 rounded-md flex items-center justify-center">
-                <span className="text-green-600 font-semibold">📋</span>
+                <span className="text-green-600 font-semibold">OC</span>
               </div>
             </div>
             <div className="ml-4">
@@ -137,7 +137,7 @@ export default function ProjectMaterials() {
           <div className="flex items-center">
             <div className="flex-shrink-0">
               <div className="w-8 h-8 bg-yellow-100 rounded-md flex items-center justify-center">
-                <span className="text-yellow-600 font-semibold">⏳</span>
+                <span className="text-yellow-600 font-semibold">!</span>
               </div>
             </div>
             <div className="ml-4">
@@ -153,7 +153,7 @@ export default function ProjectMaterials() {
           <div className="flex items-center">
             <div className="flex-shrink-0">
               <div className="w-8 h-8 bg-purple-100 rounded-md flex items-center justify-center">
-                <span className="text-purple-600 font-semibold">📦</span>
+                <span className="text-purple-600 font-semibold">M</span>
               </div>
             </div>
             <div className="ml-4">
@@ -162,17 +162,15 @@ export default function ProjectMaterials() {
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Tabs */}
+      </div>      {/* Tabs */}
       <div className="bg-white rounded-lg shadow-md">
         <div className="border-b border-gray-200">
           <nav className="flex space-x-8 px-6">
             {[
-              { id: 'resumen', label: 'Resumen', icon: '📊' },
-              { id: 'cotizaciones', label: 'Cotizaciones', icon: '💰' },
-              { id: 'ordenes', label: 'Órdenes de Compra', icon: '📋' },
-              { id: 'materiales', label: 'Materiales', icon: '📦' }
+              { id: 'resumen', label: 'Resumen' },
+              { id: 'cotizaciones', label: 'Cotizaciones' },
+              { id: 'ordenes', label: 'Órdenes de Compra' },
+              { id: 'materiales', label: 'Materiales' }
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -183,7 +181,6 @@ export default function ProjectMaterials() {
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
-                <span>{tab.icon}</span>
                 {tab.label}
               </button>
             ))}
@@ -198,7 +195,7 @@ export default function ProjectMaterials() {
                 {/* Resumen de Cotizaciones */}
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                    <span>💰</span> Estado de Cotizaciones
+                    Estado de Cotizaciones
                   </h3>
                   <div className="space-y-2">
                     <div className="flex justify-between">
@@ -223,7 +220,7 @@ export default function ProjectMaterials() {
                 {/* Resumen de Órdenes */}
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                    <span>📋</span> Estado de Órdenes
+                    Estado de Órdenes
                   </h3>
                   <div className="space-y-2">
                     <div className="flex justify-between">

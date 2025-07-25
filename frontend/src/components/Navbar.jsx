@@ -13,7 +13,7 @@ export default function Navbar() {
   };
 
   // Componente para enlaces con indicador de página activa
-  const NavLink = ({ to, children, className = "", icon = "" }) => {
+  const NavLink = ({ to, children, className = "" }) => {
     const active = isActive(to);
     return (
       <Link
@@ -25,7 +25,6 @@ export default function Navbar() {
           ${className}
         `}
       >
-        {icon && <span>{icon}</span>}
         {children}
         {active && (
           <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-white rounded-full"></div>
@@ -43,53 +42,52 @@ export default function Navbar() {
     <nav className="bg-blue-600 p-4 text-white">
       <div className="flex items-center gap-2 flex-wrap">
         {/* Home */}
-        <NavLink to="/" icon="🏠" className="font-bold">
+        <NavLink to="/" className="font-bold">
           Home
         </NavLink>
 
         <Separator />
 
-        {/* 🧑‍💼 Administración */}
+        {/* Administración */}
         <div className="flex items-center gap-2">
-          <span className="text-blue-200 text-sm font-medium">👥 Admin</span>
-          <NavLink to="/users" icon="👨‍💼">
+          <span className="text-blue-200 text-sm font-medium">Admin</span>
+          <NavLink to="/users">
             Usuarios
           </NavLink>
-          <NavLink to="/providers" icon="🏢">
+          <NavLink to="/providers">
             Proveedores
           </NavLink>
         </div>
 
         <Separator />
 
-        {/* 📊 Gestión de proyectos */}
+        {/* Gestión de proyectos */}
         <div className="flex items-center gap-2">
-          <span className="text-blue-200 text-sm font-medium">📊 Proyectos</span>
-          <NavLink to="/projects" icon="🏗️">
+          <span className="text-blue-200 text-sm font-medium">Proyectos</span>
+          <NavLink to="/projects">
             Proyectos
           </NavLink>
-          <NavLink to="/insumos" icon="📦">
+          <NavLink to="/insumos">
             Insumos
           </NavLink>
-          <NavLink to="/cotizaciones" icon="💰">
+          <NavLink to="/cotizaciones">
             Cotizaciones
           </NavLink>
-          <NavLink to="/actas" icon="📄">
+          <NavLink to="/actas">
             Actas
           </NavLink>
         </div>
 
         <Separator />
 
-        {/* 🔎 Herramientas */}
+        {/* Herramientas */}
         <div className="flex items-center gap-2">
-          <span className="text-blue-200 text-sm font-medium">🔧 Tools</span>
-          <NavLink to="/buscador" icon="🔍">
+          <span className="text-blue-200 text-sm font-medium">Tools</span>
+          <NavLink to="/buscador">
             Buscador
           </NavLink>
           <NavLink 
             to="/configuracion" 
-            icon="⚙️"
             className="bg-gray-600 hover:bg-gray-700"
           >
             Config
@@ -98,12 +96,11 @@ export default function Navbar() {
 
         <Separator />
 
-        {/* 🛒 Compras */}
+        {/* Compras */}
         <div className="flex items-center gap-2">
-          <span className="text-blue-200 text-sm font-medium">🛒 Compras</span>
+          <span className="text-blue-200 text-sm font-medium">Compras</span>
           <NavLink 
             to="/Demo de cotizaciones" 
-            icon="🛍️"
             className="bg-green-600 hover:bg-green-700"
           >
             Demo Carrito
