@@ -12,42 +12,225 @@ export class ProviderDataImporter {
     
     let currentProvider = null;
     
-    lines.forEach(line => {
+    console.log(`Procesando ${lines.length} líneas de datos...`);
+    
+    lines.forEach((line, index) => {
       line = line.trim();
+      if (!line) return;
       
-      // Detectar nuevo proveedor (líneas que parecen nombres de empresa)
-      if (this.isProviderName(line)) {
-        if (currentProvider) {
+      // Detectar patrones comunes de inicio de proveedor
+      if (this.isProviderStartLine(line, index, lines)) {
+        // Guardar proveedor anterior si existe
+        if (currentProvider && this.isValidProvider(currentProvider)) {
           providers.push(this.finalizeProvider(currentProvider));
         }
+        
+        // Crear nuevo proveedor
         currentProvider = {
           id: this.generateId(line),
-          name: line,
+          name: this.cleanProviderName(line),
           icon: this.getProviderIcon(line),
           status: 'activo',
           rating: 4.0,
-          categories: [],
+          categories: this.inferCategories(line),
           description: '',
           paymentMethods: ['Efectivo', 'Tarjeta', 'Transferencia'],
           deliveryTime: '3-5 días',
           minOrder: 50000,
-          discount: '5% corporativo'
+          discount: '5% corporativo',
+          phone: '',
+          email: '',
+          address: '',
+          rut: '',
+          contactPerson: '',
+          website: ''
         };
       }
       
-      // Detectar teléfono
-      if (this.isPhoneNumber(line)) {
-        if (currentProvider) {
-          currentProvider.phone = this.formatPhoneNumber(line);
-        }
+      // Procesar información adicional del proveedor actual
+      if (currentProvider) {
+        this.extractProviderInfo(currentProvider, line);
       }
-      
-      // Detectar email
-      if (this.isEmail(line)) {
-        if (currentProvider) {
-          currentProvider.email = line;
-        }
+    });
+    
+    // Guardar último proveedor
+    if (currentProvider && this.isValidProvider(currentProvider)) {
+      providers.push(this.finalizeProvider(currentProvider));
+    }
+    
+    console.log(`Procesados ${providers.length} proveedores válidos`);
+    return providers;
+  }
+
+  /**
+   * Detecta si una línea es el inicio de un nuevo proveedor
+   */
+  static isProviderStartLine(line, index, allLines) {
+    // Patrones que indican inicio de proveedor
+    const patterns = [
+      // Líneas con formato "NOMBRE EMPRESA LTDA" o similar
+      /^[A-Z][A-Z\s&.-]{10,}(LTDA|SPA|SA|EIRL|S\.A\.|LIMITADA)\.?$/i,
+      // Líneas que empiezan con número seguido de nombre
+      /^\d+[\s\t]+[A-Z][A-Za-z\s&.-]{8,}/,
+      // Líneas con RUT al inicio
+      /^\d{1,2}\.\d{3}\.\d{3}-[\dkK]\s+[A-Z]/i,
+      // Líneas largas que parecen nombres de empresa (sin números al inicio)
+      /^[A-Z][A-Za-z\s&.-]{15,}$/
+    ];
+
+    return patterns.some(pattern => pattern.test(line)) && 
+           !this.isPhoneNumber(line) && 
+           !this.isEmail(line) &&
+           !this.isAddress(line);
+  }
+
+  /**
+   * Extrae información específica del proveedor desde una línea
+   */
+  static extractProviderInfo(provider, line) {
+    line = line.trim();
+    
+    // Extraer teléfono
+    if (this.isPhoneNumber(line) && !provider.phone) {
+      provider.phone = this.formatPhoneNumber(line);
+      return;
+    }
+    
+    // Extraer email
+    if (this.isEmail(line) && !provider.email) {
+      provider.email = line.toLowerCase();
+      return;
+    }
+    
+    // Extraer RUT
+    if (this.isRUT(line) && !provider.rut) {
+      provider.rut = this.formatRUT(line);
+      return;
+    }
+    
+    // Extraer dirección
+    if (this.isAddress(line) && !provider.address) {
+      provider.address = line;
+      return;
+    }
+    
+    // Extraer sitio web
+    if (this.isWebsite(line) && !provider.website) {
+      provider.website = line;
+      return;
+    }
+    
+    // Extraer persona de contacto
+    if (this.isContactPerson(line) && !provider.contactPerson) {
+      provider.contactPerson = line;
+      return;
+    }
+    
+    // Si no es ningún campo específico, agregar a descripción
+    if (line.length > 10 && line.length < 200 && !provider.description) {
+      provider.description = line;
+    }
+  }
+
+  /**
+   * Limpia y formatea el nombre del proveedor
+   */
+  static cleanProviderName(name) {
+    return name
+      .replace(/^\d+[\s\t]+/, '') // Remover números al inicio
+      .replace(/\s+/g, ' ') // Normalizar espacios
+      .trim()
+      .replace(/\.+$/, ''); // Remover puntos al final
+  }
+
+  /**
+   * Valida si un proveedor tiene información mínima necesaria
+   */
+  static isValidProvider(provider) {
+    return provider && 
+           provider.name && 
+           provider.name.length >= 3 &&
+           provider.name.length <= 100 &&
+           !/^\d+$/.test(provider.name); // No solo números
+  }
+
+  /**
+   * Detecta si una línea contiene un RUT chileno
+   */
+  static isRUT(line) {
+    const rutPattern = /\b\d{1,2}\.\d{3}\.\d{3}-[\dkK]\b/i;
+    return rutPattern.test(line);
+  }
+
+  /**
+   * Formatea un RUT
+   */
+  static formatRUT(line) {
+    const match = line.match(/(\d{1,2}\.\d{3}\.\d{3}-[\dkK])/i);
+    return match ? match[1].toUpperCase() : '';
+  }
+
+  /**
+   * Detecta si una línea es una dirección
+   */
+  static isAddress(line) {
+    const addressKeywords = [
+      'calle', 'avenida', 'av\\.', 'pasaje', 'psje', 'camino', 'km',
+      'santiago', 'valparaíso', 'concepción', 'la serena', 'antofagasta',
+      'iquique', 'arica', 'temuco', 'valdivia', 'osorno', 'puerto montt',
+      '\\d{4,5}', // Códigos postales
+      '#\\d+', // Números de casa/oficina
+    ];
+    
+    const pattern = new RegExp(addressKeywords.join('|'), 'i');
+    return pattern.test(line) && line.length > 15 && line.length < 150;
+  }
+
+  /**
+   * Detecta si una línea es un sitio web
+   */
+  static isWebsite(line) {
+    const webPattern = /^(https?:\/\/)?(www\.)?[a-zA-Z0-9-]+\.[a-zA-Z]{2,}(\/\S*)?$/;
+    return webPattern.test(line) || line.includes('www.') || line.includes('.cl') || line.includes('.com');
+  }
+
+  /**
+   * Detecta si una línea es una persona de contacto
+   */
+  static isContactPerson(line) {
+    const personPattern = /^[A-Z][a-z]+\s+[A-Z][a-z]+(\s+[A-Z][a-z]+)?$/;
+    return personPattern.test(line) && 
+           line.length >= 6 && 
+           line.length <= 50 &&
+           !this.isProviderName(line);
+  }
+
+  /**
+   * Infiere categorías basándose en el nombre del proveedor
+   */
+  static inferCategories(name) {
+    const categories = [];
+    const nameLower = name.toLowerCase();
+    
+    const categoryKeywords = {
+      'Construcción': ['construc', 'edifici', 'obra', 'contrat', 'inmobil'],
+      'Materiales': ['material', 'ferret', 'acero', 'cement', 'pintur', 'madera'],
+      'Herramientas': ['herramienta', 'equipo', 'maquinaria', 'alquiler'],
+      'Servicios': ['servicio', 'consultora', 'asesor', 'manteni'],
+      'Transporte': ['transport', 'logistic', 'camion', 'flete'],
+      'Eléctrico': ['electric', 'cable', 'iluminac', 'energia'],
+      'Plomería': ['plomer', 'sanitari', 'cañeria', 'agua'],
+      'Acabados': ['pintura', 'revest', 'ceramic', 'piso', 'alfombra']
+    };
+    
+    for (const [category, keywords] of Object.entries(categoryKeywords)) {
+      if (keywords.some(keyword => nameLower.includes(keyword))) {
+        categories.push(category);
       }
+    }
+    
+    return categories.length > 0 ? categories : ['General'];
+  }
       
       // Detectar dirección
       if (this.isAddress(line)) {

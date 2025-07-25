@@ -17,6 +17,7 @@ const Projects = () => {
   const [loadingActas, setLoadingActas] = useState(false);
   const [cotizaciones, setCotizaciones] = useState([]);
   const [loadingCotizaciones, setLoadingCotizaciones] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
   
   // Estados para búsqueda avanzada
   const [searchFilters, setSearchFilters] = useState({
@@ -24,7 +25,8 @@ const Projects = () => {
     nombre: '',
     codigo: '',
     fechaInicio: '',
-    fechaTermino: ''
+    fechaTermino: '',
+    estado: ''
   });
 
   // Estados para crear proyecto
@@ -39,7 +41,7 @@ const Projects = () => {
     subencargado: ''
   });
 
-  const estados = ['Planificación', 'En ejecución', 'Finalizado'];
+  const estados = ['Planificación', 'Cotización', 'Pendiente de Aprobación', 'En Ejecución', 'Finalizado'];
 
   // Cargar proyectos
   const fetchProjects = async () => {
@@ -67,6 +69,7 @@ const Projects = () => {
       if (searchFilters.codigo) queryParams.append('codigo', searchFilters.codigo);
       if (searchFilters.fechaInicio) queryParams.append('fechaInicio', searchFilters.fechaInicio);
       if (searchFilters.fechaTermino) queryParams.append('fechaTermino', searchFilters.fechaTermino);
+      if (searchFilters.estado) queryParams.append('estado', searchFilters.estado);
 
       const url = queryParams.toString() 
         ? `${API_BASE_URL}/projects/search?${queryParams}`
@@ -179,8 +182,15 @@ const Projects = () => {
       nombre: '',
       codigo: '',
       fechaInicio: '',
-      fechaTermino: ''
+      fechaTermino: '',
+      estado: ''
     });
+  };
+
+  // Contar filtros activos
+  const getActiveFiltersCount = () => {
+    const activeFilters = Object.values(searchFilters).filter(value => value !== '');
+    return activeFilters.length;
   };
 
   // Ver detalles del proyecto
@@ -237,64 +247,127 @@ const Projects = () => {
 
       {/* Barra de búsqueda avanzada */}
       <div className="bg-white p-6 rounded-lg shadow mb-6">
-        <h3 className="text-lg font-semibold mb-4 text-gray-700">Búsqueda Avanzada</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">ID</label>
-            <input
-              type="text"
-              placeholder="Buscar por ID"
-              value={searchFilters.id}
-              onChange={(e) => handleFilterChange('id', e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
-            <input
-              type="text"
-              placeholder="Buscar por nombre"
-              value={searchFilters.nombre}
-              onChange={(e) => handleFilterChange('nombre', e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Código</label>
-            <input
-              type="text"
-              placeholder="Buscar por código"
-              value={searchFilters.codigo}
-              onChange={(e) => handleFilterChange('codigo', e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Fecha Inicio</label>
-            <input
-              type="date"
-              value={searchFilters.fechaInicio}
-              onChange={(e) => handleFilterChange('fechaInicio', e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Fecha Término</label>
-            <input
-              type="date"
-              value={searchFilters.fechaTermino}
-              onChange={(e) => handleFilterChange('fechaTermino', e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-            />
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold text-gray-700">Filtros de Búsqueda</h3>
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors relative"
+          >
+            <svg 
+              className={`w-4 h-4 transform transition-transform ${showFilters ? 'rotate-180' : ''}`}
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+            {showFilters ? 'Ocultar Filtros' : 'Mostrar Filtros'}
+            {getActiveFiltersCount() > 0 && (
+              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                {getActiveFiltersCount()}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Filtro de Estado siempre visible */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-2">Estado del Proyecto</label>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => handleFilterChange('estado', '')}
+              className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                searchFilters.estado === '' 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              Todos
+            </button>
+            {estados.map((estado) => (
+              <button
+                key={estado}
+                onClick={() => handleFilterChange('estado', estado)}
+                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  searchFilters.estado === estado 
+                    ? 'bg-blue-600 text-white' 
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                {estado}
+              </button>
+            ))}
           </div>
         </div>
-        <div className="mt-4">
+
+        {/* Filtros avanzados colapsables */}
+        {showFilters && (
+          <div className="border-t pt-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">ID</label>
+                <input
+                  type="text"
+                  placeholder="Buscar por ID"
+                  value={searchFilters.id}
+                  onChange={(e) => handleFilterChange('id', e.target.value)}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
+                <input
+                  type="text"
+                  placeholder="Buscar por nombre"
+                  value={searchFilters.nombre}
+                  onChange={(e) => handleFilterChange('nombre', e.target.value)}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Código</label>
+                <input
+                  type="text"
+                  placeholder="Buscar por código"
+                  value={searchFilters.codigo}
+                  onChange={(e) => handleFilterChange('codigo', e.target.value)}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Fecha Inicio</label>
+                <input
+                  type="date"
+                  value={searchFilters.fechaInicio}
+                  onChange={(e) => handleFilterChange('fechaInicio', e.target.value)}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Fecha Término</label>
+                <input
+                  type="date"
+                  value={searchFilters.fechaTermino}
+                  onChange={(e) => handleFilterChange('fechaTermino', e.target.value)}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="mt-4 flex gap-2 items-center justify-between">
           <button
             onClick={clearFilters}
-            className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+            className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition-colors"
           >
             Limpiar Filtros
           </button>
+          {getActiveFiltersCount() > 0 && (
+            <div className="text-sm text-gray-600">
+              <span className="font-medium">{getActiveFiltersCount()}</span> filtro{getActiveFiltersCount() > 1 ? 's' : ''} activo{getActiveFiltersCount() > 1 ? 's' : ''}
+            </div>
+          )}
         </div>
       </div>
 

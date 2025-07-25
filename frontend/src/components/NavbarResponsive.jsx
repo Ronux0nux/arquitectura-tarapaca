@@ -107,12 +107,6 @@ export default function NavbarResponsive() {
             <div className="flex items-center gap-2">
               <span className="text-blue-200 text-sm font-medium">Tools</span>
               <NavLink to="/buscador">Buscador</NavLink>
-              <NavLink 
-                to="/configuracion" 
-                className="bg-gray-600 hover:bg-gray-700"
-              >
-                Config
-              </NavLink>
             </div>
 
             <Separator />
@@ -180,13 +174,6 @@ export default function NavbarResponsive() {
               {/* Herramientas */}
               <DropdownGroup title="Herramientas" groupKey="tools">
                 <NavLink to="/buscador" onClick={closeMenu}>Buscador</NavLink>
-                <NavLink 
-                  to="/configuracion" 
-                  className="bg-gray-600 hover:bg-gray-700"
-                  onClick={closeMenu}
-                >
-                  Config
-                </NavLink>
               </DropdownGroup>
 
               {/* Compras */}
