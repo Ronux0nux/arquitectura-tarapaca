@@ -107,6 +107,7 @@ export default function NavbarResponsive() {
             <div className="flex items-center gap-2">
               <span className="text-blue-200 text-sm font-medium">Tools</span>
               <NavLink to="/buscador">Buscador</NavLink>
+              <NavLink to="/excel">📊 Excel</NavLink>
             </div>
 
             <Separator />
@@ -174,6 +175,7 @@ export default function NavbarResponsive() {
               {/* Herramientas */}
               <DropdownGroup title="Herramientas" groupKey="tools">
                 <NavLink to="/buscador" onClick={closeMenu}>Buscador</NavLink>
+                <NavLink to="/excel" onClick={closeMenu}>📊 Excel Online</NavLink>
               </DropdownGroup>
 
               {/* Compras */}

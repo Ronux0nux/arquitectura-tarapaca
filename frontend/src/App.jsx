@@ -15,6 +15,7 @@ import BuscadorPage from './pages/BuscadorPage';
 import DemoCarrito from './pages/DemoCarrito';
 import HistorialCotizaciones from './pages/HistorialCotizaciones';
 import ConfiguracionPage from './pages/ConfiguracionPage';
+import ExcelOnline from './pages/ExcelOnline';
 import CotizacionCartV2 from './components/CotizacionCartV2';
 import CartButton from './components/CartButton';
 
@@ -39,6 +40,7 @@ export default function App() {
             <Route path="/Demo de cotizaciones" element={<DemoCarrito />} />
             <Route path="/historial" element={<HistorialCotizaciones />} />
             <Route path="/configuracion" element={<ConfiguracionPage />} />
+            <Route path="/excel" element={<ExcelOnline />} />
           </Routes>
           <CotizacionCartV2 />
           <CartButton />
