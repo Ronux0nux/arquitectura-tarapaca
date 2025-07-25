@@ -85,7 +85,7 @@ const BuscadorPage = () => {
               onClick={() => handleAddToCart(producto)}
               className="flex-1 bg-blue-600 text-white px-3 py-2 rounded-md text-sm hover:bg-blue-700 transition-colors"
             >
-              Agregar al Carrito
+              Agregar a la Cotización
             </button>
             {producto.link && (
               <a

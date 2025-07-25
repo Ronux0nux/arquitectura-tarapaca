@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import { useCart } from '../context/CartContext';
 import { useCotizaciones } from '../context/CotizacionesContext';
+import { formatPrice } from '../utils/priceUtils';
 
 const BuscadorMateriales = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -272,7 +273,7 @@ const BuscadorMateriales = () => {
                     {producto.title}
                   </h4>
                   <p className="text-lg font-bold text-green-600">
-                    {producto.price || 'Consultar'}
+                    {formatPrice(producto.price) || 'Consultar'}
                   </p>
                   <p className="text-xs text-gray-500">
                     {producto.source}
@@ -338,7 +339,7 @@ const BuscadorMateriales = () => {
                       {result.title}
                     </h4>
                     <p className="text-lg font-bold text-green-600">
-                      {result.price || 'Consultar'}
+                      {formatPrice(result.price) || 'Consultar'}
                     </p>
                     <p className="text-xs text-gray-500">
                       {result.source}
@@ -387,7 +388,7 @@ const BuscadorMateriales = () => {
                       </h4>
                       {result.price && (
                         <p className="text-lg font-bold text-green-600">
-                          {result.price}
+                          {formatPrice(result.price)}
                         </p>
                       )}
                       <p className="text-xs text-gray-500">

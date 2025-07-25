@@ -8,4 +8,7 @@ const upload = multer({ dest: 'uploads/' });
 
 router.post('/upload-dataset', upload.single('file'), datasetController.uploadDataset);
 
+// Nueva ruta para guardar resultados de búsquedas SERPAPI
+router.post('/save-search-results', datasetController.saveSearchResults);
+
 module.exports = router;

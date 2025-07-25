@@ -44,14 +44,25 @@ router.post('/search', async (req, res) => {
     let processedResults = [];
     
     if (searchType === 'shopping' && response.data.shopping_results) {
-      processedResults = response.data.shopping_results.map(item => ({
-        title: item.title,
-        price: item.price,
-        source: item.source,
-        link: item.link,
-        thumbnail: item.thumbnail,
-        type: 'shopping'
-      }));
+      processedResults = response.data.shopping_results.map(item => {
+        // Debug temporal: log para ver qué precios devuelve SERPAPI
+        if (item.price) {
+          console.log('🔍 SERPAPI precio original:', {
+            title: item.title?.substring(0, 50),
+            price: item.price,
+            priceType: typeof item.price
+          });
+        }
+        
+        return {
+          title: item.title,
+          price: item.price,
+          source: item.source,
+          link: item.link,
+          thumbnail: item.thumbnail,
+          type: 'shopping'
+        };
+      });
     } else if (response.data.organic_results) {
       processedResults = response.data.organic_results.map(item => ({
         title: item.title,
