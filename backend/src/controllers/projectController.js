@@ -1,4 +1,6 @@
 const Project = require('../models/Project');
+const Cotizacion = require('../models/Cotizacion');
+const OrdenCompra = require('../models/OrdenCompra');
 
 // Obtener todos los proyectos
 exports.getProjects = async (req, res) => {
@@ -59,13 +61,108 @@ exports.createProject = async (req, res) => {
   }
 };
 
-
 // Obtener un proyecto por ID
 exports.getProjectById = async (req, res) => {
   try {
     const project = await Project.findById(req.params.id).populate('equipo').populate('partidasApu.insumos.insumoId');
     if (!project) return res.status(404).json({ error: 'Proyecto no encontrado' });
     res.json(project);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Obtener resumen completo de materiales por proyecto
+exports.getProjectMaterialSummary = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Verificar que el proyecto existe
+    const project = await Project.findById(id).populate('subencargado', 'nombre email');
+    if (!project) {
+      return res.status(404).json({ error: 'Proyecto no encontrado' });
+    }
+
+    // Obtener cotizaciones del proyecto
+    const cotizaciones = await Cotizacion.find({ proyectoId: id })
+      .populate('proveedorId', 'nombre contacto')
+      .populate('insumoId', 'nombre unidad')
+      .sort({ creadoEn: -1 });
+
+    // Obtener órdenes de compra del proyecto
+    const ordenesCompra = await OrdenCompra.find({ proyectoId: id })
+      .populate('proveedorId', 'nombre contacto')
+      .populate('cotizacionId')
+      .sort({ creadoEn: -1 });
+
+    // Calcular resúmenes
+    const resumenCotizaciones = {
+      total: cotizaciones.length,
+      pendientes: cotizaciones.filter(c => c.estado === 'Pendiente').length,
+      aprobadas: cotizaciones.filter(c => c.estado === 'Aprobada').length,
+      compradas: cotizaciones.filter(c => c.estado === 'Comprada').length,
+      rechazadas: cotizaciones.filter(c => c.estado === 'Rechazada').length,
+      montoTotal: cotizaciones.reduce((sum, c) => sum + (c.cantidad * c.precioUnitario), 0)
+    };
+
+    const resumenOrdenes = {
+      total: ordenesCompra.length,
+      pendientes: ordenesCompra.filter(o => o.estado === 'Pendiente').length,
+      aprobadas: ordenesCompra.filter(o => o.estado === 'Aprobada').length,
+      recibidas: ordenesCompra.filter(o => o.estado === 'Recibida').length,
+      canceladas: ordenesCompra.filter(o => o.estado === 'Cancelada').length,
+      montoTotal: ordenesCompra.reduce((sum, o) => sum + o.montoNeto, 0)
+    };
+
+    // Materiales más cotizados
+    const materialesCotizados = {};
+    cotizaciones.forEach(c => {
+      if (!materialesCotizados[c.nombreMaterial]) {
+        materialesCotizados[c.nombreMaterial] = {
+          nombre: c.nombreMaterial,
+          unidad: c.unidad,
+          totalCotizaciones: 0,
+          cantidadTotal: 0,
+          precioPromedio: 0,
+          mejorPrecio: null,
+          proveedores: new Set()
+        };
+      }
+      
+      const material = materialesCotizados[c.nombreMaterial];
+      material.totalCotizaciones++;
+      material.cantidadTotal += c.cantidad;
+      material.proveedores.add(c.proveedorId?.nombre || 'Sin proveedor');
+      
+      if (!material.mejorPrecio || c.precioUnitario < material.mejorPrecio) {
+        material.mejorPrecio = c.precioUnitario;
+      }
+    });
+
+    // Convertir Set a Array y calcular precio promedio
+    Object.values(materialesCotizados).forEach(material => {
+      material.proveedores = Array.from(material.proveedores);
+      const preciosTotal = cotizaciones
+        .filter(c => c.nombreMaterial === material.nombre)
+        .reduce((sum, c) => sum + c.precioUnitario, 0);
+      material.precioPromedio = preciosTotal / material.totalCotizaciones;
+    });
+
+    res.json({
+      proyecto: project,
+      cotizaciones: {
+        lista: cotizaciones,
+        resumen: resumenCotizaciones
+      },
+      ordenesCompra: {
+        lista: ordenesCompra,
+        resumen: resumenOrdenes
+      },
+      materialesMasCotizados: Object.values(materialesCotizados)
+        .sort((a, b) => b.totalCotizaciones - a.totalCotizaciones)
+        .slice(0, 10)
+    });
+
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

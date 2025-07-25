@@ -25,6 +25,7 @@ const insumoRoutes = require('./routes/insumoRoutes');
 const datasetRoutes = require('./routes/datasetRoutes');
 const actaReunionRoutes = require('./routes/actaReunionRoutes');
 const searchRoutes = require('./routes/searchRoutes');
+const ordencompraRoutes = require('./routes/ordencompraRoutes');
 
 // Usar rutas API
 app.use('/api/users', userRoutes);
@@ -32,6 +33,7 @@ app.use('/api/projects', projectRoutes);
 app.use('/api/providers', providerRoutes);
 app.use('/api/insumos', insumoRoutes);
 app.use('/api/cotizaciones', cotizacionRoutes);
+app.use('/api/ordenes-compra', ordencompraRoutes);
 app.use('/api/dataset', datasetRoutes);
 app.use('/api/actas-reunion', actaReunionRoutes);
 app.use('/api/search', searchRoutes);
