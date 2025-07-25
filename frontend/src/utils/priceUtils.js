@@ -8,35 +8,64 @@
  * @returns {string} - El precio formateado
  */
 export const formatPrice = (price) => {
-  if (!price || price === 'Precio no disponible' || price === 'Consultar') {
+  // Debug temporal - eliminar después de resolver el problema
+  if (price && price.toString().includes('15082')) {
+    console.log('🔍 Debug precio:', {
+      original: price,
+      type: typeof price,
+      toString: price.toString()
+    });
+  }
+  
+  // Casos donde no hay precio válido
+  if (!price || price === 'Precio no disponible' || price === 'Consultar' || price === null || price === undefined) {
     return 'Precio no disponible';
   }
   
-  // Si ya es un string que contiene $, devolverlo tal como está
-  if (typeof price === 'string' && price.includes('$')) {
-    return price;
+  // Convertir a string para procesamiento uniforme
+  const priceStr = price.toString().trim();
+  
+  // Si ya es un precio formateado correctamente (empieza con $ y no tiene duplicación)
+  if (priceStr.startsWith('$') && !priceStr.includes('$', 1)) {
+    return priceStr;
   }
   
-  // Si es un número, convertirlo a formato de moneda chilena
-  if (typeof price === 'number') {
-    return new Intl.NumberFormat('es-CL', { 
-      style: 'currency', 
-      currency: 'CLP',
-      minimumFractionDigits: 0 
-    }).format(price);
+  // Extraer SOLO números, puntos y comas del precio
+  // Esto maneja casos como "15082 $15.082" → "15082"
+  const matches = priceStr.match(/[\d.,]+/);
+  if (!matches) {
+    return 'Precio no disponible';
   }
   
-  // Si es un string sin $, intentar parsearlo y formatearlo
-  const numericPrice = parseFloat(price.toString().replace(/[^0-9.,]/g, '').replace(',', '.'));
-  if (!isNaN(numericPrice) && numericPrice > 0) {
-    return new Intl.NumberFormat('es-CL', { 
-      style: 'currency', 
-      currency: 'CLP',
-      minimumFractionDigits: 0 
-    }).format(numericPrice);
+  // Tomar solo la primera secuencia de números encontrada
+  const cleanPrice = matches[0].replace(',', '.');
+  const numericValue = parseFloat(cleanPrice);
+  
+  // Debug temporal
+  if (price && price.toString().includes('15082')) {
+    console.log('🔍 Debug después de procesar:', {
+      matches,
+      cleanPrice,
+      numericValue,
+      willReturn: new Intl.NumberFormat('es-CL', { 
+        style: 'currency', 
+        currency: 'CLP',
+        minimumFractionDigits: 0 
+      }).format(numericValue)
+    });
   }
   
-  return 'Precio no disponible';
+  // Validar que sea un número válido y positivo
+  if (isNaN(numericValue) || numericValue <= 0) {
+    return 'Precio no disponible';
+  }
+  
+  // Formatear como moneda chilena
+  return new Intl.NumberFormat('es-CL', { 
+    style: 'currency', 
+    currency: 'CLP',
+    minimumFractionDigits: 0 
+  }).format(numericValue);
 };
 
 /**
