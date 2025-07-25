@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
 import { useCart } from '../context/CartContext';
 import { useCotizaciones } from '../context/CotizacionesContext';
+import CompraModal from './CompraModal';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 
 const CotizacionCartV2 = () => {
-  const { cartItems, isCartOpen, toggleCart, removeFromCart, updateCartItem } = useCart();
+  const { cartItems, isCartOpen, toggleCart, removeFromCart, updateCartItem, clearCart } = useCart();
   const { guardarCotizacion } = useCotizaciones();
   const [projectName, setProjectName] = useState('');
   const [clientName, setClientName] = useState('');
   const [exportLoading, setExportLoading] = useState(false);
+  const [showCompraModal, setShowCompraModal] = useState(false);
 
   const handleQuantityChange = (itemId, quantity) => {
     updateCartItem(itemId, { quantity: parseInt(quantity) || 1 });
@@ -205,6 +207,32 @@ const CotizacionCartV2 = () => {
     navigator.clipboard.writeText(text).then(() => {
       alert('Información copiada al portapapeles');
     });
+  };
+
+  const handleCompra = async (compraData) => {
+    try {
+      // Aquí puedes agregar lógica para guardar la compra en el backend
+      console.log('Compra realizada:', compraData);
+      
+      // Limpiar carrito después de la compra
+      clearCart();
+      
+      // Mostrar notificación de éxito
+      const notification = document.createElement('div');
+      notification.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50';
+      notification.textContent = `✅ Compra procesada y asociada al proyecto`;
+      document.body.appendChild(notification);
+      
+      setTimeout(() => {
+        if (document.body.contains(notification)) {
+          document.body.removeChild(notification);
+        }
+      }, 4000);
+      
+    } catch (error) {
+      console.error('Error procesando compra:', error);
+      throw error;
+    }
   };
 
   const getTotalEstimated = () => {
@@ -418,6 +446,13 @@ const CotizacionCartV2 = () => {
             </div>
             <div className="flex gap-2">
               <button
+                onClick={() => setShowCompraModal(true)}
+                disabled={cartItems.length === 0}
+                className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                🛒 Comprar ({cartItems.length})
+              </button>
+              <button
                 onClick={exportToExcel}
                 disabled={exportLoading || cartItems.length === 0}
                 className="bg-green-600 text-white px-6 py-2 rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
@@ -443,6 +478,14 @@ const CotizacionCartV2 = () => {
           </div>
         </div>
       </div>
+
+      {/* Modal de Compra */}
+      <CompraModal
+        isOpen={showCompraModal}
+        onClose={() => setShowCompraModal(false)}
+        productos={cartItems}
+        onComprar={handleCompra}
+      />
     </div>
   );
 };

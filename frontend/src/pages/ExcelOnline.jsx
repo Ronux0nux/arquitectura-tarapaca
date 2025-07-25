@@ -13,9 +13,9 @@ const ExcelOnline = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [sheetNames, setSheetNames] = useState([]);
-  const [lastSaved, setLastSaved] = useState(null);
   const [showDatasetPanel, setShowDatasetPanel] = useState(false);
-  const [backups, setBackups] = useState([]);
+  const [selectedProject, setSelectedProject] = useState('');
+  const [proyectos, setProyectos] = useState([]);
   
   const { productosDatabase } = useCotizaciones();
 
@@ -82,55 +82,65 @@ const ExcelOnline = () => {
 
   // Cargar datos del Excel
   useEffect(() => {
-    loadExcelData();
-    loadBackups();
+    loadExcelTemplate();
+    loadProjects();
   }, []);
 
-  const loadExcelData = async () => {
+  const loadExcelTemplate = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(`${API_BASE_URL}/excel/data`);
+      const response = await axios.get(`${API_BASE_URL}/excel/template?projectId=${selectedProject}`);
       if (response.data.success) {
         setExcelData(response.data.data.sheets);
         setSheetNames(response.data.data.sheetNames);
-        setLastSaved(response.data.data.metadata.lastModified);
       }
     } catch (error) {
-      console.error('Error cargando Excel:', error);
-      alert('Error cargando archivo Excel');
+      console.error('Error cargando plantillas:', error);
+      alert('Error cargando plantillas Excel');
     } finally {
       setLoading(false);
     }
   };
 
-  const loadBackups = async () => {
+  const loadProjects = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/excel/backups`);
-      if (response.data.success) {
-        setBackups(response.data.backups);
-      }
+      const response = await axios.get(`${API_BASE_URL}/projects`);
+      setProyectos(response.data);
     } catch (error) {
-      console.error('Error cargando backups:', error);
+      console.error('Error cargando proyectos:', error);
     }
   };
 
-  // Guardar cambios
-  const saveExcel = async () => {
+  // Exportar Excel para descarga
+  const exportExcel = async () => {
     setSaving(true);
     try {
-      const response = await axios.post(`${API_BASE_URL}/excel/save`, {
+      const projectName = selectedProject 
+        ? proyectos.find(p => p._id === selectedProject)?.nombre || 'proyecto'
+        : 'presupuesto';
+        
+      const response = await axios.post(`${API_BASE_URL}/excel/export`, {
         sheets: excelData,
-        sheetNames: sheetNames
+        fileName: projectName.toLowerCase().replace(/\s+/g, '_'),
+        projectId: selectedProject
+      }, {
+        responseType: 'blob'
       });
       
-      if (response.data.success) {
-        setLastSaved(new Date().toISOString());
-        alert('✅ Archivo guardado exitosamente');
-        await loadBackups(); // Recargar lista de backups
-      }
+      // Crear link de descarga
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${projectName}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      
+      alert('✅ Excel exportado exitosamente');
     } catch (error) {
-      console.error('Error guardando Excel:', error);
-      alert('❌ Error guardando archivo');
+      console.error('Error exportando Excel:', error);
+      alert('❌ Error exportando archivo');
     } finally {
       setSaving(false);
     }
@@ -148,12 +158,17 @@ const ExcelOnline = () => {
       const response = await axios.post(`${API_BASE_URL}/excel/add-dataset`, {
         sheetName: currentSheetName,
         products: productosDatabase,
-        format: format
+        format: format,
+        projectId: selectedProject
       });
 
       if (response.data.success) {
+        // Actualizar datos localmente
+        setExcelData({
+          ...excelData,
+          [currentSheetName]: response.data.data
+        });
         alert(`✅ ${response.data.rowsAdded} filas agregadas`);
-        await loadExcelData(); // Recargar datos
       }
     } catch (error) {
       console.error('Error agregando dataset:', error);
@@ -232,13 +247,27 @@ const ExcelOnline = () => {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-800">📊 Excel Online</h1>
+              <h1 className="text-2xl font-bold text-gray-800">📊 Plantillas Excel</h1>
               <p className="text-sm text-gray-600">
-                Archivo: Libro2.xlsx {lastSaved && `• Última modificación: ${new Date(lastSaved).toLocaleString()}`}
+                Genera presupuestos, APUs y listados de recursos desde tu dataset
               </p>
             </div>
             
-            <div className="flex gap-2">
+            <div className="flex items-center gap-3">
+              {/* Selector de proyecto */}
+              <select
+                value={selectedProject}
+                onChange={(e) => setSelectedProject(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Sin proyecto específico</option>
+                {proyectos.map((proyecto) => (
+                  <option key={proyecto._id} value={proyecto._id}>
+                    {proyecto.nombre}
+                  </option>
+                ))}
+              </select>
+              
               <button
                 onClick={() => setShowDatasetPanel(!showDatasetPanel)}
                 className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 transition-colors"
@@ -246,11 +275,11 @@ const ExcelOnline = () => {
                 📦 Dataset ({productosDatabase.length})
               </button>
               <button
-                onClick={saveExcel}
+                onClick={exportExcel}
                 disabled={saving}
                 className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50 transition-colors"
               >
-                {saving ? '💾 Guardando...' : '💾 Guardar'}
+                {saving ? '� Exportando...' : '� Exportar Excel'}
               </button>
             </div>
           </div>
@@ -328,19 +357,25 @@ const ExcelOnline = () => {
                   onClick={() => addDatasetToSheet('recursos')}
                   className="w-full bg-green-600 text-white py-2 px-3 rounded text-sm hover:bg-green-700"
                 >
-                  📋 Como Recursos
+                  📋 Agregar como Recursos
                 </button>
                 <button
-                  onClick={() => addDatasetToSheet('ppto')}
+                  onClick={() => addDatasetToSheet('presupuesto')}
                   className="w-full bg-blue-600 text-white py-2 px-3 rounded text-sm hover:bg-blue-700"
                 >
-                  💰 Como Presupuesto
+                  💰 Agregar a Presupuesto
                 </button>
                 <button
                   onClick={() => addDatasetToSheet('apu')}
                   className="w-full bg-purple-600 text-white py-2 px-3 rounded text-sm hover:bg-purple-700"
                 >
-                  🔧 Como APU
+                  🔧 Agregar a APU
+                </button>
+                <button
+                  onClick={exportExcel}
+                  className="w-full bg-gray-800 text-white py-2 px-3 rounded text-sm hover:bg-gray-900"
+                >
+                  📥 Exportar Excel Completo
                 </button>
               </div>
 

@@ -13,48 +13,73 @@ class ExcelController {
     }
   }
 
-  // Leer archivo Excel y retornar todas las pestañas
-  async getExcelData(req, res) {
+  // Crear plantillas Excel desde cero
+  async getExcelTemplate(req, res) {
     try {
-      if (!fs.existsSync(this.excelPath)) {
-        return res.status(404).json({ 
-          success: false, 
-          message: 'Archivo Excel no encontrado' 
-        });
-      }
-
-      const workbook = XLSX.readFile(this.excelPath);
-      const sheets = {};
-
-      // Leer todas las pestañas
-      workbook.SheetNames.forEach(sheetName => {
-        const worksheet = workbook.Sheets[sheetName];
-        sheets[sheetName] = XLSX.utils.sheet_to_json(worksheet, { 
-          header: 1,  // Usar números como headers para mantener formato
-          defval: ''  // Valor por defecto para celdas vacías
-        });
-      });
+      const { projectId } = req.query;
+      
+      // Generar plantillas con headers predefinidos
+      const sheets = {
+        'PRESUPUESTO': this.createPresupuestoTemplate(),
+        'APU': this.createAPUTemplate(),
+        'RECURSOS': this.createRecursosTemplate()
+      };
 
       res.json({
         success: true,
         data: {
           sheets,
-          sheetNames: workbook.SheetNames,
+          sheetNames: ['PRESUPUESTO', 'APU', 'RECURSOS'],
+          projectId: projectId || null,
           metadata: {
-            lastModified: fs.statSync(this.excelPath).mtime,
-            size: fs.statSync(this.excelPath).size
+            created: new Date().toISOString(),
+            template: true
           }
         }
       });
 
     } catch (error) {
-      console.error('Error leyendo Excel:', error);
+      console.error('Error creando plantillas:', error);
       res.status(500).json({ 
         success: false, 
-        message: 'Error al leer archivo Excel',
+        message: 'Error al crear plantillas Excel',
         error: error.message 
       });
     }
+  }
+
+  // Crear plantilla de Presupuesto
+  createPresupuestoTemplate() {
+    return [
+      ['ITEM', 'DESCRIPCIÓN', 'UNIDAD', 'CANTIDAD', 'PRECIO UNITARIO', 'PRECIO TOTAL', 'PROVEEDOR', 'CATEGORÍA', 'PROYECTO'],
+      ['1', 'Ejemplo: Cemento Portland', 'Sacos', '10', '8500', '85000', 'Proveedor A', 'Materiales Básicos', ''],
+      ['2', '', '', '', '', '', '', '', ''],
+      ['3', '', '', '', '', '', '', '', ''],
+      ['', '', '', '', 'TOTAL:', '=SUM(F2:F100)', '', '', '']
+    ];
+  }
+
+  // Crear plantilla de APU
+  createAPUTemplate() {
+    return [
+      ['ACTIVIDAD', 'DESCRIPCIÓN RECURSO', 'TIPO', 'UNIDAD', 'CANTIDAD', 'PRECIO UNITARIO', 'PRECIO TOTAL', 'PROVEEDOR'],
+      ['EXCAVACIÓN', 'Ejemplo: Operario', 'MANO DE OBRA', 'Jornal', '2', '35000', '70000', 'Contratista A'],
+      ['EXCAVACIÓN', 'Ejemplo: Excavadora', 'EQUIPO', 'Hora', '4', '25000', '100000', 'Arriendo B'],
+      ['EXCAVACIÓN', 'Ejemplo: Combustible', 'MATERIAL', 'Litros', '50', '850', '42500', 'Estación C'],
+      ['', '', '', '', '', 'SUBTOTAL:', '=SUM(G2:G100)', ''],
+      ['', '', '', '', '', 'TOTAL ACTIVIDAD:', '=G5', '']
+    ];
+  }
+
+  // Crear plantilla de Recursos
+  createRecursosTemplate() {
+    return [
+      ['CÓDIGO', 'DESCRIPCIÓN', 'UNIDAD', 'PRECIO UNITARIO', 'PROVEEDOR', 'CATEGORÍA', 'ÚLTIMA ACTUALIZACIÓN', 'ORIGEN'],
+      ['MAT001', 'Ejemplo: Ladrillo Princesa', 'Unidad', '450', 'Ladrillería Sur', 'Albañilería', new Date().toLocaleDateString(), 'SERPAPI'],
+      ['MAT002', '', '', '', '', '', '', ''],
+      ['MAT003', '', '', '', '', '', '', ''],
+      ['', '', '', '', '', '', '', '']
+    ];
   }
 
   // Guardar datos actualizados en Excel
@@ -101,25 +126,17 @@ class ExcelController {
         sheetName = 'RECURSOS', 
         products, 
         startRow = null,
-        format = 'recursos' // 'recursos', 'ppto', 'apu'
+        format = 'recursos',
+        projectId = null 
       } = req.body;
 
-      const workbook = XLSX.readFile(this.excelPath);
+      // Obtener datos actuales de la plantilla
+      const currentData = this.getCurrentSheetData(sheetName);
       
-      // Obtener la hoja o crear una nueva
-      let worksheet = workbook.Sheets[sheetName];
-      if (!worksheet) {
-        worksheet = XLSX.utils.aoa_to_sheet([]);
-        XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
-      }
-
-      // Convertir hoja a array para manipular
-      const currentData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
-
       // Formatear productos según el tipo
-      const formattedData = this.formatProductsForExcel(products, format);
+      const formattedData = this.formatProductsForExcel(products, format, projectId);
 
-      // Determinar donde insertar los datos
+      // Determinar donde insertar los datos (después de los headers)
       const insertRow = startRow || currentData.length;
 
       // Insertar datos
@@ -127,18 +144,12 @@ class ExcelController {
         currentData[insertRow + index] = row;
       });
 
-      // Actualizar la hoja
-      const newWorksheet = XLSX.utils.aoa_to_sheet(currentData);
-      workbook.Sheets[sheetName] = newWorksheet;
-
-      // Guardar
-      XLSX.writeFile(workbook, this.excelPath);
-
       res.json({
         success: true,
         message: `${products.length} productos agregados a ${sheetName}`,
         rowsAdded: formattedData.length,
-        startRow: insertRow
+        startRow: insertRow,
+        data: currentData
       });
 
     } catch (error) {
@@ -151,38 +162,57 @@ class ExcelController {
     }
   }
 
+  // Obtener datos actuales de una hoja
+  getCurrentSheetData(sheetName) {
+    switch (sheetName) {
+      case 'PRESUPUESTO':
+        return this.createPresupuestoTemplate();
+      case 'APU':
+        return this.createAPUTemplate();
+      case 'RECURSOS':
+        return this.createRecursosTemplate();
+      default:
+        return [['Columna 1', 'Columna 2', 'Columna 3']];
+    }
+  }
+
   // Formatear productos según el tipo de hoja
-  formatProductsForExcel(products, format) {
+  formatProductsForExcel(products, format, projectId = null) {
     switch (format) {
       case 'recursos':
-        return products.map(product => [
+        return products.map((product, index) => [
+          `MAT${String(index + 1).padStart(3, '0')}`, // Código automático
           product.title || '',
-          product.source || '',
+          'Unidad', // Unidad por defecto
           this.extractNumericPrice(product.price) || 0,
-          product.searchTerm || '',
+          product.source || '',
+          product.searchTerm || 'General',
           new Date().toLocaleDateString(),
           product.origenBusqueda || 'Manual'
         ]);
 
-      case 'ppto':
+      case 'presupuesto':
         return products.map((product, index) => [
-          index + 1, // Item
+          index + 1, // ITEM
           product.title || '',
-          1, // Cantidad por defecto
-          this.extractNumericPrice(product.price) || 0,
-          this.extractNumericPrice(product.price) || 0, // Precio total
+          'Unidad', // UNIDAD
+          1, // CANTIDAD por defecto
+          this.extractNumericPrice(product.price) || 0, // PRECIO UNITARIO
+          this.extractNumericPrice(product.price) || 0, // PRECIO TOTAL
           product.source || '',
-          product.searchTerm || ''
+          product.searchTerm || 'General',
+          projectId || '' // PROYECTO
         ]);
 
       case 'apu':
         return products.map(product => [
+          'NUEVA ACTIVIDAD', // ACTIVIDAD
           product.title || '',
-          'MATERIAL', // Tipo por defecto
-          1, // Cantidad
-          'UND', // Unidad por defecto
-          this.extractNumericPrice(product.price) || 0,
-          this.extractNumericPrice(product.price) || 0, // Precio total
+          'MATERIAL', // TIPO por defecto
+          'Unidad', // UNIDAD
+          1, // CANTIDAD
+          this.extractNumericPrice(product.price) || 0, // PRECIO UNITARIO
+          this.extractNumericPrice(product.price) || 0, // PRECIO TOTAL
           product.source || ''
         ]);
 
@@ -226,6 +256,125 @@ class ExcelController {
       backups.slice(10).forEach(oldBackup => {
         fs.unlinkSync(path.join(this.backupPath, oldBackup));
       });
+    }
+  }
+
+  // Exportar Excel para descarga
+  async exportExcel(req, res) {
+    try {
+      const { sheets, fileName = 'presupuesto', projectId = null } = req.body;
+
+      // Crear nuevo workbook
+      const workbook = XLSX.utils.book_new();
+
+      // Agregar cada pestaña
+      Object.keys(sheets).forEach(sheetName => {
+        const sheetData = sheets[sheetName];
+        const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
+        
+        // Aplicar estilos básicos
+        this.applyExcelStyles(worksheet, sheetName);
+        
+        XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+      });
+
+      // Generar nombre de archivo con timestamp
+      const timestamp = new Date().toISOString().slice(0, 10);
+      const finalFileName = `${fileName}_${projectId ? `proyecto_${projectId}_` : ''}${timestamp}.xlsx`;
+
+      // Crear archivo temporal
+      const tempDir = path.join(__dirname, '../../../temp');
+      if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(tempDir, { recursive: true });
+      }
+      
+      const tempFilePath = path.join(tempDir, finalFileName);
+      XLSX.writeFile(workbook, tempFilePath);
+
+      // Enviar archivo
+      res.download(tempFilePath, finalFileName, (err) => {
+        if (err) {
+          console.error('Error enviando archivo:', err);
+        }
+        
+        // Limpiar archivo temporal después de enviar
+        setTimeout(() => {
+          if (fs.existsSync(tempFilePath)) {
+            fs.unlinkSync(tempFilePath);
+          }
+        }, 10000); // 10 segundos
+      });
+
+    } catch (error) {
+      console.error('Error exportando Excel:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Error al exportar Excel',
+        error: error.message 
+      });
+    }
+  }
+
+  // Aplicar estilos básicos al Excel
+  applyExcelStyles(worksheet, sheetName) {
+    const range = XLSX.utils.decode_range(worksheet['!ref']);
+    
+    // Aplicar estilos a los headers (primera fila)
+    for (let col = range.s.c; col <= range.e.c; col++) {
+      const cellAddress = XLSX.utils.encode_cell({ r: 0, c: col });
+      if (!worksheet[cellAddress]) continue;
+      
+      worksheet[cellAddress].s = {
+        font: { bold: true, color: { rgb: "FFFFFF" } },
+        fill: { fgColor: { rgb: "366092" } },
+        alignment: { horizontal: "center" }
+      };
+    }
+
+    // Establecer anchos de columna
+    const colWidths = this.getColumnWidths(sheetName);
+    worksheet['!cols'] = colWidths;
+  }
+
+  // Obtener anchos de columna por tipo de hoja
+  getColumnWidths(sheetName) {
+    switch (sheetName) {
+      case 'PRESUPUESTO':
+        return [
+          { width: 8 },   // ITEM
+          { width: 40 },  // DESCRIPCIÓN
+          { width: 12 },  // UNIDAD
+          { width: 12 },  // CANTIDAD
+          { width: 15 },  // PRECIO UNITARIO
+          { width: 15 },  // PRECIO TOTAL
+          { width: 20 },  // PROVEEDOR
+          { width: 15 },  // CATEGORÍA
+          { width: 15 }   // PROYECTO
+        ];
+      case 'APU':
+        return [
+          { width: 20 },  // ACTIVIDAD
+          { width: 35 },  // DESCRIPCIÓN RECURSO
+          { width: 15 },  // TIPO
+          { width: 10 },  // UNIDAD
+          { width: 12 },  // CANTIDAD
+          { width: 15 },  // PRECIO UNITARIO
+          { width: 15 },  // PRECIO TOTAL
+          { width: 20 }   // PROVEEDOR
+        ];
+      case 'RECURSOS':
+        return [
+          { width: 10 },  // CÓDIGO
+          { width: 35 },  // DESCRIPCIÓN
+          { width: 10 },  // UNIDAD
+          { width: 15 },  // PRECIO UNITARIO
+          { width: 20 },  // PROVEEDOR
+          { width: 15 },  // CATEGORÍA
+          { width: 15 },  // ÚLTIMA ACTUALIZACIÓN
+          { width: 12 }   // ORIGEN
+        ];
+      default:
+        return [{ width: 20 }];
     }
   }
 
