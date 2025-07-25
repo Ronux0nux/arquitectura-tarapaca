@@ -4,6 +4,7 @@ import 'handsontable/dist/handsontable.full.min.css';
 import '../components/ExcelOnline.css';
 import axios from 'axios';
 import { useCotizaciones } from '../context/CotizacionesContext';
+import { useCart } from '../context/CartContext';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
@@ -14,10 +15,12 @@ const ExcelOnline = () => {
   const [saving, setSaving] = useState(false);
   const [sheetNames, setSheetNames] = useState([]);
   const [showDatasetPanel, setShowDatasetPanel] = useState(false);
+  const [showCartPanel, setShowCartPanel] = useState(false);
   const [selectedProject, setSelectedProject] = useState('');
   const [proyectos, setProyectos] = useState([]);
   
   const { productosDatabase } = useCotizaciones();
+  const { cartItems } = useCart();
 
   // Configuración de Handsontable por tipo de hoja
   const getSheetConfig = (sheetName) => {
@@ -176,6 +179,112 @@ const ExcelOnline = () => {
     }
   };
 
+  // Convertir productos del carrito a formato Excel
+  const convertCartToExcelFormat = (productos, format) => {
+    switch (format) {
+      case 'presupuesto':
+        return productos.map((item, index) => [
+          index + 1, // ITEM
+          item.title || '',
+          item.unit || 'un', // UNIDAD
+          item.quantity || 1, // CANTIDAD
+          extractNumericPrice(item.price) || 0, // PRECIO UNITARIO
+          (extractNumericPrice(item.price) || 0) * (item.quantity || 1), // PRECIO TOTAL
+          item.source || '',
+          item.category || 'General',
+          selectedProject || '' // PROYECTO
+        ]);
+
+      case 'apu':
+        return productos.map(item => [
+          'NUEVA ACTIVIDAD', // ACTIVIDAD
+          item.title || '',
+          'MATERIAL', // TIPO por defecto
+          item.unit || 'un', // UNIDAD
+          item.quantity || 1, // CANTIDAD
+          extractNumericPrice(item.price) || 0, // PRECIO UNITARIO
+          (extractNumericPrice(item.price) || 0) * (item.quantity || 1), // PRECIO TOTAL
+          item.source || ''
+        ]);
+
+      case 'recursos':
+        return productos.map((item, index) => [
+          `MAT${String(index + 1).padStart(3, '0')}`, // CÓDIGO automático
+          item.title || '',
+          item.unit || 'un', // UNIDAD
+          extractNumericPrice(item.price) || 0,
+          item.source || '',
+          item.category || 'General',
+          new Date().toLocaleDateString(),
+          'Carrito'
+        ]);
+
+      default:
+        return productos.map(item => [
+          item.title,
+          item.price,
+          item.source
+        ]);
+    }
+  };
+
+  // Extraer precio numérico
+  const extractNumericPrice = (priceString) => {
+    if (!priceString) return 0;
+    if (typeof priceString === 'number') return priceString;
+    
+    const cleaned = priceString.toString()
+      .replace(/[$.,\s]/g, '')
+      .replace(/[^\d]/g, '');
+    
+    return parseInt(cleaned) || 0;
+  };
+
+  // Agregar productos del carrito directamente a la hoja activa
+  const addCartToSheet = (format = 'presupuesto') => {
+    if (cartItems.length === 0) {
+      alert('No hay productos en el carrito');
+      return;
+    }
+
+    const currentSheetName = sheetNames[activeSheet];
+    const currentData = [...excelData[currentSheetName]];
+    
+    // Convertir productos del carrito al formato apropiado
+    const newRows = convertCartToExcelFormat(cartItems, format);
+    
+    // Agregar al final de los datos existentes
+    newRows.forEach(row => {
+      currentData.push(row);
+    });
+
+    // Actualizar estado local
+    setExcelData({
+      ...excelData,
+      [currentSheetName]: currentData
+    });
+
+    alert(`✅ ${cartItems.length} productos del carrito agregados a ${currentSheetName}`);
+  };
+
+  // Importar productos del carrito a una hoja específica
+  const importCartToSheet = (format) => {
+    if (cartItems.length === 0) {
+      alert('No hay productos en el carrito');
+      return;
+    }
+    addCartToSheet(format);
+  };
+
+  // Importar productos del dataset a una hoja específica  
+  const importDatasetToSheet = (format) => {
+    if (productosDatabase.length === 0) {
+      alert('No hay productos en el dataset');
+      return;
+    }
+    addDatasetToSheet(format);
+  };
+
   // Restaurar backup
   // Restaurar backup (funcionalidad simplificada)
   const restoreBackup = async (backupName) => {
@@ -274,6 +383,12 @@ const ExcelOnline = () => {
                 className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 transition-colors"
               >
                 📦 Dataset ({productosDatabase.length})
+              </button>
+              <button
+                onClick={() => setShowCartPanel(!showCartPanel)}
+                className="bg-orange-600 text-white px-4 py-2 rounded hover:bg-orange-700 transition-colors"
+              >
+                🛒 Carrito ({cartItems.length})
               </button>
               <button
                 onClick={exportExcel}
@@ -391,6 +506,74 @@ const ExcelOnline = () => {
                   <p>• Los productos se agregan al final de la hoja</p>
                   <p>• Puedes editar los datos después de agregar</p>
                   <p>• Usa "Exportar Excel" para descargar el archivo</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Panel lateral Carrito */}
+          {showCartPanel && (
+            <div className="w-80 bg-white rounded-lg shadow-lg p-4 h-fit">
+              <h3 className="font-semibold mb-4 flex items-center gap-2">
+                🛒 Importar desde Carrito
+                <button
+                  onClick={() => setShowCartPanel(false)}
+                  className="ml-auto text-gray-400 hover:text-gray-600"
+                >
+                  ✕
+                </button>
+              </h3>
+
+              <div className="space-y-3 mb-4">
+                <button
+                  onClick={() => importCartToSheet('recursos')}
+                  className="w-full bg-green-600 text-white py-2 px-3 rounded text-sm hover:bg-green-700"
+                >
+                  📋 Importar como Recursos
+                </button>
+                <button
+                  onClick={() => importCartToSheet('presupuesto')}
+                  className="w-full bg-blue-600 text-white py-2 px-3 rounded text-sm hover:bg-blue-700"
+                >
+                  💰 Importar a Presupuesto
+                </button>
+                <button
+                  onClick={() => importCartToSheet('apu')}
+                  className="w-full bg-purple-600 text-white py-2 px-3 rounded text-sm hover:bg-purple-700"
+                >
+                  🔧 Importar a APU
+                </button>
+              </div>
+
+              <div className="text-xs text-gray-600 mb-4">
+                Se importarán {cartItems.length} productos del carrito a la hoja "{currentSheetName}"
+              </div>
+
+              {/* Lista de productos del carrito */}
+              <div className="border-t pt-4">
+                <h4 className="font-medium text-sm mb-2">🛒 Productos en Carrito</h4>
+                <div className="max-h-60 overflow-y-auto space-y-2">
+                  {cartItems.map((item, index) => (
+                    <div key={index} className="bg-gray-50 p-2 rounded text-xs">
+                      <div className="font-medium text-gray-800 truncate">
+                        {item.title}
+                      </div>
+                      <div className="text-gray-600 flex justify-between">
+                        <span>Cantidad: {item.quantity}</span>
+                        <span className="font-medium">{item.price}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Información adicional */}
+              <div className="border-t pt-4 mt-4">
+                <h4 className="font-medium text-sm mb-2">ℹ️ Información</h4>
+                <div className="text-xs text-gray-600 space-y-1">
+                  <p>• Los productos se importan con cantidades del carrito</p>
+                  <p>• Puedes editar los datos después de importar</p>
+                  <p>• Los precios se mantienen del carrito</p>
                 </div>
               </div>
             </div>
