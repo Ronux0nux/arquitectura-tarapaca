@@ -16,6 +16,72 @@ const BuscadorMateriales = () => {
   // URL del API backend
   const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
+  // Función para guardar resultados en el dataset automáticamente
+  const guardarResultadosEnDataset = async (resultados, terminoBusqueda) => {
+    if (!resultados || resultados.length === 0) return;
+
+    // Guardar en localStorage (mantener funcionalidad existente)
+    const savedProductos = localStorage.getItem('productos_database');
+    let productosExistentes = savedProductos ? JSON.parse(savedProductos) : [];
+
+    // Procesar cada resultado de SERPAPI
+    resultados.forEach(resultado => {
+      // Verificar si el producto ya existe
+      const existe = productosExistentes.find(p => 
+        p.title === resultado.title && p.source === resultado.source
+      );
+      
+      if (!existe) {
+        // Agregar nuevo producto al dataset
+        const nuevoProducto = {
+          ...resultado,
+          id: Date.now() + Math.random(),
+          fechaAgregado: new Date().toISOString(),
+          vecesUsado: 1,
+          ultimoUso: new Date().toISOString(),
+          searchTerm: terminoBusqueda, // Guardar el término de búsqueda
+          category: searchType === 'shopping' ? 'General' : 'Información',
+          origenBusqueda: 'SERPAPI' // Marcar que viene de SERPAPI
+        };
+        productosExistentes.push(nuevoProducto);
+      } else {
+        // Actualizar producto existente
+        existe.vecesUsado = (existe.vecesUsado || 1) + 1;
+        existe.ultimoUso = new Date().toISOString();
+        // Actualizar precio si es más reciente y está disponible
+        if (resultado.price && resultado.price !== 'Precio no disponible') {
+          existe.price = resultado.price;
+        }
+      }
+    });
+
+    // Guardar en localStorage
+    localStorage.setItem('productos_database', JSON.stringify(productosExistentes));
+
+    // También guardar en backend (base de datos)
+    try {
+      await axios.post(`${API_BASE_URL}/dataset/save-search-results`, {
+        searchTerm: terminoBusqueda,
+        searchType: searchType,
+        results: resultados
+      });
+    } catch (error) {
+      console.warn('Error guardando en backend, solo se guardó en localStorage:', error);
+    }
+    
+    // Mostrar notificación de guardado
+    const notification = document.createElement('div');
+    notification.className = 'fixed top-4 right-4 bg-purple-500 text-white px-4 py-2 rounded-lg shadow-lg z-50';
+    notification.textContent = `💾 ${resultados.length} productos guardados en dataset`;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+      if (document.body.contains(notification)) {
+        document.body.removeChild(notification);
+      }
+    }, 3000);
+  };
+
   const searchMaterials = async () => {
     if (!searchTerm.trim()) {
       setError('Por favor ingresa un término de búsqueda');
@@ -46,6 +112,9 @@ const BuscadorMateriales = () => {
 
       if (response.data.results) {
         setResults(response.data.results);
+        
+        // 🔥 NUEVO: Guardar automáticamente todos los resultados en el dataset
+        await guardarResultadosEnDataset(response.data.results, searchTerm.trim());
       } else {
         setResults([]);
       }
@@ -246,7 +315,12 @@ const BuscadorMateriales = () => {
                 </span>
               </span>
             ) : (
-              `Resultados de búsqueda en internet (${results.length})`
+              <span className="flex items-center gap-2">
+                🌐 Resultados de búsqueda en internet ({results.length})
+                <span className="text-sm bg-purple-100 text-purple-800 px-2 py-1 rounded">
+                  💾 Guardado automáticamente en dataset
+                </span>
+              </span>
             )}
           </h3>
           
