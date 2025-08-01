@@ -5,11 +5,6 @@ import CSVProviders from '../components/CSVProviders';
 
 export default function Providers() {
   const [providers, setProviders] = useState([]);
-  const [filteredProviders, setFilteredProviders] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedProvider, setSelectedProvider] = useState(null);
-  const [providerStats, setProviderStats] = useState({});
-  const [loading, setLoading] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [importData, setImportData] = useState('');
   const [importType, setImportType] = useState('text');
@@ -20,50 +15,12 @@ export default function Providers() {
     const importedProviders = ProviderDataImporter.loadProvidersFromLocalStorage();
     if (importedProviders.length > 0) {
       setProviders(importedProviders);
-      setFilteredProviders(importedProviders);
-      generateProviderStats(importedProviders);
       notifyInfo(`Se cargaron ${importedProviders.length} proveedores desde datos importados`, 'Datos Cargados');
     } else {
       // Inicializar con arreglo vacío
       setProviders([]);
-      setFilteredProviders([]);
-      generateProviderStats([]);
     }
-  }, []);
-
-  useEffect(() => {
-    filterProviders();
-  }, [searchTerm, providers]);
-
-  const filterProviders = () => {
-    if (!searchTerm) {
-      setFilteredProviders(providers);
-      return;
-    }
-
-    const filtered = providers.filter(provider =>
-      provider.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      provider.categories.some(cat => cat.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      provider.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      provider.address.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-    setFilteredProviders(filtered);
-  };
-
-  const generateProviderStats = (providerList = providers) => {
-    const stats = {
-      total: providerList.length,
-      active: providerList.filter(p => p.status === 'activo').length,
-      avgRating: providerList.length > 0 ? (providerList.reduce((sum, p) => sum + (p.rating || 0), 0) / providerList.length).toFixed(1) : '0.0',
-      categories: providerList.length > 0 ? [...new Set(providerList.flatMap(p => p.categories || []))].length : 0
-    };
-    setProviderStats(stats);
-  };
-
-  const handleProviderClick = (provider) => {
-    setSelectedProvider(provider);
-    notifyInfo(`Viendo detalles de ${provider.name || provider.fullName}`, 'Proveedor');
-  };
+  }, [notifyInfo]);
 
   const handleExportData = () => {
     const dataToExport = {
@@ -88,8 +45,6 @@ export default function Providers() {
     localStorage.removeItem('importedProviders');
     localStorage.removeItem('providersImportDate');
     setProviders([]);
-    setFilteredProviders([]);
-    generateProviderStats([]);
     notifyInfo('Se limpiaron todos los proveedores importados', 'Datos Limpiados');
   };
 
@@ -132,8 +87,6 @@ export default function Providers() {
       // Guardar y actualizar
       ProviderDataImporter.saveProvidersToLocalStorage(newProviders);
       setProviders(newProviders);
-      setFilteredProviders(newProviders);
-      generateProviderStats(newProviders);
       
       notifySuccess(`Se importaron ${validation.validProviders} proveedores exitosamente`, 'Importación Completada');
       setShowImportModal(false);

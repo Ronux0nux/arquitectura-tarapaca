@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useNotifications } from '../context/NotificationContext';
 import CSVProviderService from '../services/CSVProviderService';
+import { sampleCSVProviders, sampleStats, sampleFileStats } from '../data/sampleCSVData';
 
 export default function CSVProviders() {
   const [csvProviders, setCsvProviders] = useState([]);
   const [filteredCsvProviders, setFilteredCsvProviders] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [isDemo, setIsDemo] = useState(false);
   const [csvStats, setCsvStats] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [providersPerPage] = useState(50);
@@ -26,6 +29,7 @@ export default function CSVProviders() {
 
   const loadCSVProviders = async () => {
     setLoading(true);
+    setError(null); // Limpiar errores previos
     try {
       const response = await CSVProviderService.getAllCSVProviders();
       if (response.success) {
@@ -43,14 +47,27 @@ export default function CSVProviders() {
           `Se cargaron ${response.data.length} proveedores desde ${response.metadata.processedFiles} archivos CSV`,
           'Datos CSV Cargados'
         );
+        setIsDemo(false);
       } else {
-        notifyError('Error al cargar datos CSV', 'Error');
+        // Usar datos de ejemplo cuando no hay respuesta del servidor
+        loadSampleData();
+        notifyInfo('Mostrando datos de ejemplo (servidor no disponible)', 'Modo de Demostración');
       }
     } catch (error) {
       console.error('Error cargando CSV:', error);
-      notifyError(`Error al cargar proveedores CSV: ${error.message}`, 'Error de Conexión');
+      // Usar datos de ejemplo cuando hay error de conexión
+      loadSampleData();
+      notifyInfo('Mostrando datos de ejemplo (error de conexión)', 'Modo de Demostración');
     }
     setLoading(false);
+  };
+
+  const loadSampleData = () => {
+    setCsvProviders(sampleCSVProviders);
+    setFilteredCsvProviders(sampleCSVProviders);
+    setCsvStats(sampleStats);
+    setFileStats(sampleFileStats);
+    setError(null);
   };
 
   const loadFileStats = async () => {
@@ -161,9 +178,17 @@ export default function CSVProviders() {
           <div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">
               📊 Proveedores desde Archivos CSV
+              {isDemo && (
+                <span className="ml-3 px-3 py-1 bg-yellow-100 text-yellow-800 text-sm font-normal rounded-full">
+                  🔧 Datos de Ejemplo
+                </span>
+              )}
             </h2>
             <p className="text-gray-600">
-              Datos importados desde la carpeta de cotizaciones manuales
+              {isDemo 
+                ? "Mostrando datos de ejemplo - El servidor backend no está disponible"
+                : "Datos importados desde la carpeta de cotizaciones manuales"
+              }
             </p>
           </div>
           <div className="flex gap-2">
@@ -265,6 +290,28 @@ export default function CSVProviders() {
             <div className="text-center">
               <div className="animate-spin text-4xl mb-4">⏳</div>
               <p className="text-gray-600">Cargando proveedores...</p>
+            </div>
+          </div>
+        ) : error ? (
+          <div className="flex justify-center items-center py-12">
+            <div className="text-center bg-red-50 border border-red-200 rounded-lg p-8 mx-4">
+              <div className="text-4xl mb-4">⚠️</div>
+              <h3 className="text-lg font-semibold text-red-800 mb-2">Error al cargar datos</h3>
+              <p className="text-red-600 mb-4">{error}</p>
+              <div className="space-y-2 text-sm text-red-700 bg-red-100 p-4 rounded-lg">
+                <p><strong>Posibles causas:</strong></p>
+                <ul className="list-disc list-inside text-left space-y-1">
+                  <li>El servidor backend no está en funcionamiento</li>
+                  <li>Los archivos CSV no están disponibles en el servidor</li>
+                  <li>Problemas de conectividad de red</li>
+                </ul>
+              </div>
+              <button 
+                onClick={loadCSVProviders}
+                className="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+              >
+                Reintentar
+              </button>
             </div>
           </div>
         ) : currentProviders.length === 0 ? (
