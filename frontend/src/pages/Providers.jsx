@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNotifications } from '../context/NotificationContext';
 import providerService from '../services/ProviderService';
 import ProviderDataImporter from '../utils/providerDataImporter';
+import CSVProviders from '../components/CSVProviders';
 
 export default function Providers() {
   const [providers, setProviders] = useState([]);
@@ -13,6 +14,7 @@ export default function Providers() {
   const [showImportModal, setShowImportModal] = useState(false);
   const [importData, setImportData] = useState('');
   const [importType, setImportType] = useState('text');
+  const [activeTab, setActiveTab] = useState('default'); // 'default' o 'csv'
   const { notifySuccess, notifyError, notifyInfo } = useNotifications();
 
   // Lista completa de proveedores con más información
@@ -339,8 +341,41 @@ export default function Providers() {
         <p className="text-gray-600">Administra y busca proveedores para tus cotizaciones</p>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      {/* Tabs Navigation */}
+      <div className="mb-6">
+        <div className="border-b border-gray-200">
+          <nav className="-mb-px flex space-x-8">
+            <button
+              onClick={() => setActiveTab('default')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'default'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              🏪 Proveedores Registrados
+            </button>
+            <button
+              onClick={() => setActiveTab('csv')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'csv'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              📊 Datos de Cotizaciones CSV
+            </button>
+          </nav>
+        </div>
+      </div>
+
+      {/* Tab Content */}
+      {activeTab === 'csv' ? (
+        <CSVProviders />
+      ) : (
+        <>
+          {/* Stats Cards - Solo mostrar en la pestaña default */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-white p-4 rounded-lg shadow border">
           <div className="flex items-center">
             <div className="p-2 bg-blue-100 rounded-lg">
@@ -627,6 +662,8 @@ export default function Providers() {
             </div>
           </div>
         </div>
+      )}
+        </>
       )}
 
       {/* Import Modal */}

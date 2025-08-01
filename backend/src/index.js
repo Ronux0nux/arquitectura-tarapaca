@@ -27,6 +27,7 @@ const actaReunionRoutes = require('./routes/actaReunionRoutes');
 const searchRoutes = require('./routes/searchRoutes');
 const ordencompraRoutes = require('./routes/ordencompraRoutes');
 const excelRoutes = require('./routes/excelRoutes');
+const csvProviderRoutes = require('./routes/csvProviderRoutes');
 
 // Usar rutas API
 app.use('/api/users', userRoutes);
@@ -39,6 +40,7 @@ app.use('/api/dataset', datasetRoutes);
 app.use('/api/actas-reunion', actaReunionRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/excel', excelRoutes);
+app.use('/api', csvProviderRoutes);
 
 // Ruta base de prueba (API)
 app.get('/api', (req, res) => {
