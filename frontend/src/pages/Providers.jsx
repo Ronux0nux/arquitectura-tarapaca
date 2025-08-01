@@ -3,6 +3,7 @@ import { useNotifications } from '../context/NotificationContext';
 import providerService from '../services/ProviderService';
 import ProviderDataImporter from '../utils/providerDataImporter';
 import CSVProviders from '../components/CSVProviders';
+import CSVProvidersTest from '../components/CSVProvidersTest';
 
 export default function Providers() {
   const [providers, setProviders] = useState([]);
@@ -14,114 +15,7 @@ export default function Providers() {
   const [showImportModal, setShowImportModal] = useState(false);
   const [importData, setImportData] = useState('');
   const [importType, setImportType] = useState('text');
-  const [activeTab, setActiveTab] = useState('default'); // 'default' o 'csv'
   const { notifySuccess, notifyError, notifyInfo } = useNotifications();
-
-  // Lista completa de proveedores con más información
-  const allProviders = [
-    {
-      id: 'sodimac',
-      name: 'Sodimac',
-      icon: '🏪',
-      website: 'https://www.sodimac.cl',
-      phone: '+56 2 2444 4444',
-      email: 'contacto@sodimac.cl',
-      address: 'Av. Providencia 1308, Providencia, Santiago',
-      status: 'activo',
-      rating: 4.5,
-      categories: ['Construcción', 'Herramientas', 'Jardinería', 'Baño', 'Cocina'],
-      description: 'Líder en retail de mejoramiento del hogar y construcción en Chile.',
-      paymentMethods: ['Efectivo', 'Tarjeta', 'Transferencia', 'Crédito'],
-      deliveryTime: '2-5 días',
-      minOrder: 50000,
-      discount: '5% corporativo'
-    },
-    {
-      id: 'easy',
-      name: 'Easy',
-      icon: '🏬',
-      website: 'https://www.easy.cl',
-      phone: '+56 2 2888 8888',
-      email: 'contacto@easy.cl',
-      address: 'Av. Las Condes 11049, Las Condes, Santiago',
-      status: 'activo',
-      rating: 4.3,
-      categories: ['Construcción', 'Decoración', 'Herramientas', 'Jardinería'],
-      description: 'Tienda de mejoramiento del hogar con amplia variedad de productos.',
-      paymentMethods: ['Efectivo', 'Tarjeta', 'Transferencia'],
-      deliveryTime: '3-7 días',
-      minOrder: 75000,
-      discount: '3% por volumen'
-    },
-    {
-      id: 'construmart',
-      name: 'Construmart',
-      icon: '🏭',
-      website: 'https://www.construmart.cl',
-      phone: '+56 2 2333 3333',
-      email: 'ventas@construmart.cl',
-      address: 'Av. Vicuña Mackenna 1370, Ñuñoa, Santiago',
-      status: 'activo',
-      rating: 4.1,
-      categories: ['Construcción', 'Materiales', 'Herramientas', 'Eléctrico'],
-      description: 'Especialistas en materiales de construcción y herramientas profesionales.',
-      paymentMethods: ['Efectivo', 'Tarjeta', 'Transferencia', 'Crédito', 'Cheque'],
-      deliveryTime: '1-3 días',
-      minOrder: 100000,
-      discount: '7% corporativo'
-    },
-    {
-      id: 'imperial',
-      name: 'Imperial',
-      icon: '🏛️',
-      website: 'https://www.imperial.cl',
-      phone: '+56 2 2777 7777',
-      email: 'comercial@imperial.cl',
-      address: 'Av. Matta 1140, Santiago Centro, Santiago',
-      status: 'activo',
-      rating: 4.4,
-      categories: ['Construcción', 'Materiales', 'Ferretería', 'Eléctrico'],
-      description: 'Distribuidora de materiales de construcción con más de 50 años de experiencia.',
-      paymentMethods: ['Efectivo', 'Tarjeta', 'Transferencia', 'Crédito'],
-      deliveryTime: '2-4 días',
-      minOrder: 80000,
-      discount: '6% por volumen'
-    },
-    {
-      id: 'homecenter',
-      name: 'Homecenter',
-      icon: '🏠',
-      website: 'https://www.homecenter.cl',
-      phone: '+56 2 2555 5555',
-      email: 'info@homecenter.cl',
-      address: 'Av. Kennedy 9001, Las Condes, Santiago',
-      status: 'activo',
-      rating: 4.2,
-      categories: ['Construcción', 'Decoración', 'Muebles', 'Jardinería'],
-      description: 'Centro de mejoramiento del hogar con enfoque en decoración y construcción.',
-      paymentMethods: ['Efectivo', 'Tarjeta', 'Transferencia'],
-      deliveryTime: '3-6 días',
-      minOrder: 60000,
-      discount: '4% corporativo'
-    },
-    {
-      id: 'maestro',
-      name: 'Maestro',
-      icon: '🔨',
-      website: 'https://www.maestro.cl',
-      phone: '+56 2 2666 6666',
-      email: 'ventas@maestro.cl',
-      address: 'Av. Irarrázaval 2323, Ñuñoa, Santiago',
-      status: 'activo',
-      rating: 4.0,
-      categories: ['Herramientas', 'Ferretería', 'Construcción', 'Eléctrico'],
-      description: 'Especialistas en herramientas y ferretería para profesionales.',
-      paymentMethods: ['Efectivo', 'Tarjeta', 'Transferencia', 'Crédito'],
-      deliveryTime: '1-2 días',
-      minOrder: 40000,
-      discount: '8% profesional'
-    }
-  ];
 
   useEffect(() => {
     // Cargar proveedores importados si existen
@@ -132,9 +26,10 @@ export default function Providers() {
       generateProviderStats(importedProviders);
       notifyInfo(`Se cargaron ${importedProviders.length} proveedores desde datos importados`, 'Datos Cargados');
     } else {
-      setProviders(allProviders);
-      setFilteredProviders(allProviders);
-      generateProviderStats(allProviders);
+      // Inicializar con arreglo vacío
+      setProviders([]);
+      setFilteredProviders([]);
+      generateProviderStats([]);
     }
   }, []);
 
@@ -252,10 +147,10 @@ export default function Providers() {
   const handleResetToDefault = () => {
     localStorage.removeItem('importedProviders');
     localStorage.removeItem('providersImportDate');
-    setProviders(allProviders);
-    setFilteredProviders(allProviders);
-    generateProviderStats(allProviders);
-    notifyInfo('Se restauraron los proveedores por defecto', 'Datos Restaurados');
+    setProviders([]);
+    setFilteredProviders([]);
+    generateProviderStats([]);
+    notifyInfo('Se limpiaron todos los proveedores importados', 'Datos Limpiados');
   };
 
   const handleExportData = () => {
@@ -332,9 +227,9 @@ export default function Providers() {
               className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
               </svg>
-              Restaurar
+              Limpiar Importados
             </button>
           </div>
         </div>
@@ -371,7 +266,7 @@ export default function Providers() {
 
       {/* Tab Content */}
       {activeTab === 'csv' ? (
-        <CSVProviders />
+        <CSVProvidersTest />
       ) : (
         <>
           {/* Stats Cards - Solo mostrar en la pestaña default */}
