@@ -1,17 +1,17 @@
 /**
- * Servicio para gestión de proveedores extraídos del PDF
- * ListadoProveedoresVigentes-25-07-2025.pdf
+ * Servicio para gestión de proveedores 
+ * Basado en: ListadoProveedoresVigentes-04-08-2025.pdf
  */
 
 class ProvidersListService {
   constructor() {
     this.STORAGE_KEY = 'providersListData';
-    this.PDF_SOURCE = 'ListadoProveedoresVigentes-25-07-2025.pdf';
+    this.PDF_SOURCE = 'ListadoProveedoresVigentes-04-08-2025.pdf';
   }
 
   /**
-   * Obtener datos expandidos de proveedores
-   * Simulando extracción real del PDF
+   * Obtener datos de proveedores
+   * NOTA: Datos de ejemplo hasta importar el PDF real
    */
   getExpandedProvidersData() {
     return [

@@ -49,7 +49,7 @@ export default function Providers() {
     localStorage.removeItem('importedProviders');
     localStorage.removeItem('providersImportDate');
     setProviders([]);
-    notifyInfo('Se limpiaron todos los proveedores importados', 'Datos Limpiados');
+    notifySuccess('Se limpiaron todos los proveedores importados', 'Datos Limpiados');
   };
 
   const handleImportData = () => {
@@ -85,7 +85,7 @@ export default function Providers() {
       }
 
       if (validation.warnings.length > 0) {
-        notifyInfo(`Advertencias: ${validation.warnings.join(', ')}`, 'Advertencias de Importación');
+        notifySuccess(`Advertencias: ${validation.warnings.join(', ')}`, 'Advertencias de Importación');
       }
 
       // Guardar y actualizar
@@ -137,7 +137,7 @@ export default function Providers() {
             </button>
           </div>
         </div>
-        <p className="text-gray-600">Lista completa de proveedores vigentes extraída del PDF oficial de Tarapacá</p>
+        <p className="text-gray-600">Gestión de proveedores basada en ListadoProveedoresVigentes-04-08-2025.pdf</p>
       </div>
 
       {/* Pestañas */}
@@ -264,7 +264,7 @@ export default function Providers() {
                       <div>
                         <p className="mb-2"><strong>Para texto del PDF:</strong></p>
                         <ol className="list-decimal list-inside space-y-1">
-                          <li>Abre el archivo PDF "ListadoProveedoresVigentes-01-07-2025.pdf"</li>
+                          <li>Abre el archivo PDF "ListadoProveedoresVigentes-04-08-2025.pdf"</li>
                           <li>Selecciona todo el texto (Ctrl+A) y cópialo (Ctrl+C)</li>
                           <li>Pega el contenido en el área de texto abajo</li>
                           <li>El sistema detectará automáticamente nombres, teléfonos, emails y direcciones</li>

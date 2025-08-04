@@ -108,7 +108,7 @@ export default function ProvidersList() {
         <div className="flex justify-between items-center mb-4">
           <div>
             <h2 className="text-2xl font-bold text-gray-800">📋 Lista de Proveedores Vigentes</h2>
-            <p className="text-gray-600">Extraído de: ListadoProveedoresVigentes-25-07-2025.pdf</p>
+            <p className="text-gray-600">Basado en: ListadoProveedoresVigentes-04-08-2025.pdf</p>
           </div>
           <div className="flex gap-3">
             <div className="bg-blue-50 px-4 py-2 rounded-lg text-center">
@@ -187,7 +187,7 @@ export default function ProvidersList() {
           {/* Ordenar por */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              🔄 Ordenar por
+              🔄 Ordenar por categoria
             </label>
             <select
               value={sortBy}
