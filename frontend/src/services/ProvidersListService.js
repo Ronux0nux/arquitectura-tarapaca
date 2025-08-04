@@ -624,17 +624,48 @@ class ProvidersListService {
   }
 
   /**
-   * Guardar datos en localStorage
+   * Guardar datos en localStorage (con manejo de errores)
    */
   saveToLocalStorage(data) {
     try {
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify({
+      // Verificar el tamaño antes de guardar
+      const dataToSave = {
         data: data,
         lastUpdate: new Date().toISOString(),
         source: this.PDF_SOURCE
-      }));
+      };
+      
+      const dataString = JSON.stringify(dataToSave);
+      const sizeKB = Math.round(dataString.length / 1024);
+      
+      // Si es muy grande (más de 5MB), no guardar
+      if (sizeKB > 5120) {
+        console.warn(`Datos demasiado grandes para localStorage: ${sizeKB}KB`);
+        return false;
+      }
+      
+      localStorage.setItem(this.STORAGE_KEY, dataString);
+      console.log(`Datos guardados en localStorage: ${sizeKB}KB`);
+      return true;
     } catch (error) {
-      console.error('Error guardando datos:', error);
+      console.error('Error guardando datos - localStorage lleno:', error);
+      // Limpiar datos antiguos e intentar de nuevo
+      this.clearLocalStorage();
+      try {
+        // Intentar guardar solo datos esenciales
+        const essentialData = {
+          data: data.slice(0, 10), // Solo los primeros 10 registros
+          lastUpdate: new Date().toISOString(),
+          source: this.PDF_SOURCE,
+          limited: true
+        };
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(essentialData));
+        console.log('Datos esenciales guardados tras limpieza');
+        return true;
+      } catch (secondError) {
+        console.error('Error crítico con localStorage:', secondError);
+        return false;
+      }
     }
   }
 
@@ -655,7 +686,41 @@ class ProvidersListService {
    * Limpiar datos guardados
    */
   clearLocalStorage() {
-    localStorage.removeItem(this.STORAGE_KEY);
+    try {
+      localStorage.removeItem(this.STORAGE_KEY);
+      console.log('Caché de proveedores limpiado');
+    } catch (error) {
+      console.error('Error limpiando localStorage:', error);
+    }
+  }
+
+  /**
+   * Limpiar completamente localStorage si está lleno
+   */
+  emergencyCleanup() {
+    try {
+      // Obtener todas las claves de localStorage
+      const keys = Object.keys(localStorage);
+      console.log('Limpieza de emergencia - claves encontradas:', keys.length);
+      
+      // Limpiar claves específicas del proyecto
+      const projectKeys = keys.filter(key => 
+        key.includes('arquitectura') || 
+        key.includes('provider') || 
+        key.includes('pdf') ||
+        key.includes('excel')
+      );
+      
+      projectKeys.forEach(key => {
+        localStorage.removeItem(key);
+      });
+      
+      console.log(`Limpieza completada - ${projectKeys.length} claves eliminadas`);
+      return true;
+    } catch (error) {
+      console.error('Error en limpieza de emergencia:', error);
+      return false;
+    }
   }
 }
 
