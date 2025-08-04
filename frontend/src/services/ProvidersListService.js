@@ -577,6 +577,53 @@ class ProvidersListService {
   }
 
   /**
+   * Verificar si el caché es válido
+   */
+  isCacheValid() {
+    try {
+      const stored = this.loadFromLocalStorage();
+      if (!stored || !stored.lastUpdate) return false;
+      
+      const cacheAge = new Date().getTime() - new Date(stored.lastUpdate).getTime();
+      const maxAge = 24 * 60 * 60 * 1000; // 24 horas
+      
+      return cacheAge < maxAge;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  /**
+   * Obtener información del caché
+   */
+  getCacheInfo() {
+    try {
+      const stored = this.loadFromLocalStorage();
+      if (!stored) return null;
+      
+      return {
+        lastUpdate: stored.lastUpdate,
+        recordCount: stored.data ? stored.data.length : 0,
+        source: stored.source,
+        isValid: this.isCacheValid(),
+        sizeKB: Math.round(JSON.stringify(stored).length / 1024)
+      };
+    } catch (error) {
+      return null;
+    }
+  }
+
+  /**
+   * Forzar actualización del caché
+   */
+  refreshCache() {
+    this.clearLocalStorage();
+    const freshData = this.getExpandedProvidersData();
+    this.saveToLocalStorage(freshData);
+    return freshData;
+  }
+
+  /**
    * Guardar datos en localStorage
    */
   saveToLocalStorage(data) {
