@@ -3,13 +3,15 @@ import { useNotifications } from '../context/NotificationContext';
 import ProviderDataImporter from '../utils/providerDataImporter';
 import CSVProviders from '../components/CSVProviders';
 import ProjectIntegrationSummary from '../components/ProjectIntegrationSummary';
+import PDFMassiveImporter from '../components/PDFMassiveImporter';
+import ProvidersList from '../components/ProvidersList';
 
 export default function Providers() {
   const [providers, setProviders] = useState([]);
   const [showImportModal, setShowImportModal] = useState(false);
   const [importData, setImportData] = useState('');
   const [importType, setImportType] = useState('text');
-  const [activeTab, setActiveTab] = useState('integration'); // Nueva pestaña por defecto
+  const [activeTab, setActiveTab] = useState('lista'); // Cambiar tab por defecto a lista
   const { notifySuccess, notifyError, notifyInfo } = useNotifications();
 
   useEffect(() => {
@@ -135,12 +137,22 @@ export default function Providers() {
             </button>
           </div>
         </div>
-        <p className="text-gray-600">Gestiona los proveedores importados desde archivos CSV de cotizaciones</p>
+        <p className="text-gray-600">Lista completa de proveedores vigentes extraída del PDF oficial de Tarapacá</p>
       </div>
 
       {/* Pestañas */}
       <div className="border-b border-gray-200 mb-6">
         <nav className="-mb-px flex space-x-8">
+          <button
+            onClick={() => setActiveTab('lista')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'lista'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            📋 Lista de Proveedores PDF
+          </button>
           <button
             onClick={() => setActiveTab('integration')}
             className={`py-2 px-1 border-b-2 font-medium text-sm ${
@@ -150,6 +162,16 @@ export default function Providers() {
             }`}
           >
             📊 Integración de Proyectos
+          </button>
+          <button
+            onClick={() => setActiveTab('pdf-massive')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'pdf-massive'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            📄 PDF Masivo (9693 páginas)
           </button>
           <button
             onClick={() => setActiveTab('management')}
@@ -165,8 +187,16 @@ export default function Providers() {
       </div>
 
       {/* Contenido de las pestañas */}
+      {activeTab === 'lista' && (
+        <ProvidersList />
+      )}
+
       {activeTab === 'integration' && (
         <ProjectIntegrationSummary />
+      )}
+
+      {activeTab === 'pdf-massive' && (
+        <PDFMassiveImporter />
       )}
 
       {activeTab === 'management' && (
