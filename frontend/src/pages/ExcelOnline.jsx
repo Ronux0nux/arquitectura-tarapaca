@@ -3,38 +3,36 @@ import { HotTable } from '@handsontable/react';
 import 'handsontable/dist/handsontable.full.min.css';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
-import ProjectExcelService from '../services/ProjectExcelService';
+import ApiService from '../services/ApiService';
+import CotizacionService from '../services/CotizacionService';
 import { useNotifications } from '../context/NotificationContext';
 
 const ExcelOnline = () => {
   const [excelData, setExcelData] = useState({
-    'Hoja 1': [
-      ['', '', '', '', ''],
-      ['', '', '', '', ''],
-      ['', '', '', '', ''],
-      ['', '', '', '', ''],
-      ['', '', '', '', '']
+    'Presupuesto': [
+      ['Item', 'Descripción', 'Cantidad', 'Precio Unit.', 'Precio Total', 'Proveedor', 'Categoría'],
+      ['', '', '', '', '', '', ''],
+      ['', '', '', '', '', '', ''],
+      ['', '', '', '', '', '', ''],
+      ['', '', '', '', '', '', '']
     ]
   });
-  const [sheetNames, setSheetNames] = useState(['Hoja 1']);
+  const [sheetNames, setSheetNames] = useState(['Presupuesto']);
   const [activeSheet, setActiveSheet] = useState(0);
   const [saving, setSaving] = useState(false);
   const [cartItems, setCartItems] = useState([]);
   const [showCartPanel, setShowCartPanel] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
-  const [projectExcelData, setProjectExcelData] = useState(null);
+  const [projectPurchases, setProjectPurchases] = useState([]);
+  const [loading, setLoading] = useState(false);
   const hotTableRef = useRef(null);
   const { notifySuccess, notifyError, notifyInfo } = useNotifications();
 
-  // Cargar proyectos disponibles
-  const [availableProjects] = useState([
-    { id: 'proj_001', name: 'Edificio Residencial Norte', type: 'construction', budget: 850000000 },
-    { id: 'proj_002', name: 'Casa Unifamiliar Premium', type: 'architecture', budget: 320000000 },
-    { id: 'proj_003', name: 'Puente Vehicular Tarapacá', type: 'infrastructure', budget: 1200000000 },
-    { id: 'proj_004', name: 'Renovación Centro Comercial', type: 'renovation', budget: 450000000 }
-  ]);
+  // Cargar proyectos reales desde la base de datos
+  const [availableProjects, setAvailableProjects] = useState([]);
 
   useEffect(() => {
+    loadRealProjects();
     const savedCart = localStorage.getItem('excelCartItems');
     if (savedCart) {
       setCartItems(JSON.parse(savedCart));
@@ -45,38 +43,214 @@ const ExcelOnline = () => {
     localStorage.setItem('excelCartItems', JSON.stringify(cartItems));
   }, [cartItems]);
 
+  // Cargar proyectos reales desde la base de datos
+  const loadRealProjects = async () => {
+    try {
+      setLoading(true);
+      console.log('📊 Cargando proyectos reales...');
+      
+      const response = await ApiService.get('/projects');
+      
+      if (response.success && response.data) {
+        setAvailableProjects(response.data);
+        notifyInfo(`${response.data.length} proyectos cargados desde la base de datos`);
+      } else {
+        // Fallback: cargar proyectos de ejemplo si no hay conexión
+        const fallbackProjects = [
+          { 
+            id: 'proyecto_ejemplo_1', 
+            name: 'Proyecto Ejemplo 1', 
+            description: 'Proyecto de ejemplo para demostración',
+            budget: 500000000,
+            status: 'active',
+            type: 'construction'
+          }
+        ];
+        setAvailableProjects(fallbackProjects);
+        notifyInfo('Usando proyectos de ejemplo (sin conexión a BD)');
+      }
+    } catch (error) {
+      console.error('❌ Error cargando proyectos:', error);
+      
+      // Fallback a proyectos de ejemplo
+      const fallbackProjects = [
+        { 
+          id: 'proyecto_ejemplo_1', 
+          name: 'Proyecto Ejemplo 1', 
+          description: 'Proyecto de ejemplo para demostración',
+          budget: 500000000,
+          status: 'active',
+          type: 'construction'
+        },
+        { 
+          id: 'proyecto_ejemplo_2', 
+          name: 'Proyecto Ejemplo 2', 
+          description: 'Segundo proyecto de ejemplo',
+          budget: 300000000,
+          status: 'active',
+          type: 'architecture'
+        }
+      ];
+      
+      setAvailableProjects(fallbackProjects);
+      notifyError('Error de conexión. Usando proyectos de ejemplo');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Cargar compras/cotizaciones reales para un proyecto específico
+  const loadProjectPurchases = async (projectId) => {
+    try {
+      setLoading(true);
+      console.log(`📋 Cargando compras para proyecto: ${projectId}`);
+      
+      // Intentar cargar cotizaciones del proyecto desde la base de datos
+      const cotizacionesResponse = await CotizacionService.getCotizacionesByProject(projectId);
+      
+      let purchases = [];
+      
+      if (cotizacionesResponse.success && cotizacionesResponse.cotizaciones) {
+        // Procesar cotizaciones reales del proyecto
+        purchases = cotizacionesResponse.cotizaciones.flatMap(cotizacion => 
+          cotizacion.productos?.map(producto => ({
+            item: producto.codigo || 'N/A',
+            descripcion: producto.nombre || producto.descripcion || 'Sin descripción',
+            cantidad: producto.cantidad || 1,
+            precioUnitario: producto.precio || 0,
+            precioTotal: (producto.cantidad || 1) * (producto.precio || 0),
+            proveedor: cotizacion.proveedor?.nombre || 'Sin proveedor',
+            categoria: producto.categoria || 'Sin categoría',
+            fechaCotizacion: cotizacion.fecha || new Date().toISOString().split('T')[0]
+          })) || []
+        );
+      }
+      
+      // Si no hay compras reales, crear datos de ejemplo para el proyecto
+      if (purchases.length === 0) {
+        purchases = [
+          {
+            item: 'ITEM-001',
+            descripcion: 'Cemento Portland Tipo I - 42.5kg',
+            cantidad: 100,
+            precioUnitario: 8500,
+            precioTotal: 850000,
+            proveedor: 'Cementos Tarapacá',
+            categoria: 'Materiales Básicos'
+          },
+          {
+            item: 'ITEM-002', 
+            descripcion: 'Fierro Corrugado 12mm x 12m',
+            cantidad: 50,
+            precioUnitario: 15000,
+            precioTotal: 750000,
+            proveedor: 'Aceros del Norte',
+            categoria: 'Estructural'
+          },
+          {
+            item: 'ITEM-003',
+            descripcion: 'Ladrillos Artesanales 24x11x7cm',
+            cantidad: 2000,
+            precioUnitario: 320,
+            precioTotal: 640000,
+            proveedor: 'Ladrillería San Pedro',
+            categoria: 'Albañilería'
+          }
+        ];
+        
+        notifyInfo(`No se encontraron compras para este proyecto. Mostrando ${purchases.length} items de ejemplo.`);
+      } else {
+        notifySuccess(`${purchases.length} compras cargadas desde la base de datos`);
+      }
+      
+      setProjectPurchases(purchases);
+      return purchases;
+      
+    } catch (error) {
+      console.error('❌ Error cargando compras del proyecto:', error);
+      
+      // Fallback a datos de ejemplo
+      const fallbackPurchases = [
+        {
+          item: 'ITEM-ERROR',
+          descripcion: 'Error al cargar - Dato de ejemplo',
+          cantidad: 1,
+          precioUnitario: 0,
+          precioTotal: 0,
+          proveedor: 'Error de conexión',
+          categoria: 'Sin categoría'
+        }
+      ];
+      
+      setProjectPurchases(fallbackPurchases);
+      notifyError('Error cargando compras. Mostrando datos de ejemplo.');
+      return fallbackPurchases;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleProjectSelection = async (project) => {
     try {
       setSelectedProject(project);
       notifyInfo(`Generando datos para ${project.name}...`);
       
-      const projectData = await ProjectExcelService.generateProjectExcelData(project.id);
-      setProjectExcelData(projectData);
+      // Cargar compras reales del proyecto
+      const purchases = await loadProjectPurchases(project.id);
       
-      // Actualizar las hojas con los datos del proyecto
-      const newExcelData = {};
-      const newSheetNames = [];
+      // Crear hoja de presupuesto con datos reales
+      const budgetData = [
+        ['Item', 'Descripción', 'Cantidad', 'Precio Unit.', 'Precio Total', 'Proveedor', 'Categoría'],
+        ...purchases.map(purchase => [
+          purchase.item,
+          purchase.descripcion,
+          purchase.cantidad,
+          `$${purchase.precioUnitario.toLocaleString()}`,
+          `$${purchase.precioTotal.toLocaleString()}`,
+          purchase.proveedor,
+          purchase.categoria
+        ]),
+        [], // Fila vacía
+        ['TOTAL PRESUPUESTO', '', '', '', `$${purchases.reduce((total, p) => total + p.precioTotal, 0).toLocaleString()}`, '', '']
+      ];
       
-      if (projectData.budgetSheet) {
-        newExcelData['Presupuesto'] = projectData.budgetSheet.data;
-        newSheetNames.push('Presupuesto');
-      }
+      // Crear hoja de resumen por categoría
+      const categorySummary = {};
+      purchases.forEach(purchase => {
+        const cat = purchase.categoria || 'Sin categoría';
+        if (!categorySummary[cat]) {
+          categorySummary[cat] = { items: 0, total: 0 };
+        }
+        categorySummary[cat].items += 1;
+        categorySummary[cat].total += purchase.precioTotal;
+      });
       
-      if (projectData.apuSheet) {
-        newExcelData['APU'] = projectData.apuSheet.data;
-        newSheetNames.push('APU');
-      }
+      const summaryData = [
+        ['Categoría', 'Cantidad Items', 'Total'],
+        ...Object.entries(categorySummary).map(([cat, data]) => [
+          cat,
+          data.items,
+          `$${data.total.toLocaleString()}`
+        ])
+      ];
       
-      if (projectData.resourcesSheet) {
-        newExcelData['Recursos'] = projectData.resourcesSheet.data;
-        newSheetNames.push('Recursos');
-      }
+      // Actualizar las hojas
+      const newExcelData = {
+        'Presupuesto': budgetData,
+        'Resumen por Categoría': summaryData,
+        'Items por Proveedor': [
+          ['Proveedor', 'Item', 'Descripción', 'Total'],
+          ...purchases.map(p => [p.proveedor, p.item, p.descripcion, `$${p.precioTotal.toLocaleString()}`])
+        ]
+      };
+      
+      const newSheetNames = ['Presupuesto', 'Resumen por Categoría', 'Items por Proveedor'];
       
       setExcelData(newExcelData);
       setSheetNames(newSheetNames);
       setActiveSheet(0);
       
-      notifySuccess(`Datos cargados para ${project.name}`);
+      notifySuccess(`Presupuesto generado para ${project.name} con ${purchases.length} items`);
     } catch (error) {
       notifyError(`Error al cargar proyecto: ${error.message}`);
     }
@@ -166,7 +340,7 @@ const ExcelOnline = () => {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-                📊 Plantillas Excel para Proyectos
+                📊 Presupuestos de Proyectos Reales
                 {selectedProject && (
                   <span className="text-lg text-blue-600">
                     - {selectedProject.name}
@@ -174,7 +348,10 @@ const ExcelOnline = () => {
                 )}
               </h1>
               <p className="text-sm text-gray-600">
-                Crea y edita plantillas Excel vinculadas a proyectos específicos
+                {selectedProject 
+                  ? `Presupuesto detallado con compras y cotizaciones del proyecto` 
+                  : 'Selecciona un proyecto para ver su presupuesto con compras reales'
+                }
               </p>
             </div>
             <div className="flex gap-2">
@@ -202,26 +379,68 @@ const ExcelOnline = () => {
           <div className="flex-1">
             {/* Selector de Proyectos */}
             <div className="bg-white rounded-lg shadow-sm border mb-6 p-4">
-              <h3 className="text-lg font-semibold mb-3">🏗️ Seleccionar Proyecto</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-                {availableProjects.map(project => (
+              <h3 className="text-lg font-semibold mb-3">🏗️ Seleccionar Proyecto Real</h3>
+              {loading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="text-gray-500">Cargando proyectos...</div>
+                </div>
+              ) : availableProjects.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="text-gray-500 mb-2">No hay proyectos disponibles</div>
                   <button
-                    key={project.id}
-                    onClick={() => handleProjectSelection(project)}
-                    className={`p-3 border rounded-lg text-left transition-colors ${
-                      selectedProject?.id === project.id
-                        ? 'border-blue-500 bg-blue-50 text-blue-700'
-                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                    }`}
+                    onClick={loadRealProjects}
+                    className="text-blue-600 hover:text-blue-800 text-sm"
                   >
-                    <div className="font-medium text-sm">{project.name}</div>
-                    <div className="text-xs text-gray-500 capitalize">{project.type}</div>
-                    <div className="text-xs text-green-600">
-                      ${(project.budget / 1000000).toFixed(1)}M
-                    </div>
+                    Recargar proyectos
                   </button>
-                ))}
-              </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {availableProjects.map(project => (
+                    <button
+                      key={project.id}
+                      onClick={() => handleProjectSelection(project)}
+                      className={`p-4 border rounded-lg text-left transition-colors ${
+                        selectedProject?.id === project.id
+                          ? 'border-blue-500 bg-blue-50 text-blue-700'
+                          : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      <div className="font-medium text-sm mb-1">{project.name}</div>
+                      {project.description && (
+                        <div className="text-xs text-gray-500 mb-2">{project.description}</div>
+                      )}
+                      <div className="flex justify-between items-center">
+                        <div className="text-xs text-green-600">
+                          {project.budget ? `$${(project.budget / 1000000).toFixed(1)}M` : 'Sin presupuesto'}
+                        </div>
+                        <div className={`text-xs px-2 py-1 rounded-full ${
+                          project.status === 'active' 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {project.status || 'activo'}
+                        </div>
+                      </div>
+                      {project.type && (
+                        <div className="text-xs text-gray-500 mt-1 capitalize">{project.type}</div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+              
+              {selectedProject && (
+                <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                  <div className="text-sm font-medium text-blue-800">
+                    Proyecto seleccionado: {selectedProject.name}
+                  </div>
+                  <div className="text-xs text-blue-600 mt-1">
+                    {projectPurchases.length} items en el presupuesto | 
+                    Total: ${projectPurchases.reduce((total, p) => total + p.precioTotal, 0).toLocaleString()}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Pestañas */}
