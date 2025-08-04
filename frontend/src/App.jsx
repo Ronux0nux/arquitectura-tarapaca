@@ -96,14 +96,6 @@ export default function App() {
                   } 
                 />
                 <Route 
-                  path="/demo-carrito" 
-                  element={
-                    <ProtectedRoute>
-                      <DemoCarrito />
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route 
                   path="/historial" 
                   element={
                     <ProtectedRoute requiredPermission="cotizaciones">
