@@ -5,6 +5,7 @@ import '../components/ExcelOnline.css';
 import axios from 'axios';
 import { useCotizaciones } from '../context/CotizacionesContext';
 import { useCart } from '../context/CartContext';
+import ProjectExcelService from '../services/ProjectExcelService';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
@@ -16,8 +17,12 @@ const ExcelOnline = () => {
   const [sheetNames, setSheetNames] = useState([]);
   const [showDatasetPanel, setShowDatasetPanel] = useState(false);
   const [showCartPanel, setShowCartPanel] = useState(false);
+  const [showProjectPanel, setShowProjectPanel] = useState(true); // Nuevo panel para proyectos
   const [selectedProject, setSelectedProject] = useState('');
   const [proyectos, setProyectos] = useState([]);
+  const [projectExcelData, setProjectExcelData] = useState(null);
+  const [availableTemplates, setAvailableTemplates] = useState([]);
+  const [selectedTemplate, setSelectedTemplate] = useState('');
   
   const { productosDatabase } = useCotizaciones();
   const { cartItems } = useCart();
@@ -83,12 +88,105 @@ const ExcelOnline = () => {
     };
   };
 
-  // Inicializar plantillas localmente (sin cargar archivos)
+  // Inicializar componente
   useEffect(() => {
-    initializeLocalTemplates();
-    loadProjects();
+    initializeComponent();
   }, []);
 
+  // Inicializar datos del componente
+  const initializeComponent = async () => {
+    setLoading(true);
+    try {
+      // Cargar plantillas disponibles
+      const templates = ProjectExcelService.getAvailableTemplates();
+      setAvailableTemplates(templates);
+      
+      // Cargar proyectos
+      await loadProjects();
+      
+      // Inicializar plantillas locales como fallback
+      initializeLocalTemplates();
+      
+    } catch (error) {
+      console.error('Error inicializando componente:', error);
+      initializeLocalTemplates(); // Fallback
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Cargar proyectos desde el servicio
+  const loadProjects = async () => {
+    try {
+      const response = await ProjectExcelService.getAllProjects();
+      if (response.success) {
+        setProyectos(response.data);
+        console.log(`✅ ${response.data.length} proyectos cargados (fuente: ${response.source})`);
+      }
+    } catch (error) {
+      console.error('Error cargando proyectos:', error);
+    }
+  };
+
+  // Manejar selección de proyecto
+  const handleProjectSelection = async (projectId) => {
+    if (!projectId) {
+      setSelectedProject('');
+      setProjectExcelData(null);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      console.log('🏗️ Cargando datos Excel para proyecto:', projectId);
+      
+      const response = await ProjectExcelService.generateProjectExcelData(projectId);
+      
+      if (response.success) {
+        setSelectedProject(projectId);
+        setProjectExcelData(response.data);
+        
+        // Configurar hojas del Excel basadas en el proyecto
+        const sheets = Object.keys(response.data.sheets);
+        setSheetNames(sheets);
+        setActiveSheet(0);
+        
+        // Configurar datos de la primera hoja
+        if (sheets.length > 0) {
+          const firstSheet = response.data.sheets[sheets[0]];
+          setExcelData(firstSheet.data);
+        }
+        
+        console.log(`✅ Datos Excel generados para proyecto: ${response.data.project.name}`);
+      } else {
+        throw new Error('No se pudieron generar datos del proyecto');
+      }
+      
+    } catch (error) {
+      console.error('❌ Error cargando datos del proyecto:', error);
+      alert(`Error: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Cambiar hoja activa
+  const handleSheetChange = (sheetIndex) => {
+    if (projectExcelData && projectExcelData.sheets) {
+      const sheetName = sheetNames[sheetIndex];
+      const sheetData = projectExcelData.sheets[sheetName];
+      
+      if (sheetData) {
+        setActiveSheet(sheetIndex);
+        setExcelData(sheetData.data);
+      }
+    } else {
+      // Comportamiento original para plantillas locales
+      setActiveSheet(sheetIndex);
+    }
+  };
+
+  // Inicializar plantillas localmente (sin cargar archivos) - FALLBACK
   const initializeLocalTemplates = () => {
     setLoading(true);
     try {
@@ -134,15 +232,6 @@ const ExcelOnline = () => {
       alert('Error cargando plantillas Excel');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const loadProjects = async () => {
-    try {
-      const response = await axios.get(`${API_BASE_URL}/projects`);
-      setProyectos(response.data);
-    } catch (error) {
-      console.error('Error cargando proyectos:', error);
     }
   };
 
@@ -385,30 +474,95 @@ const ExcelOnline = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Header con información del proyecto */}
       <div className="bg-white shadow-sm border-b">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-800">📊 Plantillas Excel</h1>
+              <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                📊 Plantillas Excel para Proyectos
+                {selectedProject && projectExcelData && (
+                  <span className="text-lg text-blue-600">
+                    - {projectExcelData.project.name}
+                  </span>
+                )}
+              </h1>
               <p className="text-sm text-gray-600">
-                Genera presupuestos, APUs y listados de recursos desde tu dataset
+                {selectedProject 
+                  ? "Genera presupuestos, APUs y recursos específicos del proyecto seleccionado"
+                  : "Selecciona un proyecto para generar plantillas Excel con datos específicos"
+                }
               </p>
             </div>
             
             <div className="flex items-center gap-3">
-              {/* Selector de proyecto */}
+              {/* Información del proyecto seleccionado */}
+              {selectedProject && projectExcelData && (
+                <div className="text-right text-sm">
+                  <div className="text-gray-600">Cliente: {projectExcelData.project.client}</div>
+                  <div className="text-gray-600">Tipo: {projectExcelData.template.name} {projectExcelData.template.icon}</div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Panel de selección de proyecto */}
+      <div className="bg-blue-50 border-b border-blue-200">
+        <div className="container mx-auto px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <label className="text-sm font-medium text-blue-800">
+                Seleccionar Proyecto:
+              </label>
               <select
                 value={selectedProject}
-                onChange={(e) => setSelectedProject(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                onChange={(e) => handleProjectSelection(e.target.value)}
+                className="px-4 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white min-w-[300px]"
+                disabled={loading}
               >
-                <option value="">Sin proyecto específico</option>
+                <option value="">🏗️ Selecciona un proyecto...</option>
                 {proyectos.map((proyecto) => (
-                  <option key={proyecto._id} value={proyecto._id}>
-                    {proyecto.nombre}
+                  <option key={proyecto.id || proyecto._id} value={proyecto.id || proyecto._id}>
+                    {availableTemplates.find(t => t.id === proyecto.type)?.icon || '🏗️'} {proyecto.name}
                   </option>
                 ))}
               </select>
+              
+              {loading && (
+                <div className="flex items-center gap-2 text-blue-600">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                  <span className="text-sm">Cargando...</span>
+                </div>
+              )}
+            </div>
+
+            {/* Información del proyecto y acciones */}
+            {selectedProject && projectExcelData && (
+              <div className="flex items-center gap-3">
+                <div className="text-sm text-blue-700">
+                  Presupuesto: <span className="font-semibold">
+                    {new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' })
+                      .format(projectExcelData.project.budget)}
+                  </span>
+                </div>
+                <button
+                  onClick={() => handleProjectSelection('')}
+                  className="px-3 py-1 bg-blue-200 text-blue-800 rounded hover:bg-blue-300 text-sm"
+                >
+                  ✕ Limpiar
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="container mx-auto px-4 py-6">
+        <div className="flex gap-6">
+          {/* Panel principal */}
+          <div className="flex-1">
               
               <button
                 onClick={loadExcelTemplate}

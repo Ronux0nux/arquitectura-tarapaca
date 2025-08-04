@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useNotifications } from '../context/NotificationContext';
 import ProviderDataImporter from '../utils/providerDataImporter';
 import CSVProviders from '../components/CSVProviders';
+import ProjectIntegrationSummary from '../components/ProjectIntegrationSummary';
 
 export default function Providers() {
   const [providers, setProviders] = useState([]);
   const [showImportModal, setShowImportModal] = useState(false);
   const [importData, setImportData] = useState('');
   const [importType, setImportType] = useState('text');
+  const [activeTab, setActiveTab] = useState('integration'); // Nueva pestaña por defecto
   const { notifySuccess, notifyError, notifyInfo } = useNotifications();
 
   useEffect(() => {
@@ -136,21 +138,40 @@ export default function Providers() {
         <p className="text-gray-600">Gestiona los proveedores importados desde archivos CSV de cotizaciones</p>
       </div>
 
-      {/* Tabs Navigation */}
-      <div className="mb-6">
-        <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8">
-            <button
-              className="py-2 px-1 border-b-2 border-blue-500 text-blue-600 font-medium text-sm"
-            >
-              📊 Proveedores de Cotizaciones CSV
-            </button>
-          </nav>
-        </div>
+      {/* Pestañas */}
+      <div className="border-b border-gray-200 mb-6">
+        <nav className="-mb-px flex space-x-8">
+          <button
+            onClick={() => setActiveTab('integration')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'integration'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            📊 Integración de Proyectos
+          </button>
+          <button
+            onClick={() => setActiveTab('management')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'management'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            🏢 Gestión de Proveedores
+          </button>
+        </nav>
       </div>
 
-      {/* CSV Providers Content */}
-      <CSVProviders />
+      {/* Contenido de las pestañas */}
+      {activeTab === 'integration' && (
+        <ProjectIntegrationSummary />
+      )}
+
+      {activeTab === 'management' && (
+        <CSVProviders />
+      )}
 
       {/* Import Modal */}
       {showImportModal && (
