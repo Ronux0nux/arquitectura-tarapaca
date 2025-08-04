@@ -21,7 +21,7 @@ export default function PDFViewer() {
       // Simular información del PDF
       if (file.name.includes('ListadoProveedoresVigentes')) {
         setTotalPages(9751);
-        notifySuccess('PDF de 9,751 páginas detectado', 'PDF Masivo Cargado');
+        notifySuccess('PDF de 9,751 páginas detectado', 'PDF Cargado');
       }
     } else {
       notifyError('Por favor selecciona un archivo PDF válido', 'Error de Archivo');

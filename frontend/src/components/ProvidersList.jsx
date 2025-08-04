@@ -19,11 +19,35 @@ export default function ProvidersList() {
   const [viewMode, setViewMode] = useState('table'); // 'table' o 'pdf'
   const { notifySuccess } = useNotifications();
 
-  // Cargar datos al montar el componente
+  // Cargar datos al montar el componente con sistema de caché optimizado
   useEffect(() => {
     setLoading(true);
     
-    // Cargar datos del servicio
+    // Verificar si hay datos en caché
+    const cachedData = ProvidersListService.loadFromLocalStorage();
+    const cacheExpiry = 24 * 60 * 60 * 1000; // 24 horas en milliseconds
+    const now = new Date().getTime();
+    
+    if (cachedData && cachedData.lastUpdate) {
+      const cacheAge = now - new Date(cachedData.lastUpdate).getTime();
+      
+      if (cacheAge < cacheExpiry) {
+        // Usar datos del caché si son recientes
+        console.log('📋 Cargando proveedores desde caché local');
+        const stats = ProvidersListService.getProviderStatistics(cachedData.data);
+        
+        setProviders(cachedData.data);
+        setFilteredProviders(cachedData.data);
+        setStatistics(stats);
+        setLoading(false);
+        
+        notifySuccess(`${cachedData.data.length} proveedores cargados desde caché`, 'Datos Locales');
+        return;
+      }
+    }
+    
+    // Si no hay caché o está expirado, cargar datos frescos
+    console.log('📊 Cargando datos frescos de proveedores...');
     setTimeout(() => {
       const providersData = ProvidersListService.getExpandedProvidersData();
       const stats = ProvidersListService.getProviderStatistics(providersData);
@@ -33,12 +57,12 @@ export default function ProvidersList() {
       setStatistics(stats);
       setLoading(false);
       
-      // Guardar en localStorage
+      // Guardar en localStorage con timestamp
       ProvidersListService.saveToLocalStorage(providersData);
       
-      // Datos cargados sin notificación automática
+      notifySuccess(`${providersData.length} proveedores cargados del PDF`, 'Datos Actualizados');
     }, 1000);
-  }, []);
+  }, [notifySuccess]);
 
   // Filtrar proveedores basado en búsqueda y filtros
   useEffect(() => {
@@ -103,6 +127,44 @@ export default function ProvidersList() {
     setShowCertified(false);
     setShowOnlyActive(false);
     setSortBy('nombre');
+  };
+
+  // Actualizar datos (forzar recarga)
+  const refreshData = () => {
+    setLoading(true);
+    
+    // Limpiar caché y recargar
+    const freshData = ProvidersListService.refreshCache();
+    const stats = ProvidersListService.getProviderStatistics(freshData);
+    
+    setProviders(freshData);
+    setFilteredProviders(freshData);
+    setStatistics(stats);
+    setLoading(false);
+    
+    notifySuccess('Datos de proveedores actualizados', 'Caché Renovado');
+  };
+
+  // Obtener información del caché
+  const getCacheStatus = () => {
+    const cacheInfo = ProvidersListService.getCacheInfo();
+    if (!cacheInfo) return 'Sin caché';
+    
+    const lastUpdate = new Date(cacheInfo.lastUpdate);
+    const timeDiff = new Date().getTime() - lastUpdate.getTime();
+    const minutesAgo = Math.floor(timeDiff / (1000 * 60));
+    const hoursAgo = Math.floor(minutesAgo / 60);
+    
+    let timeText;
+    if (minutesAgo < 1) timeText = 'Hace menos de 1 minuto';
+    else if (minutesAgo < 60) timeText = `Hace ${minutesAgo} minuto${minutesAgo > 1 ? 's' : ''}`;
+    else timeText = `Hace ${hoursAgo} hora${hoursAgo > 1 ? 's' : ''}`;
+    
+    return {
+      ...cacheInfo,
+      timeText,
+      isValid: cacheInfo.isValid
+    };
   };
 
   return (
@@ -171,6 +233,15 @@ export default function ProvidersList() {
               <div className="text-sm text-purple-600">Categorías</div>
               <div className="text-xl font-bold text-purple-800">{categories.length}</div>
               <div className="text-xs text-purple-500">tipos disponibles</div>
+            </div>
+            <div className="bg-orange-50 px-4 py-2 rounded-lg text-center border-l-4 border-orange-400">
+              <div className="text-sm text-orange-600">Estado de Caché</div>
+              <div className="text-xl font-bold text-orange-800">
+                {getCacheStatus().isValid ? '⚡' : '🔄'}
+              </div>
+              <div className="text-xs text-orange-500">
+                {getCacheStatus().timeText}
+              </div>
             </div>
             {statistics && (
               <div className="bg-orange-50 px-4 py-2 rounded-lg text-center border-l-4 border-orange-400">
@@ -370,6 +441,13 @@ export default function ProvidersList() {
               className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 flex items-center gap-1"
             >
               🔄 Limpiar Filtros
+            </button>
+            <button
+              onClick={refreshData}
+              disabled={loading}
+              className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 flex items-center gap-1"
+            >
+              {loading ? '⟳' : '🔄'} Actualizar Datos
             </button>
             <button
               onClick={exportToCSV}
