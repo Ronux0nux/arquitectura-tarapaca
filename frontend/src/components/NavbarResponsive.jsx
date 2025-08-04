@@ -135,18 +135,6 @@ export default function NavbarResponsive() {
 
             <Separator />
 
-            {/* Compras */}
-            {canAccess('cotizaciones') && (
-              <div className="flex items-center gap-2">
-                <span className="text-blue-200 text-sm font-medium">Compras</span>
-                <NavLink 
-                  to="/Demo de cotizaciones" 
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  Demo
-                </NavLink>
-              </div>
-            )}
           </div>
 
           {/* Right side elements */}
@@ -244,19 +232,6 @@ export default function NavbarResponsive() {
                 <NavLink to="/buscador" onClick={closeMenu}>Buscador</NavLink>
                 <NavLink to="/excel" onClick={closeMenu}>📊 Excel Online</NavLink>
               </DropdownGroup>
-
-              {/* Compras */}
-              {canAccess('cotizaciones') && (
-                <DropdownGroup title="Compras" groupKey="shopping">
-                  <NavLink 
-                    to="/Demo de cotizaciones" 
-                    className="bg-green-600 hover:bg-green-700"
-                    onClick={closeMenu}
-                  >
-                    Demo Carrito
-                  </NavLink>
-                </DropdownGroup>
-              )}
             </div>
           </div>
         )}

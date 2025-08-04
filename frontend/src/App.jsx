@@ -14,7 +14,6 @@ import Insumos from "./pages/Insumos";
 import Cotizaciones from "./pages/Cotizaciones";
 import ActasReunion from './pages/ActasReunion';
 import BuscadorPage from './pages/BuscadorPage';
-import DemoCarrito from './pages/DemoCarrito';
 import HistorialCotizaciones from './pages/HistorialCotizaciones';
 import ConfiguracionPage from './pages/ConfiguracionPage';
 import ExcelOnline from './pages/ExcelOnline';
@@ -98,14 +97,6 @@ export default function App() {
                 />
                 <Route 
                   path="/demo-carrito" 
-                  element={
-                    <ProtectedRoute>
-                      <DemoCarrito />
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route 
-                  path="/Demo de cotizaciones" 
                   element={
                     <ProtectedRoute>
                       <DemoCarrito />

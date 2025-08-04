@@ -97,16 +97,6 @@ export default function Navbar() {
         <Separator />
 
         {/* Compras */}
-        <div className="flex items-center gap-2">
-          <span className="text-blue-200 text-sm font-medium">Compras</span>
-          <NavLink 
-            to="/Demo de cotizaciones" 
-            className="bg-green-600 hover:bg-green-700"
-          >
-            Demo Carrito
-          </NavLink>
-        </div>
-
         {/* Elementos del lado derecho */}
         <div className="ml-auto flex items-center gap-3">
           {/* Campana de notificaciones */}
