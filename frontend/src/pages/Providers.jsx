@@ -12,7 +12,7 @@ export default function Providers() {
   const [importData, setImportData] = useState('');
   const [importType, setImportType] = useState('text');
   const [activeTab, setActiveTab] = useState('lista'); // Cambiar tab por defecto a lista
-  const { notifySuccess, notifyError, notifyInfo } = useNotifications();
+  const { notifySuccess, notifyError } = useNotifications();
 
   useEffect(() => {
     // Cargar proveedores importados si existen

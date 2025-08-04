@@ -13,7 +13,7 @@ export default function Presupuestos() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
   const [sortBy, setSortBy] = useState('descripcion');
-  const { notifySuccess, notifyError, notifyInfo } = useNotifications();
+  const { notifySuccess, notifyError } = useNotifications();
 
   // Cargar proyectos al inicializar
   useEffect(() => {
@@ -91,7 +91,7 @@ export default function Presupuestos() {
           setBudgetData(budgetItems);
           calculateStats(budgetItems);
           
-          notifySuccess(`Presupuesto cargado: ${budgetItems.length} items`);
+          // Presupuesto cargado sin notificación automática
         } catch (error) {
           console.error('❌ Error cargando presupuesto:', error);
           
@@ -108,7 +108,7 @@ export default function Presupuestos() {
 
       loadBudgetData();
     }
-  }, [selectedProject, notifySuccess, notifyError]);
+  }, [selectedProject, notifyError]);
 
   // Generar presupuesto de ejemplo para demostración
   const generateSampleBudget = (projectId) => {

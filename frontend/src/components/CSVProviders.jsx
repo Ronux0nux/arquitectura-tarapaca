@@ -10,7 +10,7 @@ export default function CSVProviders() {
   const [currentPage, setCurrentPage] = useState(1);
   const [providersPerPage] = useState(20);
   const [sortConfig, setSortConfig] = useState({ key: 'fullName', direction: 'asc' });
-  const { notifySuccess, notifyError, notifyInfo } = useNotifications();
+  const { notifySuccess } = useNotifications();
 
   // Filtrar proveedores basado en término de búsqueda
   useEffect(() => {

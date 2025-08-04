@@ -121,9 +121,9 @@ export default function PDFMassiveImporter() {
       setPdfData(savedData);
       const stats = PDFMassiveService.getStatistics();
       setStatistics(stats);
-      notifyInfo(`PDF previamente cargado: ${savedData.fileName} (${savedData.totalPages.toLocaleString()} páginas)`);
+      // PDF previamente cargado sin notificación automática
     }
-  }, [notifyInfo]);
+  }, []);
 
   return (
     <div className="space-y-6">

@@ -14,7 +14,7 @@ export default function ProvidersList() {
   const [currentPage, setCurrentPage] = useState(1);
   const [statistics, setStatistics] = useState(null);
   const itemsPerPage = 15;
-  const { notifySuccess, notifyError, notifyInfo } = useNotifications();
+  const { notifySuccess } = useNotifications();
 
   // Cargar datos al montar el componente
   useEffect(() => {
