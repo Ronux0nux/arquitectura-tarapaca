@@ -1,257 +1,436 @@
-import axios from 'axios';
+/**
+ * Provider Service
+ * Maneja operaciones CRUD de proveedores con MongoDB Atlas
+ * 
+ * CONFIGURACIÓN ACTUAL:
+ * - Base de datos: MongoDB Atlas (colección 'providers')
+ * - Modelo: Provider.js en backend
+ * - Fallback: Datos CSV locales + localStorage
+ * 
+ * PARA CAMBIAR BASE DE DATOS:
+ * 1. Modificar endpoints si cambian las rutas del backend
+ * 2. Actualizar handleOfflineMode() si cambias el sistema de fallback
+ * 3. Cambiar processCSVProviders() si modificas el formato de CSV
+ * 4. Ajustar cacheProviders() si cambias el sistema de cache local
+ */
 
-// Configuración base para las APIs de proveedores
-const API_BASE_URL = 'http://localhost:3001/api';
+import ApiService from './ApiService';
+import { sampleCSVProviders } from '../data/sampleCSVData';
 
-// Clase para manejar diferentes proveedores
 class ProviderService {
   constructor() {
-    this.providers = {
-      'sodimac': {
-        name: 'Sodimac',
-        baseUrl: 'https://www.sodimac.cl/sodimac-cl/search/',
-        searchEndpoint: 'search',
-        priceEndpoint: 'price',
-        stockEndpoint: 'stock',
-        icon: '🏪'
-      },
-      'easy': {
-        name: 'Easy',
-        baseUrl: 'https://www.easy.cl/easy-cl/search/',
-        searchEndpoint: 'search',
-        priceEndpoint: 'price',
-        stockEndpoint: 'stock',
-        icon: '🏬'
-      },
-      'construmart': {
-        name: 'Construmart',
-        baseUrl: 'https://www.construmart.cl/construmart-cl/search/',
-        searchEndpoint: 'search',
-        priceEndpoint: 'price',
-        stockEndpoint: 'stock',
-        icon: '🏭'
-      },
-      'imperial': {
-        name: 'Imperial',
-        baseUrl: 'https://www.imperial.cl/imperial-cl/search/',
-        searchEndpoint: 'search',
-        priceEndpoint: 'price',
-        stockEndpoint: 'stock',
-        icon: '🏛️'
+    this.apiService = ApiService;
+    
+    // CONFIGURACIÓN DE ENDPOINTS DE PROVEEDORES
+    // Si el backend cambia estas rutas, modificar aquí
+    this.endpoints = {
+      getAll: '/providers',
+      getById: '/providers',
+      create: '/providers',
+      update: '/providers',
+      delete: '/providers',
+      import: '/providers/import',
+      export: '/providers/export',
+      search: '/providers/search',
+      // Endpoints específicos para CSV
+      csvProviders: '/csv-providers',
+      csvStats: '/csv-providers/stats'
+    };
+
+    // Cache local para modo offline
+    this.cache = {
+      providers: null,
+      lastUpdate: null,
+      csvData: null
+    };
+
+    console.log('🏢 ProviderService inicializado');
+  }
+
+  /**
+   * Obtener todos los proveedores desde la base de datos
+   * FALLBACK: Datos locales si no hay conexión
+   */
+  async getAllProviders() {
+    try {
+      console.log('📋 Obteniendo proveedores desde BD...');
+      
+      const response = await this.apiService.get(this.endpoints.getAll);
+      
+      if (response.success && response.data) {
+        // Cachear datos para uso offline
+        this.cacheProviders(response.data);
+        
+        console.log(`✅ ${response.data.length} proveedores obtenidos desde BD`);
+        return {
+          success: true,
+          data: response.data,
+          source: 'database'
+        };
+      } else {
+        throw new Error('Respuesta inválida del servidor');
+      }
+      
+    } catch (error) {
+      console.warn('⚠️ Error obteniendo proveedores de BD, usando modo offline:', error.message);
+      return this.handleOfflineMode();
+    }
+  }
+
+  /**
+   * Obtener proveedores CSV desde la base de datos
+   * Estos son los proveedores importados desde los archivos CSV de cotizaciones
+   */
+  async getCSVProviders() {
+    try {
+      console.log('📊 Obteniendo proveedores CSV desde BD...');
+      
+      const response = await this.apiService.get(this.endpoints.csvProviders);
+      
+      if (response.success && response.data) {
+        // Cachear datos CSV
+        this.cache.csvData = response.data;
+        
+        console.log(`✅ ${response.data.providers?.length || 0} proveedores CSV desde BD`);
+        return {
+          success: true,
+          ...response.data,
+          source: 'database'
+        };
+      } else {
+        throw new Error('No se pudieron obtener proveedores CSV');
+      }
+      
+    } catch (error) {
+      console.warn('⚠️ Error obteniendo CSV de BD, usando datos de ejemplo:', error.message);
+      return this.getCSVProvidersOffline();
+    }
+  }
+
+  /**
+   * Crear nuevo proveedor en la base de datos
+   */
+  async createProvider(providerData) {
+    try {
+      console.log('➕ Creando proveedor en BD:', providerData.name);
+      
+      const response = await this.apiService.post(this.endpoints.create, providerData);
+      
+      if (response.success && response.data) {
+        // Invalidar cache
+        this.cache.providers = null;
+        
+        console.log('✅ Proveedor creado en BD:', response.data.name);
+        return {
+          success: true,
+          data: response.data,
+          message: 'Proveedor creado exitosamente'
+        };
+      } else {
+        throw new Error(response.message || 'Error creando proveedor');
+      }
+      
+    } catch (error) {
+      console.error('❌ Error creando proveedor:', error);
+      
+      // FALLBACK: Guardar en localStorage si no hay conexión
+      return this.createProviderOffline(providerData);
+    }
+  }
+
+  /**
+   * Actualizar proveedor existente
+   */
+  async updateProvider(providerId, updateData) {
+    try {
+      console.log('✏️ Actualizando proveedor en BD:', providerId);
+      
+      const response = await this.apiService.put(`${this.endpoints.update}/${providerId}`, updateData);
+      
+      if (response.success && response.data) {
+        // Invalidar cache
+        this.cache.providers = null;
+        
+        console.log('✅ Proveedor actualizado en BD');
+        return {
+          success: true,
+          data: response.data,
+          message: 'Proveedor actualizado exitosamente'
+        };
+      } else {
+        throw new Error(response.message || 'Error actualizando proveedor');
+      }
+      
+    } catch (error) {
+      console.error('❌ Error actualizando proveedor:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Eliminar proveedor
+   */
+  async deleteProvider(providerId) {
+    try {
+      console.log('🗑️ Eliminando proveedor de BD:', providerId);
+      
+      const response = await this.apiService.delete(`${this.endpoints.delete}/${providerId}`);
+      
+      if (response.success) {
+        // Invalidar cache
+        this.cache.providers = null;
+        
+        console.log('✅ Proveedor eliminado de BD');
+        return {
+          success: true,
+          message: 'Proveedor eliminado exitosamente'
+        };
+      } else {
+        throw new Error(response.message || 'Error eliminando proveedor');
+      }
+      
+    } catch (error) {
+      console.error('❌ Error eliminando proveedor:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Importar proveedores masivamente a la base de datos
+   */
+  async importProviders(providersData, importType = 'csv') {
+    try {
+      console.log(`📥 Importando ${providersData.length} proveedores a BD...`);
+      
+      const response = await this.apiService.post(this.endpoints.import, {
+        providers: providersData,
+        importType: importType,
+        importDate: new Date().toISOString()
+      });
+      
+      if (response.success) {
+        // Invalidar cache
+        this.cache.providers = null;
+        this.cache.csvData = null;
+        
+        console.log(`✅ ${response.imported || providersData.length} proveedores importados a BD`);
+        return {
+          success: true,
+          imported: response.imported || providersData.length,
+          message: 'Proveedores importados exitosamente'
+        };
+      } else {
+        throw new Error(response.message || 'Error en importación');
+      }
+      
+    } catch (error) {
+      console.warn('⚠️ Error importando a BD, guardando en localStorage:', error.message);
+      return this.importProvidersOffline(providersData, importType);
+    }
+  }
+
+  /**
+   * Buscar proveedores
+   */
+  async searchProviders(query, filters = {}) {
+    try {
+      const response = await this.apiService.post(this.endpoints.search, {
+        query,
+        filters
+      });
+      
+      if (response.success && response.data) {
+        return {
+          success: true,
+          data: response.data,
+          total: response.total || response.data.length
+        };
+      } else {
+        throw new Error('Error en búsqueda');
+      }
+      
+    } catch (error) {
+      console.warn('⚠️ Error en búsqueda BD, buscando en cache local');
+      return this.searchProvidersOffline(query, filters);
+    }
+  }
+
+  // ===========================================
+  // MÉTODOS DE FALLBACK OFFLINE
+  // ===========================================
+
+  /**
+   * FALLBACK: Manejar modo offline cuando no hay conexión a BD
+   */
+  handleOfflineMode() {
+    console.log('📱 Activando modo offline para proveedores');
+    
+    // Intentar usar cache primero
+    if (this.cache.providers) {
+      return {
+        success: true,
+        data: this.cache.providers,
+        source: 'cache'
+      };
+    }
+    
+    // Usar localStorage como último recurso
+    const localProviders = this.getLocalStorageProviders();
+    return {
+      success: true,
+      data: localProviders,
+      source: 'localStorage'
+    };
+  }
+
+  /**
+   * FALLBACK: Obtener proveedores CSV en modo offline
+   */
+  getCSVProvidersOffline() {
+    console.log('📊 Usando datos CSV de ejemplo (modo offline)');
+    
+    return {
+      success: true,
+      providers: sampleCSVProviders,
+      total: sampleCSVProviders.length,
+      source: 'sample',
+      stats: {
+        total: sampleCSVProviders.length,
+        withEmail: sampleCSVProviders.filter(p => p.email).length,
+        withPhone: sampleCSVProviders.filter(p => p.phone).length,
+        withRUT: sampleCSVProviders.filter(p => p.rut).length
       }
     };
   }
 
-  // Obtener lista de proveedores disponibles
-  getAvailableProviders() {
-    return Object.entries(this.providers).map(([key, provider]) => ({
-      id: key,
-      name: provider.name,
-      icon: provider.icon
+  /**
+   * FALLBACK: Crear proveedor en localStorage
+   */
+  createProviderOffline(providerData) {
+    const providers = this.getLocalStorageProviders();
+    const newProvider = {
+      ...providerData,
+      id: `offline_${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      source: 'offline'
+    };
+    
+    providers.push(newProvider);
+    this.saveLocalStorageProviders(providers);
+    
+    return {
+      success: true,
+      data: newProvider,
+      message: 'Proveedor guardado localmente (será sincronizado cuando haya conexión)'
+    };
+  }
+
+  /**
+   * FALLBACK: Importar proveedores en localStorage
+   */
+  importProvidersOffline(providersData, importType) {
+    const existingProviders = this.getLocalStorageProviders();
+    const importedProviders = providersData.map(p => ({
+      ...p,
+      id: p.id || `offline_${Date.now()}_${Math.random()}`,
+      importType,
+      importDate: new Date().toISOString(),
+      source: 'offline'
     }));
+    
+    const allProviders = [...existingProviders, ...importedProviders];
+    this.saveLocalStorageProviders(allProviders);
+    
+    return {
+      success: true,
+      imported: importedProviders.length,
+      message: `${importedProviders.length} proveedores guardados localmente`
+    };
   }
 
-  // Buscar productos en un proveedor específico
-  async searchProducts(providerId, query, options = {}) {
-    try {
-      const response = await axios.post(`${API_BASE_URL}/providers/${providerId}/search`, {
-        query,
-        limit: options.limit || 20,
-        filters: options.filters || {}
-      });
-
-      return {
-        success: true,
-        data: response.data.products || [],
-        provider: this.providers[providerId]
-      };
-    } catch (error) {
-      console.error(`Error searching in ${providerId}:`, error);
-      return {
-        success: false,
-        error: error.message,
-        provider: this.providers[providerId]
-      };
-    }
-  }
-
-  // Buscar en todos los proveedores
-  async searchAllProviders(query, options = {}) {
-    const providerIds = Object.keys(this.providers);
-    const searches = providerIds.map(providerId => 
-      this.searchProducts(providerId, query, options)
-    );
-
-    try {
-      const results = await Promise.allSettled(searches);
+  /**
+   * FALLBACK: Buscar en datos locales
+   */
+  searchProvidersOffline(query, filters) {
+    const providers = this.getLocalStorageProviders();
+    const results = providers.filter(provider => {
+      const matchesQuery = !query || 
+        provider.name?.toLowerCase().includes(query.toLowerCase()) ||
+        provider.email?.toLowerCase().includes(query.toLowerCase()) ||
+        provider.phone?.includes(query);
       
-      return results.map((result, index) => {
-        const providerId = providerIds[index];
-        if (result.status === 'fulfilled') {
-          return result.value;
-        } else {
-          return {
-            success: false,
-            error: result.reason.message,
-            provider: this.providers[providerId]
-          };
-        }
-      });
+      // Aplicar filtros adicionales aquí si es necesario
+      
+      return matchesQuery;
+    });
+    
+    return {
+      success: true,
+      data: results,
+      total: results.length,
+      source: 'localStorage'
+    };
+  }
+
+  // ===========================================
+  // UTILIDADES DE CACHE Y ALMACENAMIENTO LOCAL
+  // ===========================================
+
+  /**
+   * Cachear proveedores para uso offline
+   */
+  cacheProviders(providers) {
+    this.cache.providers = providers;
+    this.cache.lastUpdate = new Date().toISOString();
+  }
+
+  /**
+   * Obtener proveedores de localStorage
+   */
+  getLocalStorageProviders() {
+    try {
+      const stored = localStorage.getItem('importedProviders');
+      return stored ? JSON.parse(stored) : [];
     } catch (error) {
-      console.error('Error searching all providers:', error);
+      console.error('❌ Error leyendo localStorage:', error);
       return [];
     }
   }
 
-  // Obtener precio actual de un producto
-  async getProductPrice(providerId, productId) {
+  /**
+   * Guardar proveedores en localStorage
+   */
+  saveLocalStorageProviders(providers) {
     try {
-      const response = await axios.get(`${API_BASE_URL}/providers/${providerId}/price/${productId}`);
-      
-      return {
-        success: true,
-        data: response.data,
-        provider: this.providers[providerId]
-      };
+      localStorage.setItem('importedProviders', JSON.stringify(providers));
+      localStorage.setItem('providersImportDate', new Date().toISOString());
     } catch (error) {
-      console.error(`Error getting price from ${providerId}:`, error);
-      return {
-        success: false,
-        error: error.message,
-        provider: this.providers[providerId]
-      };
+      console.error('❌ Error guardando en localStorage:', error);
     }
   }
 
-  // Verificar stock de un producto
-  async checkStock(providerId, productId) {
-    try {
-      const response = await axios.get(`${API_BASE_URL}/providers/${providerId}/stock/${productId}`);
-      
-      return {
-        success: true,
-        data: response.data,
-        provider: this.providers[providerId]
-      };
-    } catch (error) {
-      console.error(`Error checking stock from ${providerId}:`, error);
-      return {
-        success: false,
-        error: error.message,
-        provider: this.providers[providerId]
-      };
-    }
+  /**
+   * Limpiar cache y datos locales
+   */
+  clearLocalData() {
+    this.cache = { providers: null, lastUpdate: null, csvData: null };
+    localStorage.removeItem('importedProviders');
+    localStorage.removeItem('providersImportDate');
   }
 
-  // Comparar precios entre proveedores
-  async comparePrice(productName, productSpecs = {}) {
-    const allResults = await this.searchAllProviders(productName, { limit: 5 });
-    
-    const comparisons = allResults
-      .filter(result => result.success && result.data.length > 0)
-      .map(result => {
-        const bestProduct = result.data[0]; // Asumimos que el primer resultado es el mejor match
-        return {
-          provider: result.provider,
-          product: bestProduct,
-          price: bestProduct.price,
-          stock: bestProduct.stock,
-          url: bestProduct.url
-        };
-      })
-      .sort((a, b) => a.price - b.price); // Ordenar por precio
-
-    return comparisons;
-  }
-
-  // Configurar alertas de precio
-  async setupPriceAlert(productId, providerId, targetPrice, userEmail) {
-    try {
-      const response = await axios.post(`${API_BASE_URL}/price-alerts`, {
-        productId,
-        providerId,
-        targetPrice,
-        userEmail
-      });
-
-      return {
-        success: true,
-        data: response.data
-      };
-    } catch (error) {
-      console.error('Error setting up price alert:', error);
-      return {
-        success: false,
-        error: error.message
-      };
-    }
-  }
-
-  // Obtener historial de precios
-  async getPriceHistory(productId, providerId, days = 30) {
-    try {
-      const response = await axios.get(`${API_BASE_URL}/providers/${providerId}/price-history/${productId}`, {
-        params: { days }
-      });
-
-      return {
-        success: true,
-        data: response.data
-      };
-    } catch (error) {
-      console.error('Error getting price history:', error);
-      return {
-        success: false,
-        error: error.message
-      };
-    }
-  }
-
-  // Crear orden de compra
-  async createPurchaseOrder(items, providerId, deliveryInfo) {
-    try {
-      const response = await axios.post(`${API_BASE_URL}/providers/${providerId}/purchase-order`, {
-        items,
-        deliveryInfo,
-        timestamp: new Date().toISOString()
-      });
-
-      return {
-        success: true,
-        data: response.data
-      };
-    } catch (error) {
-      console.error('Error creating purchase order:', error);
-      return {
-        success: false,
-        error: error.message
-      };
-    }
+  /**
+   * Verificar estado de conexión y datos
+   */
+  getDataStatus() {
+    return {
+      hasCache: !!this.cache.providers,
+      hasLocalStorage: this.getLocalStorageProviders().length > 0,
+      lastCacheUpdate: this.cache.lastUpdate,
+      cacheSize: this.cache.providers?.length || 0,
+      localStorageSize: this.getLocalStorageProviders().length
+    };
   }
 }
 
-// Instancia singleton del servicio
-const providerService = new ProviderService();
-
-export default providerService;
-
-// Hooks para usar el servicio en componentes React
-export const useProviderService = () => {
-  return providerService;
-};
-
-// Funciones de utilidad
-export const formatPrice = (price, currency = 'CLP') => {
-  return new Intl.NumberFormat('es-CL', {
-    style: 'currency',
-    currency: currency
-  }).format(price);
-};
-
-export const calculateSavings = (prices) => {
-  if (prices.length < 2) return 0;
-  const sortedPrices = [...prices].sort((a, b) => a - b);
-  const cheapest = sortedPrices[0];
-  const mostExpensive = sortedPrices[sortedPrices.length - 1];
-  return mostExpensive - cheapest;
-};
+// Exportar instancia singleton
+export default new ProviderService();

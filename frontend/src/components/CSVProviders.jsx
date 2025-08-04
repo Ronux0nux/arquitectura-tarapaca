@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNotifications } from '../context/NotificationContext';
-import CSVProviderService from '../services/CSVProviderService';
+import ProviderService from '../services/ProviderService'; // Nuevo servicio con BD
 import { sampleCSVProviders, sampleStats, sampleFileStats } from '../data/sampleCSVData';
 
 export default function CSVProviders() {
@@ -16,6 +16,7 @@ export default function CSVProviders() {
   const [sortConfig, setSortConfig] = useState({ key: 'fullName', direction: 'asc' });
   const [selectedProvider, setSelectedProvider] = useState(null);
   const [fileStats, setFileStats] = useState(null);
+  const [dataSource, setDataSource] = useState(''); // Para mostrar origen de datos
   const { notifySuccess, notifyError, notifyInfo } = useNotifications();
 
   useEffect(() => {
@@ -27,58 +28,128 @@ export default function CSVProviders() {
     filterProviders();
   }, [searchTerm, csvProviders]);
 
+  /**
+   * Cargar proveedores CSV desde la base de datos
+   * Con fallback a datos de ejemplo si no hay conexión
+   */
   const loadCSVProviders = async () => {
     setLoading(true);
-    setError(null); // Limpiar errores previos
-    try {
-      const response = await CSVProviderService.getAllCSVProviders();
-      if (response.success) {
-        setCsvProviders(response.data);
-        setFilteredCsvProviders(response.data);
-        
-        // Generar estadísticas rápidas
-        const quickStats = CSVProviderService.getQuickStats(response.data);
-        setCsvStats({
-          ...quickStats,
-          metadata: response.metadata
-        });
-
-        notifySuccess(
-          `Se cargaron ${response.data.length} proveedores desde ${response.metadata.processedFiles} archivos CSV`,
-          'Datos CSV Cargados'
-        );
-        setIsDemo(false);
-      } else {
-        // Usar datos de ejemplo cuando no hay respuesta del servidor
-        loadSampleData();
-        notifyInfo('Mostrando datos de ejemplo (servidor no disponible)', 'Modo de Demostración');
-      }
-    } catch (error) {
-      console.error('Error cargando CSV:', error);
-      // Usar datos de ejemplo cuando hay error de conexión
-      loadSampleData();
-      notifyInfo('Mostrando datos de ejemplo (error de conexión)', 'Modo de Demostración');
-    }
-    setLoading(false);
-  };
-
-  const loadSampleData = () => {
-    setCsvProviders(sampleCSVProviders);
-    setFilteredCsvProviders(sampleCSVProviders);
-    setCsvStats(sampleStats);
-    setFileStats(sampleFileStats);
     setError(null);
+    
+    try {
+      console.log('🔄 Cargando proveedores CSV...');
+      
+      // Usar el nuevo servicio conectado a la base de datos
+      const response = await ProviderService.getCSVProviders();
+      
+      if (response.success) {
+        const providers = response.providers || [];
+        setCsvProviders(providers);
+        setFilteredCsvProviders(providers);
+        setCsvStats(response.stats);
+        setDataSource(response.source);
+        
+        // Mostrar notificación según el origen de datos
+        if (response.source === 'database') {
+          notifySuccess(
+            `✅ ${providers.length} proveedores CSV cargados desde MongoDB Atlas`,
+            'Datos desde Base de Datos'
+          );
+          setIsDemo(false);
+        } else if (response.source === 'sample') {
+          notifyInfo(
+            `📱 ${providers.length} proveedores de ejemplo (modo offline)`,
+            'Modo Sin Conexión'
+          );
+          setIsDemo(true);
+        } else {
+          notifyInfo(
+            `💾 ${providers.length} proveedores desde cache local`,
+            'Datos en Cache'
+          );
+          setIsDemo(false);
+        }
+        
+        console.log(`✅ ${providers.length} proveedores CSV cargados (fuente: ${response.source})`);
+      } else {
+        throw new Error('No se pudieron cargar los proveedores CSV');
+      }
+      
+    } catch (error) {
+      console.error('❌ Error cargando proveedores CSV:', error);
+      setError(`Error cargando datos: ${error.message}`);
+      
+      // Fallback a datos de ejemplo
+      setCsvProviders(sampleCSVProviders);
+      setFilteredCsvProviders(sampleCSVProviders);
+      setCsvStats(sampleStats);
+      setDataSource('fallback');
+      setIsDemo(true);
+      
+      notifyError(
+        `Error de conexión. Mostrando ${sampleCSVProviders.length} proveedores de ejemplo`,
+        'Modo Offline'
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   const loadFileStats = async () => {
     try {
-      const response = await CSVProviderService.getCSVStats();
-      if (response.success) {
-        setFileStats(response.stats);
-      }
+      // Usar estadísticas en tiempo real del nuevo servicio
+      const stats = ProviderService.getDataStatus();
+      setFileStats({
+        ...sampleFileStats, // Mantener estructura base
+        cache: {
+          hasCache: stats.hasCache,
+          hasLocalStorage: stats.hasLocalStorage,
+          lastUpdate: stats.lastCacheUpdate,
+          cacheSize: stats.cacheSize,
+          localStorageSize: stats.localStorageSize
+        },
+        dataSource: dataSource || 'unknown'
+      });
     } catch (error) {
       console.error('Error cargando estadísticas:', error);
+      setFileStats(sampleFileStats); // Fallback
     }
+  };
+
+  /**
+   * Refrescar datos desde la base de datos
+   */
+  const refreshData = async () => {
+    console.log('🔄 Refrescando datos...');
+    await loadCSVProviders();
+    await loadFileStats();
+  };
+
+  /**
+   * Cambiar a modo demo
+   */
+  const switchToDemo = () => {
+    setCsvProviders(sampleCSVProviders);
+    setFilteredCsvProviders(sampleCSVProviders);
+    setCsvStats(sampleStats);
+    setFileStats(sampleFileStats);
+    setDataSource('demo');
+    setIsDemo(true);
+    setError(null);
+    
+    notifyInfo(
+      `Modo demo activado. Mostrando ${sampleCSVProviders.length} proveedores de ejemplo`,
+      'Modo Demostración'
+    );
+  };
+
+  /**
+   * Limpiar cache y datos locales
+   */
+  const clearLocalData = () => {
+    ProviderService.clearLocalData();
+    notifySuccess('Cache y datos locales eliminados', 'Datos Limpiados');
+    loadCSVProviders(); // Recargar desde BD
   };
 
   const filterProviders = () => {
@@ -176,29 +247,74 @@ export default function CSVProviders() {
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <div className="flex justify-between items-start mb-4">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            <h2 className="text-2xl font-bold text-gray-900 mb-2 flex items-center gap-3">
               📊 Proveedores desde Archivos CSV
-              {isDemo && (
-                <span className="ml-3 px-3 py-1 bg-yellow-100 text-yellow-800 text-sm font-normal rounded-full">
-                  🔧 Datos de Ejemplo
+              
+              {/* Indicador de estado de conexión */}
+              {dataSource === 'database' && (
+                <span className="px-3 py-1 bg-green-100 text-green-800 text-sm font-normal rounded-full flex items-center gap-1">
+                  🌐 MongoDB Atlas
+                </span>
+              )}
+              {dataSource === 'cache' && (
+                <span className="px-3 py-1 bg-blue-100 text-blue-800 text-sm font-normal rounded-full flex items-center gap-1">
+                  💾 Cache Local
+                </span>
+              )}
+              {dataSource === 'localStorage' && (
+                <span className="px-3 py-1 bg-purple-100 text-purple-800 text-sm font-normal rounded-full flex items-center gap-1">
+                  💿 Almacenamiento Local
+                </span>
+              )}
+              {(dataSource === 'sample' || dataSource === 'fallback' || dataSource === 'demo') && (
+                <span className="px-3 py-1 bg-yellow-100 text-yellow-800 text-sm font-normal rounded-full flex items-center gap-1">
+                  🔧 Modo Demo
                 </span>
               )}
             </h2>
+            
             <p className="text-gray-600">
-              {isDemo 
-                ? "Mostrando datos de ejemplo - El servidor backend no está disponible"
-                : "Datos importados desde la carpeta de cotizaciones manuales"
-              }
+              {dataSource === 'database' && "Datos en tiempo real desde MongoDB Atlas"}
+              {dataSource === 'cache' && "Datos desde cache local (última actualización desde BD)"}
+              {dataSource === 'localStorage' && "Datos guardados localmente"}
+              {(dataSource === 'sample' || dataSource === 'fallback') && "Mostrando datos de ejemplo - Sin conexión a base de datos"}
+              {dataSource === 'demo' && "Modo demostración activado"}
+              {!dataSource && "Cargando datos de proveedores..."}
             </p>
           </div>
+          
           <div className="flex gap-2">
             <button
-              onClick={loadCSVProviders}
+              onClick={refreshData}
               disabled={loading}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+              title="Refrescar desde base de datos"
             >
               {loading ? '🔄' : '↻'} Recargar
             </button>
+            
+            {/* Botón para cambiar a modo demo */}
+            {dataSource !== 'demo' && (
+              <button
+                onClick={switchToDemo}
+                className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 flex items-center gap-2"
+                title="Cambiar a modo demostración"
+              >
+                🔧 Demo
+              </button>
+            )}
+            
+            {/* Botón para limpiar cache */}
+            {(dataSource === 'cache' || dataSource === 'localStorage') && (
+              <button
+                onClick={clearLocalData}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2"
+                title="Limpiar datos locales y recargar desde BD"
+              >
+                🗑️ Limpiar
+              </button>
+            )}
+            
             <button
               onClick={handleExportCSV}
               className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2"

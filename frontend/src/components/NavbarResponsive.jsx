@@ -1,14 +1,17 @@
 import { Link, useLocation } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import NotificationBell from './NotificationBell';
 
 export default function NavbarResponsive() {
   const { getCartCount, toggleCart } = useCart();
+  const { user, logout, canAccess } = useAuth();
   const count = getCartCount();
   const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState(null);
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
   // Función para determinar si una ruta está activa
   const isActive = (path) => {
@@ -75,6 +78,20 @@ export default function NavbarResponsive() {
     setActiveDropdown(null);
   };
 
+  // Cerrar menús cuando se hace clic fuera
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showUserMenu && !event.target.closest('.user-menu')) {
+        setShowUserMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showUserMenu]);
+
   return (
     <nav className="bg-blue-600 text-white shadow-lg">
       <div className="px-4 py-4">
@@ -87,21 +104,27 @@ export default function NavbarResponsive() {
           {/* Desktop Navigation */}
           <div className="hidden lg:flex items-center gap-2 flex-1 justify-center">
             {/* Administración */}
-            <div className="flex items-center gap-2">
-              <span className="text-blue-200 text-sm font-medium">Admin</span>
-              <NavLink to="/users">Usuarios</NavLink>
-              <NavLink to="/providers">Proveedores</NavLink>
-            </div>
-
-            <Separator />
+            {(canAccess('all') || canAccess('proveedores') || user?.role === 'admin') && (
+              <>
+                <div className="flex items-center gap-2">
+                  <span className="text-blue-200 text-sm font-medium">Admin</span>
+                  {user?.role === 'admin' && <NavLink to="/users">Usuarios</NavLink>}
+                  {canAccess('proveedores') && <NavLink to="/providers">Proveedores</NavLink>}
+                </div>
+                <Separator />
+              </>
+            )}
 
             {/* Gestión de construcción */}
-            <div className="flex items-center gap-2">
-              <span className="text-blue-200 text-sm font-medium">Construcción</span>
-              <NavLink to="/projects">Proyectos</NavLink>
-            </div>
-
-            <Separator />
+            {canAccess('proyectos') && (
+              <>
+                <div className="flex items-center gap-2">
+                  <span className="text-blue-200 text-sm font-medium">Construcción</span>
+                  <NavLink to="/projects">Proyectos</NavLink>
+                </div>
+                <Separator />
+              </>
+            )}
 
             {/* Herramientas */}
             <div className="flex items-center gap-2">
@@ -113,15 +136,17 @@ export default function NavbarResponsive() {
             <Separator />
 
             {/* Compras */}
-            <div className="flex items-center gap-2">
-              <span className="text-blue-200 text-sm font-medium">Compras</span>
-              <NavLink 
-                to="/Demo de cotizaciones" 
-                className="bg-green-600 hover:bg-green-700"
-              >
-                Demo
-              </NavLink>
-            </div>
+            {canAccess('cotizaciones') && (
+              <div className="flex items-center gap-2">
+                <span className="text-blue-200 text-sm font-medium">Compras</span>
+                <NavLink 
+                  to="/Demo de cotizaciones" 
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  Demo
+                </NavLink>
+              </div>
+            )}
           </div>
 
           {/* Right side elements */}
@@ -145,6 +170,44 @@ export default function NavbarResponsive() {
               )}
             </button>
 
+            {/* User Menu */}
+            <div className="relative user-menu">
+              <button
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-blue-700 transition-colors"
+              >
+                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                  <span className="text-lg">{user?.avatar || '👤'}</span>
+                </div>
+                <div className="hidden md:block text-left">
+                  <p className="text-sm font-medium">{user?.name}</p>
+                  <p className="text-xs text-blue-200 capitalize">{user?.role}</p>
+                </div>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {/* User Dropdown */}
+              {showUserMenu && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
+                  <div className="px-4 py-2 border-b border-gray-200">
+                    <p className="text-sm font-medium text-gray-900">{user?.name}</p>
+                    <p className="text-xs text-gray-500 capitalize">{user?.role}</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      logout();
+                      setShowUserMenu(false);
+                    }}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                  >
+                    🚪 Cerrar Sesión
+                  </button>
+                </div>
+              )}
+            </div>
+
             {/* Mobile menu button */}
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -162,15 +225,19 @@ export default function NavbarResponsive() {
           <div className="lg:hidden mt-4 border-t border-blue-500 pt-4">
             <div className="space-y-2">
               {/* Administración */}
-              <DropdownGroup title="Administración" groupKey="admin">
-                <NavLink to="/users" onClick={closeMenu}>Usuarios</NavLink>
-                <NavLink to="/providers" onClick={closeMenu}>Proveedores</NavLink>
-              </DropdownGroup>
+              {(canAccess('all') || canAccess('proveedores') || user?.role === 'admin') && (
+                <DropdownGroup title="Administración" groupKey="admin">
+                  {user?.role === 'admin' && <NavLink to="/users" onClick={closeMenu}>Usuarios</NavLink>}
+                  {canAccess('proveedores') && <NavLink to="/providers" onClick={closeMenu}>Proveedores</NavLink>}
+                </DropdownGroup>
+              )}
 
               {/* Gestión de construcción */}
-              <DropdownGroup title="Construcción" groupKey="construction">
-                <NavLink to="/projects" onClick={closeMenu}>Proyectos</NavLink>
-              </DropdownGroup>
+              {canAccess('proyectos') && (
+                <DropdownGroup title="Construcción" groupKey="construction">
+                  <NavLink to="/projects" onClick={closeMenu}>Proyectos</NavLink>
+                </DropdownGroup>
+              )}
 
               {/* Herramientas */}
               <DropdownGroup title="Herramientas" groupKey="tools">
@@ -179,15 +246,17 @@ export default function NavbarResponsive() {
               </DropdownGroup>
 
               {/* Compras */}
-              <DropdownGroup title="Compras" groupKey="shopping">
-                <NavLink 
-                  to="/Demo de cotizaciones" 
-                  className="bg-green-600 hover:bg-green-700"
-                  onClick={closeMenu}
-                >
-                  Demo Carrito
-                </NavLink>
-              </DropdownGroup>
+              {canAccess('cotizaciones') && (
+                <DropdownGroup title="Compras" groupKey="shopping">
+                  <NavLink 
+                    to="/Demo de cotizaciones" 
+                    className="bg-green-600 hover:bg-green-700"
+                    onClick={closeMenu}
+                  >
+                    Demo Carrito
+                  </NavLink>
+                </DropdownGroup>
+              )}
             </div>
           </div>
         )}

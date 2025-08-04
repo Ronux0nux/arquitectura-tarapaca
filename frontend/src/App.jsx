@@ -2,6 +2,8 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { CartProvider } from './context/CartContext';
 import { CotizacionesProvider } from './context/CotizacionesContext';
 import { NotificationProvider } from './context/NotificationContext';
+import { AuthProvider } from './context/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
 import NavbarResponsive from "./components/NavbarResponsive";
 import Home from "./pages/Home";
 import Users from "./pages/Users";
@@ -22,31 +24,126 @@ import CartButton from './components/CartButton';
 export default function App() {
   return (
     <NotificationProvider>
-      <CartProvider>
-      <CotizacionesProvider>
-        <Router>
-          <NavbarResponsive />
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/users" element={<Users />} />
-            <Route path="/projects" element={<Projects />} />
-            <Route path="/projects/:id/materiales" element={<ProjectMaterials />} />
-            <Route path="/providers" element={<Providers />} />
-            <Route path="/insumos" element={<Insumos />} />
-            <Route path="/cotizaciones" element={<Cotizaciones />} />
-            <Route path="/actas" element={<ActasReunion />} />
-            <Route path="/buscador" element={<BuscadorPage />} />
-            <Route path="/demo-carrito" element={<DemoCarrito />} />
-            <Route path="/Demo de cotizaciones" element={<DemoCarrito />} />
-            <Route path="/historial" element={<HistorialCotizaciones />} />
-            <Route path="/configuracion" element={<ConfiguracionPage />} />
-            <Route path="/excel" element={<ExcelOnline />} />
-          </Routes>
-          <CotizacionCartV2 />
-          <CartButton />
-        </Router>
-      </CotizacionesProvider>
-    </CartProvider>
+      <AuthProvider>
+        <CartProvider>
+        <CotizacionesProvider>
+          <Router>
+            <ProtectedRoute>
+              <NavbarResponsive />
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route 
+                  path="/users" 
+                  element={
+                    <ProtectedRoute requiredRole="admin">
+                      <Users />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/projects" 
+                  element={
+                    <ProtectedRoute requiredPermission="proyectos">
+                      <Projects />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/projects/:id/materiales" 
+                  element={
+                    <ProtectedRoute requiredPermission="proyectos">
+                      <ProjectMaterials />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/providers" 
+                  element={
+                    <ProtectedRoute requiredPermission="proveedores">
+                      <Providers />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/insumos" 
+                  element={
+                    <ProtectedRoute requiredPermission="materiales">
+                      <Insumos />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/cotizaciones" 
+                  element={
+                    <ProtectedRoute requiredPermission="cotizaciones">
+                      <Cotizaciones />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/actas" 
+                  element={
+                    <ProtectedRoute requiredRole="supervisor">
+                      <ActasReunion />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/buscador" 
+                  element={
+                    <ProtectedRoute>
+                      <BuscadorPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/demo-carrito" 
+                  element={
+                    <ProtectedRoute>
+                      <DemoCarrito />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/Demo de cotizaciones" 
+                  element={
+                    <ProtectedRoute>
+                      <DemoCarrito />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/historial" 
+                  element={
+                    <ProtectedRoute requiredPermission="cotizaciones">
+                      <HistorialCotizaciones />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/configuracion" 
+                  element={
+                    <ProtectedRoute requiredRole="admin">
+                      <ConfiguracionPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/excel" 
+                  element={
+                    <ProtectedRoute>
+                      <ExcelOnline />
+                    </ProtectedRoute>
+                  } 
+                />
+              </Routes>
+              <CotizacionCartV2 />
+              <CartButton />
+            </ProtectedRoute>
+          </Router>
+        </CotizacionesProvider>
+      </CartProvider>
+      </AuthProvider>
     </NotificationProvider>
   );
 }
