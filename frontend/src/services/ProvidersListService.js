@@ -1,17 +1,29 @@
 /**
  * Servicio para gestión de proveedores 
  * Basado en: ListadoProveedoresVigentes-04-08-2025.pdf
+ * 
+ * ESPECIFICACIONES DEL PDF REAL:
+ * - Total de páginas: 9,751
+ * - Estructura por página: ID, RUT Proveedor, Razón Social, Fecha Actualización
+ * - Organización: Cada página contiene múltiples proveedores en filas estructuradas
+ * - Estimado: Miles de proveedores reales
  */
 
 class ProvidersListService {
   constructor() {
     this.STORAGE_KEY = 'providersListData';
     this.PDF_SOURCE = 'ListadoProveedoresVigentes-04-08-2025.pdf';
+    this.PDF_PAGES = 9751;
+    this.PDF_STRUCTURE = {
+      fields: ['ID', 'RUT Proveedor', 'Razón Social', 'Fecha Actualización'],
+      organization: 'Filas estructuradas por página',
+      estimatedProviders: 'Miles'
+    };
   }
 
   /**
    * Obtener datos de proveedores
-   * NOTA: Datos de ejemplo hasta importar el PDF real
+   * NOTA: 25 datos de ejemplo hasta procesar el PDF masivo de 9,751 páginas
    */
   getExpandedProvidersData() {
     return [
@@ -408,6 +420,22 @@ class ProvidersListService {
         sitioWeb: "www.oasis-paisajismo.cl"
       }
     ];
+    // TOTAL: 25 proveedores de ejemplo para demostración
+    // El PDF real "ListadoProveedoresVigentes-04-08-2025.pdf" contiene 9,751 páginas
+    // con miles de proveedores organizados en estructura: ID, RUT, Razón Social, Fecha Actualización
+  }
+
+  /**
+   * Información sobre el PDF real masivo
+   */
+  getPDFInfo() {
+    return {
+      filename: this.PDF_SOURCE,
+      totalPages: this.PDF_PAGES,
+      structure: this.PDF_STRUCTURE,
+      currentDataStatus: 'ejemplo_temporal',
+      realDataStatus: 'pendiente_procesamiento'
+    };
   }
 
   /**
