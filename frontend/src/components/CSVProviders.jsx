@@ -193,7 +193,8 @@ export default function CSVProviders() {
 
     setLoading(true);
     try {
-      const response = await CSVProviderService.searchCSVProviders(searchTerm, 100);
+      // Usar el nuevo ProviderService para búsqueda
+      const response = await ProviderService.searchProviders(searchTerm, { limit: 100 });
       if (response.success) {
         setFilteredCsvProviders(response.data);
         setCurrentPage(1);
@@ -210,7 +211,34 @@ export default function CSVProviders() {
 
   const handleExportCSV = () => {
     try {
-      CSVProviderService.exportToCSV(
+      // Función de exportación CSV manual
+      const exportCSVProviders = (providers, filename) => {
+        const headers = ['Nombre Completo', 'RUT', 'Profesión', 'Teléfono', 'Email', 'Región', 'Comuna'];
+        const csvContent = [
+          headers.join(','),
+          ...providers.map(provider => [
+            provider.fullName || '',
+            provider.rut || '',
+            provider.profession || '',
+            provider.phone || '',
+            provider.email || '',
+            provider.region || '',
+            provider.comuna || ''
+          ].map(field => `"${field}"`).join(','))
+        ].join('\n');
+        
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', filename);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      };
+      
+      exportCSVProviders(
         filteredCsvProviders,
         `proveedores_csv_${new Date().toISOString().split('T')[0]}.csv`
       );
@@ -235,7 +263,33 @@ export default function CSVProviders() {
   };
 
   const getValidationStatus = (provider) => {
-    const validation = CSVProviderService.validateProvider(provider);
+    // Función de validación manual de proveedores
+    const validateProvider = (provider) => {
+      const errors = [];
+      
+      if (!provider.fullName || provider.fullName.trim().length < 2) {
+        errors.push('Nombre muy corto');
+      }
+      
+      if (provider.rut && !/^\d{7,8}-[\dkK]$/.test(provider.rut)) {
+        errors.push('RUT inválido');
+      }
+      
+      if (provider.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(provider.email)) {
+        errors.push('Email inválido');
+      }
+      
+      if (provider.phone && !/^[+]?[\d\s\-()]{8,}$/.test(provider.phone)) {
+        errors.push('Teléfono inválido');
+      }
+      
+      return {
+        isValid: errors.length === 0,
+        errors: errors
+      };
+    };
+    
+    const validation = validateProvider(provider);
     return validation.isValid ? 
       { status: 'valid', icon: '✅', color: 'text-green-600' } :
       { status: 'invalid', icon: '⚠️', color: 'text-yellow-600', errors: validation.errors };
