@@ -19,12 +19,12 @@ export default function Providers() {
     const importedProviders = ProviderDataImporter.loadProvidersFromLocalStorage();
     if (importedProviders.length > 0) {
       setProviders(importedProviders);
-      notifyInfo(`Se cargaron ${importedProviders.length} proveedores desde datos importados`, 'Datos Cargados');
+      // Datos cargados sin notificación automática
     } else {
       // Inicializar con arreglo vacío
       setProviders([]);
     }
-  }, [notifyInfo]);
+  }, []);
 
   const handleExportData = () => {
     const dataToExport = {

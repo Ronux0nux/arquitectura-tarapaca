@@ -33,9 +33,9 @@ export default function ProvidersList() {
       // Guardar en localStorage
       ProvidersListService.saveToLocalStorage(providersData);
       
-      notifySuccess(`${providersData.length} proveedores cargados desde PDF`, 'Datos Cargados');
+      // Datos cargados sin notificación automática
     }, 1000);
-  }, [notifySuccess]);
+  }, []);
 
   // Filtrar proveedores basado en búsqueda y filtros
   useEffect(() => {

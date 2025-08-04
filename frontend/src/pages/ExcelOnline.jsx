@@ -53,7 +53,7 @@ const ExcelOnline = () => {
       
       if (response.success && response.data) {
         setAvailableProjects(response.data);
-        notifyInfo(`${response.data.length} proyectos cargados desde la base de datos`);
+        // Proyectos cargados sin notificación automática
       } else {
         // Fallback: cargar proyectos de ejemplo si no hay conexión
         const fallbackProjects = [
@@ -67,7 +67,7 @@ const ExcelOnline = () => {
           }
         ];
         setAvailableProjects(fallbackProjects);
-        notifyInfo('Usando proyectos de ejemplo (sin conexión a BD)');
+        // Usando proyectos de ejemplo sin notificación automática
       }
     } catch (error) {
       console.error('❌ Error cargando proyectos:', error);
@@ -160,7 +160,7 @@ const ExcelOnline = () => {
         
         notifyInfo(`No se encontraron compras para este proyecto. Mostrando ${purchases.length} items de ejemplo.`);
       } else {
-        notifySuccess(`${purchases.length} compras cargadas desde la base de datos`);
+        // Compras cargadas sin notificación automática
       }
       
       setProjectPurchases(purchases);

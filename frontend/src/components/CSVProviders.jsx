@@ -86,7 +86,7 @@ export default function CSVProviders() {
   };
 
   useEffect(() => {
-    notifyInfo(`${csvProviders.length} proveedores cargados desde datos de ejemplo`, 'Datos Cargados');
+    // Datos cargados sin notificación automática
   }, []);
 
   return (

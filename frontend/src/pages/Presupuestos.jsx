@@ -27,12 +27,12 @@ export default function Presupuestos() {
         
         if (response.success && response.data) {
           setProjects(response.data);
-          notifyInfo(`${response.data.length} proyectos cargados desde la base de datos`);
+          // Carga exitosa sin notificación al usuario
         } else {
           // Fallback a ProjectService si no hay conexión
           const fallbackProjects = ProjectService.getAllProjectsOffline();
           setProjects(fallbackProjects);
-          notifyInfo(`${fallbackProjects.length} proyectos cargados (modo offline)`);
+          // Carga de fallback sin notificación al usuario
         }
       } catch (error) {
         console.error('❌ Error cargando proyectos:', error);
@@ -47,7 +47,7 @@ export default function Presupuestos() {
     };
 
     loadProjectsData();
-  }, [notifyInfo, notifyError]);
+  }, [notifyError]);
 
   // Cargar presupuesto cuando se selecciona un proyecto
   useEffect(() => {
@@ -352,7 +352,7 @@ export default function Presupuestos() {
       } else {
         const fallbackProjects = ProjectService.getAllProjectsOffline();
         setProjects(fallbackProjects);
-        notifyInfo(`${fallbackProjects.length} proyectos cargados (modo offline)`);
+        // Fallback sin notificación automática
       }
     } catch (error) {
       const fallbackProjects = ProjectService.getAllProjectsOffline();
