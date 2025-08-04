@@ -17,6 +17,7 @@ import BuscadorPage from './pages/BuscadorPage';
 import HistorialCotizaciones from './pages/HistorialCotizaciones';
 import ConfiguracionPage from './pages/ConfiguracionPage';
 import ExcelOnline from './pages/ExcelOnline';
+import Presupuestos from './pages/Presupuestos';
 import CotizacionCartV2 from './components/CotizacionCartV2';
 import CartButton from './components/CartButton';
 
@@ -108,6 +109,14 @@ export default function App() {
                   element={
                     <ProtectedRoute requiredRole="admin">
                       <ConfiguracionPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/presupuestos" 
+                  element={
+                    <ProtectedRoute requiredPermission="proyectos">
+                      <Presupuestos />
                     </ProtectedRoute>
                   } 
                 />
