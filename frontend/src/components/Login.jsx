@@ -64,7 +64,7 @@ export default function Login() {
           <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-full mb-4">
             <span className="text-2xl text-white">🏗️</span>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Arquitectura Tarapacá</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Arquitectura Tarapaka</h1>
           <p className="text-gray-600">Sistema de Gestión de Construcción</p>
         </div>
 
@@ -182,7 +182,7 @@ export default function Login() {
 
         {/* Footer */}
         <div className="text-center mt-6 text-sm text-gray-500">
-          © 2025 Arquitectura Tarapacá. Todos los derechos reservados.
+          © 2025 Corporación Tarapaka. Todos los derechos reservados.
         </div>
 
         {/* Recovery Modal */}

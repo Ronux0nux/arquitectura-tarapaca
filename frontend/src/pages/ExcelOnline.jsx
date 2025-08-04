@@ -484,6 +484,10 @@ const ExcelOnline = () => {
                   width="100%"
                   height={400}
                   licenseKey="non-commercial-and-evaluation"
+                  colWidths={[100, 200, 80, 120, 120, 150, 120]}
+                  minCols={7}
+                  minRows={20}
+                  className="excel-table"
                 />
               </div>
             </div>

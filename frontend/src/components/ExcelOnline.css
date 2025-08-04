@@ -20,12 +20,16 @@
   border-bottom: 1px solid #e5e7eb;
   font-weight: 600;
   color: #374151;
+  padding: 10px 12px;
+  min-width: 100px;
+  position: relative;
 }
 
 .excel-table .handsontable td {
   border-right: 1px solid #f3f4f6;
   border-bottom: 1px solid #f3f4f6;
-  padding: 4px 6px;
+  padding: 8px 12px;
+  min-width: 80px;
 }
 
 .excel-table .handsontable td.area {
@@ -43,7 +47,7 @@
 
 /* Estilos para dropdowns */
 .excel-table .htDropdownMenu {
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0..1);
   border: 1px solid #e5e7eb;
   border-radius: 6px;
 }
@@ -97,8 +101,36 @@
   }
   
   .excel-table .handsontable td {
-    padding: 2px 4px;
+    padding: 6px 8px;
+    min-width: 60px;
   }
+  
+  .excel-table .handsontable th {
+    padding: 8px 10px;
+    min-width: 80px;
+  }
+}
+
+/* Estilos para el redimensionado de columnas */
+.excel-table .handsontable .manualColumnResizer {
+  background: #3b82f6;
+  width: 3px;
+  cursor: col-resize;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.excel-table .handsontable .manualColumnResizer:hover {
+  opacity: 1;
+  background: #2563eb;
+}
+
+.excel-table .handsontable .columnSorting {
+  cursor: pointer;
+}
+
+.excel-table .handsontable .columnSorting:hover {
+  background: #f1f5f9;
 }
 
 /* Indicadores de tipo de columna */

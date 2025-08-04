@@ -5,13 +5,14 @@ import CSVProviders from '../components/CSVProviders';
 import ProjectIntegrationSummary from '../components/ProjectIntegrationSummary';
 import PDFMassiveImporter from '../components/PDFMassiveImporter';
 import ProvidersList from '../components/ProvidersList';
+import DirectPDFViewer from '../components/DirectPDFViewer';
 
 export default function Providers() {
   const [providers, setProviders] = useState([]);
   const [showImportModal, setShowImportModal] = useState(false);
   const [importData, setImportData] = useState('');
   const [importType, setImportType] = useState('text');
-  const [activeTab, setActiveTab] = useState('lista'); // Cambiar tab por defecto a lista
+  const [activeTab, setActiveTab] = useState('pdf-direct'); // Cambiar a PDF directo por defecto
   const { notifySuccess, notifyError } = useNotifications();
 
   useEffect(() => {
@@ -144,6 +145,16 @@ export default function Providers() {
       <div className="border-b border-gray-200 mb-6">
         <nav className="-mb-px flex space-x-8">
           <button
+            onClick={() => setActiveTab('pdf-direct')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'pdf-direct'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            � PDF ListadoProveedores (9,751 pág)
+          </button>
+          <button
             onClick={() => setActiveTab('lista')}
             className={`py-2 px-1 border-b-2 font-medium text-sm ${
               activeTab === 'lista'
@@ -151,7 +162,7 @@ export default function Providers() {
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
           >
-            📋 Lista de Proveedores PDF
+            � Lista Estructurada
           </button>
           <button
             onClick={() => setActiveTab('integration')}
@@ -171,7 +182,7 @@ export default function Providers() {
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
           >
-            📄 PDF Masivo (9693 páginas)
+            📄 Procesamiento Masivo
           </button>
           <button
             onClick={() => setActiveTab('management')}
@@ -187,6 +198,10 @@ export default function Providers() {
       </div>
 
       {/* Contenido de las pestañas */}
+      {activeTab === 'pdf-direct' && (
+        <DirectPDFViewer />
+      )}
+
       {activeTab === 'lista' && (
         <ProvidersList />
       )}
