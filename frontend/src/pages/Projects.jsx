@@ -22,6 +22,8 @@ const Projects = () => {
   const [cotizaciones, setCotizaciones] = useState([]);
   const [loadingCotizaciones, setLoadingCotizaciones] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [supervisores, setSupervisores] = useState([]);
+  const [loadingSupervisores, setLoadingSupervisores] = useState(false);
   
   // Simulando rol del usuario (en producción vendría del contexto de autenticación)
   const [userRole, setUserRole] = useState('supervisor'); // 'supervisor', 'administrador', 'usuario'
@@ -106,8 +108,8 @@ const Projects = () => {
       // Crear un ObjectId temporal para el subencargado si no está vacío
       const projectData = {
         ...newProject,
-        // Si subencargado está vacío, usar un ObjectId temporal válido
-        subencargado: newProject.subencargado || '507f1f77bcf86cd799439011'
+        // Enviar el ID del supervisor seleccionado
+        subencargado: newProject.subencargado || ''
       };
 
       const response = await fetch(`${API_BASE_URL}/projects`, {
@@ -156,8 +158,8 @@ const Projects = () => {
 
       const projectData = {
         ...projectToEdit,
-        // Mantener el subencargado existente si no se proporciona uno nuevo
-        subencargado: projectToEdit.subencargado || '507f1f77bcf86cd799439011'
+        // Enviar el ID del supervisor seleccionado
+        subencargado: projectToEdit.subencargado || ''
       };
 
       const response = await fetch(`${API_BASE_URL}/projects/${projectToEdit._id}`, {
@@ -213,6 +215,46 @@ const Projects = () => {
     } finally {
       setLoadingCotizaciones(false);
     }
+  };
+
+  // Cargar supervisores del sistema
+  const fetchSupervisores = async () => {
+    try {
+      setLoadingSupervisores(true);
+      const response = await fetch(`${API_BASE_URL}/users/supervisores`);
+      if (response.ok) {
+        const data = await response.json();
+        setSupervisores(data || []);
+      } else {
+        // Si no existe el endpoint, usar datos de ejemplo
+        setSupervisores([
+          { _id: '1', nombre: 'Juan Pérez', email: 'juan.perez@company.com', rol: 'supervisor' },
+          { _id: '2', nombre: 'María González', email: 'maria.gonzalez@company.com', rol: 'supervisor' },
+          { _id: '3', nombre: 'Carlos Rodríguez', email: 'carlos.rodriguez@company.com', rol: 'administrador' },
+          { _id: '4', nombre: 'Ana Martínez', email: 'ana.martinez@company.com', rol: 'supervisor' },
+          { _id: '5', nombre: 'Luis Fernández', email: 'luis.fernandez@company.com', rol: 'administrador' }
+        ]);
+      }
+    } catch (error) {
+      console.error('Error al cargar supervisores:', error);
+      // Datos de ejemplo en caso de error
+      setSupervisores([
+        { _id: '1', nombre: 'Juan Pérez', email: 'juan.perez@company.com', rol: 'supervisor' },
+        { _id: '2', nombre: 'María González', email: 'maria.gonzalez@company.com', rol: 'supervisor' },
+        { _id: '3', nombre: 'Carlos Rodríguez', email: 'carlos.rodriguez@company.com', rol: 'administrador' },
+        { _id: '4', nombre: 'Ana Martínez', email: 'ana.martinez@company.com', rol: 'supervisor' },
+        { _id: '5', nombre: 'Luis Fernández', email: 'luis.fernandez@company.com', rol: 'administrador' }
+      ]);
+    } finally {
+      setLoadingSupervisores(false);
+    }
+  };
+
+  // Obtener nombre del supervisor por ID
+  const getSupervisorName = (supervisorId) => {
+    if (!supervisorId) return 'No asignado';
+    const supervisor = supervisores.find(sup => sup._id === supervisorId);
+    return supervisor ? `${supervisor.nombre} (${supervisor.rol})` : supervisorId;
   };
 
   // Manejar filtros de búsqueda
@@ -276,7 +318,8 @@ const Projects = () => {
 
       const projectData = {
         ...detailsProjectEdit,
-        subencargado: detailsProjectEdit.subencargado || '507f1f77bcf86cd799439011'
+        // Enviar el ID del supervisor seleccionado
+        subencargado: detailsProjectEdit.subencargado || ''
       };
 
       const response = await fetch(`${API_BASE_URL}/projects/${detailsProjectEdit._id}`, {
@@ -343,6 +386,7 @@ const Projects = () => {
 
   useEffect(() => {
     fetchProjects();
+    fetchSupervisores();
   }, []);
 
   // Búsqueda automática cuando cambian los filtros
@@ -596,7 +640,7 @@ const Projects = () => {
                         {project.fechaTermino ? new Date(project.fechaTermino).toLocaleDateString() : 'No definida'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {project.subencargado || 'No asignado'}
+                        {getSupervisorName(project.subencargado)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                         <button
@@ -755,15 +799,20 @@ const Projects = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Subencargado/Coordinador *
                 </label>
-                <input
-                  type="text"
-                  placeholder="ID del coordinador encargado (ObjectId)"
+                <select
                   value={newProject.subencargado}
                   onChange={(e) => setNewProject({...newProject, subencargado: e.target.value})}
                   className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                />
+                >
+                  <option value="">Seleccionar coordinador...</option>
+                  {supervisores.map(supervisor => (
+                    <option key={supervisor._id} value={supervisor._id}>
+                      {supervisor.nombre} - {supervisor.rol}
+                    </option>
+                  ))}
+                </select>
                 <p className="text-xs text-gray-500 mt-1">
-                  Ingrese un ObjectId válido o déjelo vacío para usar uno temporal
+                  Seleccione un supervisor o administrador del sistema
                 </p>
               </div>
 
@@ -904,15 +953,20 @@ const Projects = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Coordinador Encargado
                 </label>
-                <input
-                  type="text"
-                  placeholder="ID del coordinador encargado (ObjectId)"
+                <select
                   value={projectToEdit.subencargado}
                   onChange={(e) => setProjectToEdit({...projectToEdit, subencargado: e.target.value})}
                   className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                />
+                >
+                  <option value="">Seleccionar coordinador...</option>
+                  {supervisores.map(supervisor => (
+                    <option key={supervisor._id} value={supervisor._id}>
+                      {supervisor.nombre} - {supervisor.rol}
+                    </option>
+                  ))}
+                </select>
                 <p className="text-xs text-gray-500 mt-1">
-                  Ingrese un ObjectId válido o déjelo vacío para mantener el actual
+                  Seleccione un supervisor o administrador del sistema
                 </p>
               </div>
 
@@ -1082,15 +1136,20 @@ const Projects = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Coordinador Encargado
                   </label>
-                  <input
-                    type="text"
-                    placeholder="ID del coordinador encargado (ObjectId)"
+                  <select
                     value={detailsProjectEdit.subencargado}
                     onChange={(e) => setDetailsProjectEdit({...detailsProjectEdit, subencargado: e.target.value})}
                     className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                  />
+                  >
+                    <option value="">Seleccionar coordinador...</option>
+                    {supervisores.map(supervisor => (
+                      <option key={supervisor._id} value={supervisor._id}>
+                        {supervisor.nombre} - {supervisor.rol}
+                      </option>
+                    ))}
+                  </select>
                   <p className="text-xs text-gray-500 mt-1">
-                    Ingrese un ObjectId válido o déjelo vacío para mantener el actual
+                    Seleccione un supervisor o administrador del sistema
                   </p>
                 </div>
 
@@ -1157,7 +1216,7 @@ const Projects = () => {
                     </div>
                     <div>
                       <span className="font-semibold text-gray-700">Coordinador Encargado:</span>
-                      <p className="text-gray-900">{selectedProject.subencargado || 'No asignado'}</p>
+                      <p className="text-gray-900">{getSupervisorName(selectedProject.subencargado)}</p>
                     </div>
                     <div>
                       <span className="font-semibold text-gray-700">Ubicación:</span>
