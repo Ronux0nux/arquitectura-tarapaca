@@ -228,22 +228,20 @@ const Projects = () => {
       } else {
         // Si no existe el endpoint, usar datos de ejemplo con ObjectIds válidos
         setSupervisores([
-          { _id: '507f1f77bcf86cd799439011', nombre: 'Juan Pérez', email: 'juan.perez@company.com', rol: 'supervisor' },
-          { _id: '507f1f77bcf86cd799439012', nombre: 'María González', email: 'maria.gonzalez@company.com', rol: 'supervisor' },
-          { _id: '507f1f77bcf86cd799439013', nombre: 'Carlos Rodríguez', email: 'carlos.rodriguez@company.com', rol: 'administrador' },
-          { _id: '507f1f77bcf86cd799439014', nombre: 'Ana Martínez', email: 'ana.martinez@company.com', rol: 'supervisor' },
-          { _id: '507f1f77bcf86cd799439015', nombre: 'Luis Fernández', email: 'luis.fernandez@company.com', rol: 'administrador' }
+          { _id: '507f1f77bcf86cd799439011', nombre: 'Mónica Rodríguez', email: 'monica.rodriguez@aceleratarapaka.cl', rol: 'supervisor' },
+          { _id: '507f1f77bcf86cd799439012', nombre: 'Cecilia García', email: 'cecilia.garcia@aceleratarapaka.cl', rol: 'supervisor' },
+          { _id: '507f1f77bcf86cd799439013', nombre: 'Carlos Marcoleta', email: 'carlos.marcoleta@aceleratarapaka.cl', rol: 'administrador' },
+          { _id: '507f1f77bcf86cd799439014', nombre: 'José Miguel Astudillo', email: 'jose.astudillo@aceleratarapaka.cl', rol: 'coordinador de especialidades' }
         ]);
       }
     } catch (error) {
       console.error('Error al cargar supervisores:', error);
       // Datos de ejemplo en caso de error con ObjectIds válidos
       setSupervisores([
-        { _id: '507f1f77bcf86cd799439011', nombre: 'Juan Pérez', email: 'juan.perez@company.com', rol: 'supervisor' },
-        { _id: '507f1f77bcf86cd799439012', nombre: 'María González', email: 'maria.gonzalez@company.com', rol: 'supervisor' },
-        { _id: '507f1f77bcf86cd799439013', nombre: 'Carlos Rodríguez', email: 'carlos.rodriguez@company.com', rol: 'administrador' },
-        { _id: '507f1f77bcf86cd799439014', nombre: 'Ana Martínez', email: 'ana.martinez@company.com', rol: 'supervisor' },
-        { _id: '507f1f77bcf86cd799439015', nombre: 'Luis Fernández', email: 'luis.fernandez@company.com', rol: 'administrador' }
+        { _id: '507f1f77bcf86cd799439011', nombre: 'Mónica Rodríguez', email: 'monica.rodriguez@aceleratarapaka.cl', rol: 'supervisor' },
+        { _id: '507f1f77bcf86cd799439012', nombre: 'Cecilia García', email: 'cecilia.garcia@aceleratarapaka.cl', rol: 'supervisor' },
+        { _id: '507f1f77bcf86cd799439013', nombre: 'Carlos Marcoleta', email: 'carlos.marcoleta@aceleratarapaka.cl', rol: 'administrador' },
+        { _id: '507f1f77bcf86cd799439014', nombre: 'José Miguel Astudillo', email: 'jose.astudillo@aceleratarapaka.cl', rol: 'coordinador de especialidades' }
       ]);
     } finally {
       setLoadingSupervisores(false);
