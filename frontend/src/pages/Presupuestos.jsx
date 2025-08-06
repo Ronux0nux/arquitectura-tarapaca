@@ -13,6 +13,9 @@ export default function Presupuestos() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
   const [sortBy, setSortBy] = useState('descripcion');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [materialToDelete, setMaterialToDelete] = useState(null);
+  const [showTooltip, setShowTooltip] = useState(null);
   const { notifySuccess, notifyError } = useNotifications();
 
   // Cargar proyectos al inicializar
@@ -340,6 +343,81 @@ export default function Presupuestos() {
     notifySuccess('Presupuesto exportado exitosamente');
   };
 
+  // Editar material
+  const editMaterial = (materialId) => {
+    const material = budgetData.find(item => item.id === materialId);
+    if (!material) return;
+
+    // Crear un formulario simple para editar
+    const newDescripcion = prompt('Nueva descripción:', material.descripcion);
+    if (newDescripcion === null) return; // Usuario canceló
+
+    const newCantidad = prompt('Nueva cantidad:', material.cantidad);
+    if (newCantidad === null) return;
+
+    const newPrecioUnitario = prompt('Nuevo precio unitario:', material.precioUnitario);
+    if (newPrecioUnitario === null) return;
+
+    // Validar entradas
+    const cantidad = parseFloat(newCantidad);
+    const precioUnitario = parseFloat(newPrecioUnitario);
+
+    if (isNaN(cantidad) || cantidad <= 0) {
+      notifyError('La cantidad debe ser un número positivo');
+      return;
+    }
+
+    if (isNaN(precioUnitario) || precioUnitario < 0) {
+      notifyError('El precio unitario debe ser un número válido');
+      return;
+    }
+
+    // Actualizar el material
+    const updatedBudgetData = budgetData.map(item => {
+      if (item.id === materialId) {
+        return {
+          ...item,
+          descripcion: newDescripcion.trim(),
+          cantidad: cantidad,
+          precioUnitario: precioUnitario,
+          precioTotal: cantidad * precioUnitario
+        };
+      }
+      return item;
+    });
+
+    setBudgetData(updatedBudgetData);
+    calculateStats(updatedBudgetData);
+    notifySuccess('Material actualizado exitosamente');
+  };
+
+  // Eliminar material
+  const deleteMaterial = (materialId) => {
+    const material = budgetData.find(item => item.id === materialId);
+    if (!material) return;
+
+    setMaterialToDelete(material);
+    setShowDeleteModal(true);
+  };
+
+  // Confirmar eliminación
+  const confirmDelete = () => {
+    if (materialToDelete) {
+      const updatedBudgetData = budgetData.filter(item => item.id !== materialToDelete.id);
+      setBudgetData(updatedBudgetData);
+      calculateStats(updatedBudgetData);
+      notifySuccess('Material eliminado exitosamente');
+    }
+    setShowDeleteModal(false);
+    setMaterialToDelete(null);
+  };
+
+  // Cancelar eliminación
+  const cancelDelete = () => {
+    setShowDeleteModal(false);
+    setMaterialToDelete(null);
+  };
+
   // Recargar proyectos manualmente
   const reloadProjects = async () => {
     try {
@@ -377,6 +455,20 @@ export default function Presupuestos() {
         return 'bg-blue-100 text-blue-800';
       default:
         return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  // Descripciones de los estados
+  const getStatusDescription = (estado) => {
+    switch (estado) {
+      case 'aprobado':
+        return 'Material aprobado para compra. Cotización aceptada y autorizada para proceder con la orden de compra.';
+      case 'pendiente':
+        return 'Material en revisión. Cotización recibida pero aún no ha sido evaluada o aprobada por el equipo responsable.';
+      case 'cotizado':
+        return 'Material cotizado pero no aprobado. Se ha solicitado cotización al proveedor pero aún no se ha tomado una decisión.';
+      default:
+        return 'Estado no definido para este material.';
     }
   };
 
@@ -482,17 +574,56 @@ export default function Presupuestos() {
             <div className="text-2xl font-bold text-orange-600">{stats.suppliers}</div>
             <div className="text-sm text-gray-600">Proveedores</div>
           </div>
-          <div className="bg-white rounded-lg shadow-sm border p-4 text-center">
+          <div className="bg-white rounded-lg shadow-sm border p-4 text-center relative">
             <div className="text-2xl font-bold text-green-600">{stats.aprobados}</div>
-            <div className="text-sm text-gray-600">Aprobados</div>
+            <div 
+              className="text-sm text-gray-600 cursor-help"
+              onMouseEnter={() => setShowTooltip('aprobados')}
+              onMouseLeave={() => setShowTooltip(null)}
+            >
+              Aprobados ℹ️
+            </div>
+            {showTooltip === 'aprobados' && (
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-xs rounded-lg shadow-lg z-10 w-64">
+                <div className="font-semibold mb-1">✅ Materiales Aprobados</div>
+                {getStatusDescription('aprobado')}
+                <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+              </div>
+            )}
           </div>
-          <div className="bg-white rounded-lg shadow-sm border p-4 text-center">
+          <div className="bg-white rounded-lg shadow-sm border p-4 text-center relative">
             <div className="text-2xl font-bold text-yellow-600">{stats.pendientes}</div>
-            <div className="text-sm text-gray-600">Pendientes</div>
+            <div 
+              className="text-sm text-gray-600 cursor-help"
+              onMouseEnter={() => setShowTooltip('pendientes')}
+              onMouseLeave={() => setShowTooltip(null)}
+            >
+              Pendientes ℹ️
+            </div>
+            {showTooltip === 'pendientes' && (
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-xs rounded-lg shadow-lg z-10 w-64">
+                <div className="font-semibold mb-1">⏳ Materiales Pendientes</div>
+                {getStatusDescription('pendiente')}
+                <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+              </div>
+            )}
           </div>
-          <div className="bg-white rounded-lg shadow-sm border p-4 text-center">
+          <div className="bg-white rounded-lg shadow-sm border p-4 text-center relative">
             <div className="text-2xl font-bold text-blue-600">{stats.cotizados}</div>
-            <div className="text-sm text-gray-600">Cotizados</div>
+            <div 
+              className="text-sm text-gray-600 cursor-help"
+              onMouseEnter={() => setShowTooltip('cotizados')}
+              onMouseLeave={() => setShowTooltip(null)}
+            >
+              Cotizados ℹ️
+            </div>
+            {showTooltip === 'cotizados' && (
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-xs rounded-lg shadow-lg z-10 w-64">
+                <div className="font-semibold mb-1">💰 Materiales Cotizados</div>
+                {getStatusDescription('cotizado')}
+                <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -632,6 +763,23 @@ export default function Presupuestos() {
                           {item.observaciones && (
                             <div className="text-xs text-blue-600 mt-1">💡 {item.observaciones}</div>
                           )}
+                          {/* Botones de acción */}
+                          <div className="flex gap-2 mt-2">
+                            <button
+                              onClick={() => editMaterial(item.id)}
+                              className="inline-flex items-center px-2 py-1 text-xs font-medium text-blue-700 bg-blue-100 border border-blue-200 rounded hover:bg-blue-200 transition-colors"
+                              title="Editar material"
+                            >
+                              ✏️ Editar
+                            </button>
+                            <button
+                              onClick={() => deleteMaterial(item.id)}
+                              className="inline-flex items-center px-2 py-1 text-xs font-medium text-red-700 bg-red-100 border border-red-200 rounded hover:bg-red-200 transition-colors"
+                              title="Eliminar material"
+                            >
+                              🗑️ Eliminar
+                            </button>
+                          </div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -663,13 +811,28 @@ export default function Presupuestos() {
                           <div className="text-xs text-gray-500">📅 {item.fechaCotizacion}</div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(item.estado)}`}>
+                      <td className="px-6 py-4 whitespace-nowrap relative">
+                        <span 
+                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full cursor-help ${getStatusColor(item.estado)}`}
+                          onMouseEnter={() => setShowTooltip(`estado-${item.id}`)}
+                          onMouseLeave={() => setShowTooltip(null)}
+                        >
                           {item.estado === 'aprobado' && '✅'} 
                           {item.estado === 'pendiente' && '⏳'} 
                           {item.estado === 'cotizado' && '💰'} 
-                          {item.estado.charAt(0).toUpperCase() + item.estado.slice(1)}
+                          {item.estado.charAt(0).toUpperCase() + item.estado.slice(1)} ℹ️
                         </span>
+                        {showTooltip === `estado-${item.id}` && (
+                          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-xs rounded-lg shadow-lg z-20 w-64">
+                            <div className="font-semibold mb-1">
+                              {item.estado === 'aprobado' && '✅ Material Aprobado'}
+                              {item.estado === 'pendiente' && '⏳ Material Pendiente'}
+                              {item.estado === 'cotizado' && '💰 Material Cotizado'}
+                            </div>
+                            {getStatusDescription(item.estado)}
+                            <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -688,6 +851,73 @@ export default function Presupuestos() {
           <p className="text-gray-600">
             Elige un proyecto arriba para ver su presupuesto detallado de materiales
           </p>
+        </div>
+      )}
+
+      {/* Modal de Confirmación de Eliminación */}
+      {showDeleteModal && materialToDelete && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
+          <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            {/* Header del Modal */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                🗑️ Confirmar Eliminación
+              </h3>
+              <button
+                onClick={cancelDelete}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </button>
+            </div>
+
+            {/* Contenido del Modal */}
+            <div className="p-6">
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0">
+                  <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                    <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                    </svg>
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-lg font-medium text-gray-900 mb-2">
+                    ¿Eliminar este material?
+                  </h4>
+                  <div className="bg-gray-50 rounded-lg p-3 mb-4">
+                    <div className="text-sm font-medium text-gray-700">{materialToDelete.codigo}</div>
+                    <div className="text-sm text-gray-600">{materialToDelete.descripcion}</div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      {materialToDelete.cantidad} {materialToDelete.unidad} • ${materialToDelete.precioTotal.toLocaleString()}
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    Esta acción eliminará permanentemente este material del presupuesto y 
+                    <strong className="text-red-600"> no se puede deshacer</strong>.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer del Modal */}
+            <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 bg-gray-50 rounded-b-lg">
+              <button
+                onClick={cancelDelete}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors"
+              >
+                🗑️ Eliminar Material
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
