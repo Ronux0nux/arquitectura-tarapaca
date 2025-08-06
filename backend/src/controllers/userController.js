@@ -95,3 +95,18 @@ exports.deleteUser = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+// Obtener supervisores y administradores para proyectos
+exports.getSupervisores = async (req, res) => {
+  try {
+    // Buscar usuarios con rol de supervisor, administrador, o coordinador
+    const supervisores = await User.find({
+      rol: { $in: ['supervisor', 'administrador', 'coordinador', 'coordinador de especialidades'] }
+    }).select('nombre email rol _id');
+    
+    res.json(supervisores);
+  } catch (err) {
+    console.error('Error al obtener supervisores:', err);
+    res.status(500).json({ error: err.message });
+  }
+};

@@ -3,7 +3,11 @@ const mongoose = require('mongoose');
 const userSchema = new mongoose.Schema({
   nombre: { type: String, required: true },
   email: { type: String, required: true, unique: true },
-  rol: { type: String, enum: ['Admin', 'Coordinador', 'Especialistas'], default: 'Especialista' },
+  rol: { 
+    type: String, 
+    enum: ['usuario', 'supervisor', 'administrador', 'coordinador', 'coordinador de especialidades'], 
+    default: 'usuario' 
+  },
   passwordHash: { type: String, required: true },
   proyectos: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Project' }],
   fechaRegistro: { type: Date, default: Date.now },

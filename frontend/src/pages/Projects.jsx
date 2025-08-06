@@ -106,11 +106,16 @@ const Projects = () => {
   const handleCreateProject = async (e) => {
     e.preventDefault();
     try {
+      console.log('🆕 Creando nuevo proyecto:', newProject);
+      
       // Validar que los campos requeridos estén presentes
       if (!newProject.nombre || !newProject.codigo || !newProject.fechaInicio || !newProject.fechaTermino || !newProject.subencargado) {
         alert('Por favor complete todos los campos requeridos (nombre, código, fechas y coordinador)');
         return;
       }
+
+      console.log('🆕 Supervisor seleccionado:', newProject.subencargado);
+      console.log('🆕 Lista de supervisores disponibles:', supervisores);
 
       // Crear proyecto con el ID del supervisor seleccionado
       const projectData = {
@@ -118,6 +123,8 @@ const Projects = () => {
         // El subencargado debe ser un ObjectId válido
         subencargado: newProject.subencargado
       };
+
+      console.log('🆕 Datos finales a enviar:', projectData);
 
       const response = await fetch(`${API_BASE_URL}/projects`, {
         method: 'POST',
@@ -128,6 +135,7 @@ const Projects = () => {
       });
 
       const result = await response.json();
+      console.log('🆕 Respuesta del servidor:', result);
 
       if (response.ok) {
         setShowCreateModal(false);
@@ -141,7 +149,8 @@ const Projects = () => {
           estado: 'Planificación',
           subencargado: ''
         });
-        fetchProjects();
+        console.log('🆕 Proyecto creado exitosamente, recargando lista...');
+        await fetchProjects();
         alert('Proyecto creado exitosamente');
       } else {
         console.error('Error del servidor:', result);
@@ -153,7 +162,7 @@ const Projects = () => {
     }
   };
 
-  // Editar proyecto existente
+  // Editar proyecto existente en el sistema
   const handleEditProject = async (e) => {
     e.preventDefault();
     try {
@@ -233,12 +242,17 @@ const Projects = () => {
   // Cargar supervisores del sistema
   const fetchSupervisores = async () => {
     try {
+      console.log('👥 Cargando supervisores desde:', `${API_BASE_URL}/users/supervisores`);
       setLoadingSupervisores(true);
       const response = await fetch(`${API_BASE_URL}/users/supervisores`);
+      console.log('👥 Respuesta del servidor:', response.status, response.statusText);
+      
       if (response.ok) {
         const data = await response.json();
+        console.log('👥 Supervisores recibidos:', data);
         setSupervisores(data || []);
       } else {
+        console.log('👥 Endpoint no disponible, usando datos de ejemplo');
         // Si no existe el endpoint, usar datos de ejemplo con ObjectIds válidos
         setSupervisores([
           { _id: '507f1f77bcf86cd799439011', nombre: 'Mónica Rodríguez', email: 'monica.rodriguez@aceleratarapaka.cl', rol: 'supervisor' },
