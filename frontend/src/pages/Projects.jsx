@@ -13,6 +13,8 @@ const Projects = () => {
   const [showActaDetailsModal, setShowActaDetailsModal] = useState(false);
   const [showMaterialesModal, setShowMaterialesModal] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
+  const [isEditingInDetails, setIsEditingInDetails] = useState(false);
+  const [detailsProjectEdit, setDetailsProjectEdit] = useState(null);
   const [projectToEdit, setProjectToEdit] = useState(null);
   const [selectedActa, setSelectedActa] = useState(null);
   const [actas, setActas] = useState([]);
@@ -242,7 +244,66 @@ const Projects = () => {
   // Ver detalles del proyecto
   const handleViewDetails = (project) => {
     setSelectedProject(project);
+    setIsEditingInDetails(false);
+    setDetailsProjectEdit(null);
     setShowDetailsModal(true);
+  };
+
+  // Activar modo edición en detalles
+  const handleStartEditingInDetails = () => {
+    setDetailsProjectEdit({
+      ...selectedProject,
+      fechaInicio: selectedProject.fechaInicio ? new Date(selectedProject.fechaInicio).toISOString().split('T')[0] : '',
+      fechaTermino: selectedProject.fechaTermino ? new Date(selectedProject.fechaTermino).toISOString().split('T')[0] : ''
+    });
+    setIsEditingInDetails(true);
+  };
+
+  // Cancelar edición en detalles
+  const handleCancelEditingInDetails = () => {
+    setIsEditingInDetails(false);
+    setDetailsProjectEdit(null);
+  };
+
+  // Guardar cambios desde detalles
+  const handleSaveFromDetails = async () => {
+    try {
+      // Validar que los campos requeridos estén presentes
+      if (!detailsProjectEdit.nombre || !detailsProjectEdit.codigo || !detailsProjectEdit.fechaInicio || !detailsProjectEdit.fechaTermino) {
+        alert('Por favor complete todos los campos requeridos (nombre, código, fechas)');
+        return;
+      }
+
+      const projectData = {
+        ...detailsProjectEdit,
+        subencargado: detailsProjectEdit.subencargado || '507f1f77bcf86cd799439011'
+      };
+
+      const response = await fetch(`${API_BASE_URL}/projects/${detailsProjectEdit._id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(projectData),
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        // Actualizar el proyecto seleccionado
+        setSelectedProject(detailsProjectEdit);
+        setIsEditingInDetails(false);
+        setDetailsProjectEdit(null);
+        fetchProjects(); // Recargar la lista
+        alert('Proyecto actualizado exitosamente');
+      } else {
+        console.error('Error del servidor:', result);
+        alert(`Error al actualizar el proyecto: ${result.error || 'Error desconocido'}`);
+      }
+    } catch (error) {
+      console.error('Error al actualizar proyecto:', error);
+      alert(`Error al actualizar el proyecto: ${error.message}`);
+    }
   };
 
   // Editar proyecto (solo para supervisores y administradores)
@@ -888,67 +949,231 @@ const Projects = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-bold">Detalles del Proyecto</h2>
-              <button 
-                onClick={() => setShowDetailsModal(false)}
-                className="text-gray-500 hover:text-gray-700 text-2xl"
-              >
-                ×
-              </button>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <div>
-                  <span className="font-semibold text-gray-700">ID:</span>
-                  <p className="text-gray-600 bg-gray-50 p-2 rounded text-sm">{selectedProject._id}</p>
-                </div>
-                <div>
-                  <span className="font-semibold text-gray-700">Nombre:</span>
-                  <p className="text-gray-900">{selectedProject.nombre}</p>
-                </div>
-                <div>
-                  <span className="font-semibold text-gray-700">Código:</span>
-                  <p className="text-gray-900">{selectedProject.codigo}</p>
-                </div>
-                <div>
-                  <span className="font-semibold text-gray-700">Estado:</span>
-                  <span className={`ml-2 px-3 py-1 rounded-full text-sm font-medium ${
-                    selectedProject.estado === 'Finalizado' ? 'bg-green-100 text-green-800' :
-                    selectedProject.estado === 'En ejecución' ? 'bg-blue-100 text-blue-800' :
-                    'bg-yellow-100 text-yellow-800'
-                  }`}>
-                    {selectedProject.estado}
-                  </span>
-                </div>
-              </div>
-              
-              <div className="space-y-4">
-                <div>
-                  <span className="font-semibold text-gray-700">Fecha de Inicio:</span>
-                  <p className="text-gray-900">{selectedProject.fechaInicio ? new Date(selectedProject.fechaInicio).toLocaleDateString() : 'No definida'}</p>
-                </div>
-                <div>
-                  <span className="font-semibold text-gray-700">Fecha de Término:</span>
-                  <p className="text-gray-900">{selectedProject.fechaTermino ? new Date(selectedProject.fechaTermino).toLocaleDateString() : 'No definida'}</p>
-                </div>
-                <div>
-                  <span className="font-semibold text-gray-700">Coordinador Encargado:</span>
-                  <p className="text-gray-900">{selectedProject.subencargado || 'No asignado'}</p>
-                </div>
-                <div>
-                  <span className="font-semibold text-gray-700">Ubicación:</span>
-                  <p className="text-gray-900">{selectedProject.ubicacion || 'No especificada'}</p>
-                </div>
+              <h2 className="text-2xl font-bold">
+                {isEditingInDetails ? 'Editar Proyecto' : 'Detalles del Proyecto'}
+              </h2>
+              <div className="flex items-center gap-2">
+                {!isEditingInDetails && canEditProjects() && (
+                  <button
+                    onClick={handleStartEditingInDetails}
+                    className="px-3 py-1 bg-orange-500 text-white rounded hover:bg-orange-600 transition-colors text-sm"
+                    title="Editar proyecto"
+                  >
+                    ✏️ Editar
+                  </button>
+                )}
+                <button 
+                  onClick={() => {
+                    setShowDetailsModal(false);
+                    setIsEditingInDetails(false);
+                    setDetailsProjectEdit(null);
+                  }}
+                  className="text-gray-500 hover:text-gray-700 text-2xl"
+                >
+                  ×
+                </button>
               </div>
             </div>
             
-            <div className="mt-6">
-              <span className="font-semibold text-gray-700">Descripción:</span>
-              <p className="mt-2 text-gray-700 bg-gray-50 p-4 rounded">
-                {selectedProject.descripcion || 'No hay descripción disponible'}
-              </p>
-            </div>
+            {isEditingInDetails && detailsProjectEdit ? (
+              // Modo edición
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Nombre del Proyecto *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={detailsProjectEdit.nombre}
+                      onChange={(e) => setDetailsProjectEdit({...detailsProjectEdit, nombre: e.target.value})}
+                      className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Ingrese el nombre del proyecto"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Código del Proyecto *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={detailsProjectEdit.codigo}
+                      onChange={(e) => setDetailsProjectEdit({...detailsProjectEdit, codigo: e.target.value})}
+                      className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Código único del proyecto"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Descripción
+                  </label>
+                  <textarea
+                    value={detailsProjectEdit.descripcion}
+                    onChange={(e) => setDetailsProjectEdit({...detailsProjectEdit, descripcion: e.target.value})}
+                    rows={3}
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Descripción del proyecto"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Ubicación
+                  </label>
+                  <input
+                    type="text"
+                    value={detailsProjectEdit.ubicacion}
+                    onChange={(e) => setDetailsProjectEdit({...detailsProjectEdit, ubicacion: e.target.value})}
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Ubicación del proyecto"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Fecha de Inicio *
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={detailsProjectEdit.fechaInicio}
+                      onChange={(e) => setDetailsProjectEdit({...detailsProjectEdit, fechaInicio: e.target.value})}
+                      className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Fecha de Término *
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={detailsProjectEdit.fechaTermino}
+                      onChange={(e) => setDetailsProjectEdit({...detailsProjectEdit, fechaTermino: e.target.value})}
+                      className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Estado *
+                  </label>
+                  <select
+                    required
+                    value={detailsProjectEdit.estado}
+                    onChange={(e) => setDetailsProjectEdit({...detailsProjectEdit, estado: e.target.value})}
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    {estados.map(estado => (
+                      <option key={estado} value={estado}>{estado}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Coordinador Encargado
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="ID del coordinador encargado (ObjectId)"
+                    value={detailsProjectEdit.subencargado}
+                    onChange={(e) => setDetailsProjectEdit({...detailsProjectEdit, subencargado: e.target.value})}
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Ingrese un ObjectId válido o déjelo vacío para mantener el actual
+                  </p>
+                </div>
+
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <h4 className="text-sm font-semibold text-blue-800 mb-2">⚠️ Modo Edición Activo</h4>
+                  <p className="text-xs text-blue-700">
+                    Como <strong>{userRole}</strong>, estás editando los detalles del proyecto. 
+                    Los cambios se aplicarán inmediatamente al guardar.
+                  </p>
+                </div>
+
+                <div className="flex justify-end space-x-4 pt-4 border-t">
+                  <button
+                    onClick={handleCancelEditingInDetails}
+                    className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleSaveFromDetails}
+                    className="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600"
+                  >
+                    💾 Guardar Cambios
+                  </button>
+                </div>
+              </div>
+            ) : (
+              // Modo visualización
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <div>
+                      <span className="font-semibold text-gray-700">ID:</span>
+                      <p className="text-gray-600 bg-gray-50 p-2 rounded text-sm">{selectedProject._id}</p>
+                    </div>
+                    <div>
+                      <span className="font-semibold text-gray-700">Nombre:</span>
+                      <p className="text-gray-900">{selectedProject.nombre}</p>
+                    </div>
+                    <div>
+                      <span className="font-semibold text-gray-700">Código:</span>
+                      <p className="text-gray-900">{selectedProject.codigo}</p>
+                    </div>
+                    <div>
+                      <span className="font-semibold text-gray-700">Estado:</span>
+                      <span className={`ml-2 px-3 py-1 rounded-full text-sm font-medium ${
+                        selectedProject.estado === 'Finalizado' ? 'bg-green-100 text-green-800' :
+                        selectedProject.estado === 'En ejecución' ? 'bg-blue-100 text-blue-800' :
+                        'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {selectedProject.estado}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <span className="font-semibold text-gray-700">Fecha de Inicio:</span>
+                      <p className="text-gray-900">{selectedProject.fechaInicio ? new Date(selectedProject.fechaInicio).toLocaleDateString() : 'No definida'}</p>
+                    </div>
+                    <div>
+                      <span className="font-semibold text-gray-700">Fecha de Término:</span>
+                      <p className="text-gray-900">{selectedProject.fechaTermino ? new Date(selectedProject.fechaTermino).toLocaleDateString() : 'No definida'}</p>
+                    </div>
+                    <div>
+                      <span className="font-semibold text-gray-700">Coordinador Encargado:</span>
+                      <p className="text-gray-900">{selectedProject.subencargado || 'No asignado'}</p>
+                    </div>
+                    <div>
+                      <span className="font-semibold text-gray-700">Ubicación:</span>
+                      <p className="text-gray-900">{selectedProject.ubicacion || 'No especificada'}</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="mt-6">
+                  <span className="font-semibold text-gray-700">Descripción:</span>
+                  <p className="mt-2 text-gray-700 bg-gray-50 p-4 rounded">
+                    {selectedProject.descripcion || 'No hay descripción disponible'}
+                  </p>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
