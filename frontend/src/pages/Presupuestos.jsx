@@ -276,6 +276,8 @@ export default function Presupuestos() {
   const getFilteredData = () => {
     let filtered = budgetData;
 
+    console.log(`🔍 Datos base para filtrar: ${filtered.length} materiales`);
+
     // Filtro por búsqueda
     if (searchTerm) {
       filtered = filtered.filter(item =>
@@ -284,11 +286,13 @@ export default function Presupuestos() {
         item.proveedor.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.categoria.toLowerCase().includes(searchTerm.toLowerCase())
       );
+      console.log(`🔍 Después de filtro de búsqueda "${searchTerm}": ${filtered.length} materiales`);
     }
 
     // Filtro por categoría
     if (filterCategory) {
       filtered = filtered.filter(item => item.categoria === filterCategory);
+      console.log(`🔍 Después de filtro de categoría "${filterCategory}": ${filtered.length} materiales`);
     }
 
     // Ordenamiento
@@ -309,6 +313,7 @@ export default function Presupuestos() {
       }
     });
 
+    console.log(`✅ Datos filtrados finales: ${filtered.length} materiales`);
     return filtered;
   };
 
@@ -319,36 +324,59 @@ export default function Presupuestos() {
       return;
     }
 
+    // Obtener los datos filtrados que se están mostrando actualmente
+    const dataToExport = getFilteredData();
+    
+    if (dataToExport.length === 0) {
+      notifyError('No hay datos para exportar con los filtros actuales');
+      return;
+    }
+
+    console.log(`📊 Exportando ${dataToExport.length} materiales del proyecto ${selectedProject.name}`);
+
     const headers = [
       'Código', 'Descripción', 'Categoría', 'Cantidad', 'Unidad', 
-      'Precio Unitario', 'Precio Total', 'Proveedor', 'Estado', 'Fecha'
+      'Precio Unitario', 'Precio Total', 'Proveedor', 'Contacto Proveedor', 'Estado', 'Fecha', 'Observaciones'
     ];
 
     const csvContent = [
       headers.join(','),
-      ...budgetData.map(item => [
-        item.codigo,
-        `"${item.descripcion}"`,
-        item.categoria,
-        item.cantidad,
-        item.unidad,
-        item.precioUnitario,
-        item.precioTotal,
-        `"${item.proveedor}"`,
-        item.estado,
-        item.fechaCotizacion
+      ...dataToExport.map(item => [
+        `"${item.codigo || ''}"`,
+        `"${item.descripcion || ''}"`,
+        `"${item.categoria || ''}"`,
+        item.cantidad || 0,
+        `"${item.unidad || ''}"`,
+        item.precioUnitario || 0,
+        item.precioTotal || 0,
+        `"${item.proveedor || ''}"`,
+        `"${item.proveedorContacto || ''}"`,
+        `"${item.estado || ''}"`,
+        `"${item.fechaCotizacion || ''}"`,
+        `"${item.observaciones || ''}"`
       ].join(','))
     ].join('\n');
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    // Agregar BOM para caracteres especiales y mejor compatibilidad con Excel
+    const BOM = '\uFEFF';
+    const finalContent = BOM + csvContent;
+
+    const blob = new Blob([finalContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
-    link.setAttribute('download', `presupuesto_${selectedProject.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`);
+    
+    // Generar nombre de archivo más descriptivo
+    const fileName = `presupuesto_${selectedProject.code || selectedProject.id}_${selectedProject.name.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`;
+    link.setAttribute('download', fileName);
+    
+    // Crear y activar el enlace de descarga
+    document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
     URL.revokeObjectURL(url);
 
-    notifySuccess('Presupuesto exportado exitosamente');
+    notifySuccess(`✅ Presupuesto exportado: ${dataToExport.length} materiales en ${fileName}`);
   };
 
   // Editar material
@@ -464,6 +492,16 @@ export default function Presupuestos() {
 
   const filteredData = getFilteredData();
   const categories = [...new Set(budgetData.map(item => item.categoria))].sort();
+
+  // Función de debug para testing
+  window.debugPresupuestos = {
+    budgetData,
+    filteredData,
+    selectedProject,
+    exportBudget,
+    stats,
+    getFilteredData
+  };
 
   // Función para obtener color del estado
   const getStatusColor = (estado) => {
