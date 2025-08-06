@@ -100,16 +100,16 @@ const Projects = () => {
     e.preventDefault();
     try {
       // Validar que los campos requeridos estén presentes
-      if (!newProject.nombre || !newProject.codigo || !newProject.fechaInicio || !newProject.fechaTermino) {
-        alert('Por favor complete todos los campos requeridos (nombre, código, fechas)');
+      if (!newProject.nombre || !newProject.codigo || !newProject.fechaInicio || !newProject.fechaTermino || !newProject.subencargado) {
+        alert('Por favor complete todos los campos requeridos (nombre, código, fechas y coordinador)');
         return;
       }
 
-      // Crear un ObjectId temporal para el subencargado si no está vacío
+      // Crear proyecto con el ID del supervisor seleccionado
       const projectData = {
         ...newProject,
-        // Enviar el ID del supervisor seleccionado
-        subencargado: newProject.subencargado || ''
+        // El subencargado debe ser un ObjectId válido
+        subencargado: newProject.subencargado
       };
 
       const response = await fetch(`${API_BASE_URL}/projects`, {
@@ -151,15 +151,15 @@ const Projects = () => {
     e.preventDefault();
     try {
       // Validar que los campos requeridos estén presentes
-      if (!projectToEdit.nombre || !projectToEdit.codigo || !projectToEdit.fechaInicio || !projectToEdit.fechaTermino) {
-        alert('Por favor complete todos los campos requeridos (nombre, código, fechas)');
+      if (!projectToEdit.nombre || !projectToEdit.codigo || !projectToEdit.fechaInicio || !projectToEdit.fechaTermino || !projectToEdit.subencargado) {
+        alert('Por favor complete todos los campos requeridos (nombre, código, fechas y coordinador)');
         return;
       }
 
       const projectData = {
         ...projectToEdit,
-        // Enviar el ID del supervisor seleccionado
-        subencargado: projectToEdit.subencargado || ''
+        // El subencargado debe ser un ObjectId válido
+        subencargado: projectToEdit.subencargado
       };
 
       const response = await fetch(`${API_BASE_URL}/projects/${projectToEdit._id}`, {
@@ -226,24 +226,24 @@ const Projects = () => {
         const data = await response.json();
         setSupervisores(data || []);
       } else {
-        // Si no existe el endpoint, usar datos de ejemplo
+        // Si no existe el endpoint, usar datos de ejemplo con ObjectIds válidos
         setSupervisores([
-          { _id: '1', nombre: 'Juan Pérez', email: 'juan.perez@company.com', rol: 'supervisor' },
-          { _id: '2', nombre: 'María González', email: 'maria.gonzalez@company.com', rol: 'supervisor' },
-          { _id: '3', nombre: 'Carlos Rodríguez', email: 'carlos.rodriguez@company.com', rol: 'administrador' },
-          { _id: '4', nombre: 'Ana Martínez', email: 'ana.martinez@company.com', rol: 'supervisor' },
-          { _id: '5', nombre: 'Luis Fernández', email: 'luis.fernandez@company.com', rol: 'administrador' }
+          { _id: '507f1f77bcf86cd799439011', nombre: 'Juan Pérez', email: 'juan.perez@company.com', rol: 'supervisor' },
+          { _id: '507f1f77bcf86cd799439012', nombre: 'María González', email: 'maria.gonzalez@company.com', rol: 'supervisor' },
+          { _id: '507f1f77bcf86cd799439013', nombre: 'Carlos Rodríguez', email: 'carlos.rodriguez@company.com', rol: 'administrador' },
+          { _id: '507f1f77bcf86cd799439014', nombre: 'Ana Martínez', email: 'ana.martinez@company.com', rol: 'supervisor' },
+          { _id: '507f1f77bcf86cd799439015', nombre: 'Luis Fernández', email: 'luis.fernandez@company.com', rol: 'administrador' }
         ]);
       }
     } catch (error) {
       console.error('Error al cargar supervisores:', error);
-      // Datos de ejemplo en caso de error
+      // Datos de ejemplo en caso de error con ObjectIds válidos
       setSupervisores([
-        { _id: '1', nombre: 'Juan Pérez', email: 'juan.perez@company.com', rol: 'supervisor' },
-        { _id: '2', nombre: 'María González', email: 'maria.gonzalez@company.com', rol: 'supervisor' },
-        { _id: '3', nombre: 'Carlos Rodríguez', email: 'carlos.rodriguez@company.com', rol: 'administrador' },
-        { _id: '4', nombre: 'Ana Martínez', email: 'ana.martinez@company.com', rol: 'supervisor' },
-        { _id: '5', nombre: 'Luis Fernández', email: 'luis.fernandez@company.com', rol: 'administrador' }
+        { _id: '507f1f77bcf86cd799439011', nombre: 'Juan Pérez', email: 'juan.perez@company.com', rol: 'supervisor' },
+        { _id: '507f1f77bcf86cd799439012', nombre: 'María González', email: 'maria.gonzalez@company.com', rol: 'supervisor' },
+        { _id: '507f1f77bcf86cd799439013', nombre: 'Carlos Rodríguez', email: 'carlos.rodriguez@company.com', rol: 'administrador' },
+        { _id: '507f1f77bcf86cd799439014', nombre: 'Ana Martínez', email: 'ana.martinez@company.com', rol: 'supervisor' },
+        { _id: '507f1f77bcf86cd799439015', nombre: 'Luis Fernández', email: 'luis.fernandez@company.com', rol: 'administrador' }
       ]);
     } finally {
       setLoadingSupervisores(false);
@@ -311,15 +311,15 @@ const Projects = () => {
   const handleSaveFromDetails = async () => {
     try {
       // Validar que los campos requeridos estén presentes
-      if (!detailsProjectEdit.nombre || !detailsProjectEdit.codigo || !detailsProjectEdit.fechaInicio || !detailsProjectEdit.fechaTermino) {
-        alert('Por favor complete todos los campos requeridos (nombre, código, fechas)');
+      if (!detailsProjectEdit.nombre || !detailsProjectEdit.codigo || !detailsProjectEdit.fechaInicio || !detailsProjectEdit.fechaTermino || !detailsProjectEdit.subencargado) {
+        alert('Por favor complete todos los campos requeridos (nombre, código, fechas y coordinador)');
         return;
       }
 
       const projectData = {
         ...detailsProjectEdit,
-        // Enviar el ID del supervisor seleccionado
-        subencargado: detailsProjectEdit.subencargado || ''
+        // El subencargado debe ser un ObjectId válido
+        subencargado: detailsProjectEdit.subencargado
       };
 
       const response = await fetch(`${API_BASE_URL}/projects/${detailsProjectEdit._id}`, {
@@ -803,6 +803,7 @@ const Projects = () => {
                   value={newProject.subencargado}
                   onChange={(e) => setNewProject({...newProject, subencargado: e.target.value})}
                   className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  required
                 >
                   <option value="">Seleccionar coordinador...</option>
                   {supervisores.map(supervisor => (
@@ -951,12 +952,13 @@ const Projects = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Coordinador Encargado
+                  Coordinador Encargado *
                 </label>
                 <select
                   value={projectToEdit.subencargado}
                   onChange={(e) => setProjectToEdit({...projectToEdit, subencargado: e.target.value})}
                   className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  required
                 >
                   <option value="">Seleccionar coordinador...</option>
                   {supervisores.map(supervisor => (
@@ -1134,12 +1136,13 @@ const Projects = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Coordinador Encargado
+                    Coordinador Encargado *
                   </label>
                   <select
                     value={detailsProjectEdit.subencargado}
                     onChange={(e) => setDetailsProjectEdit({...detailsProjectEdit, subencargado: e.target.value})}
                     className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    required
                   >
                     <option value="">Seleccionar coordinador...</option>
                     {supervisores.map(supervisor => (
