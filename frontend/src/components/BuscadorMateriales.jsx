@@ -9,7 +9,6 @@ const BuscadorMateriales = () => {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [searchType, setSearchType] = useState('shopping');
   const [showDatabaseResults, setShowDatabaseResults] = useState(false);
   const { addToCart } = useCart();
   const { buscarEnDatabase, getProductosMasUsados } = useCotizaciones();
@@ -41,7 +40,7 @@ const BuscadorMateriales = () => {
           vecesUsado: 1,
           ultimoUso: new Date().toISOString(),
           searchTerm: terminoBusqueda, // Guardar el término de búsqueda
-          category: searchType === 'shopping' ? 'General' : 'Información',
+          category: 'Productos', // Siempre será productos
           origenBusqueda: 'SERPAPI' // Marcar que viene de SERPAPI
         };
         productosExistentes.push(nuevoProducto);
@@ -63,7 +62,7 @@ const BuscadorMateriales = () => {
     try {
       await axios.post(`${API_BASE_URL}/dataset/save-search-results`, {
         searchTerm: terminoBusqueda,
-        searchType: searchType,
+        searchType: 'shopping', // Siempre shopping
         results: resultados
       });
     } catch (error) {
@@ -108,7 +107,7 @@ const BuscadorMateriales = () => {
     try {
       const response = await axios.post(`${API_BASE_URL}/search/search`, {
         searchTerm: searchTerm.trim(),
-        searchType
+        searchType: 'shopping' // Siempre buscar productos
       });
 
       if (response.data.results) {
@@ -158,7 +157,7 @@ const BuscadorMateriales = () => {
     const itemWithSearch = {
       ...result,
       searchTerm: searchTerm,
-      category: searchType === 'shopping' ? 'General' : 'Información'
+      category: 'Productos' // Siempre será productos
     };
     addToCart(itemWithSearch);
     
@@ -208,15 +207,6 @@ const BuscadorMateriales = () => {
           </div>
           
           <div className="flex gap-2">
-            <select
-              value={searchType}
-              onChange={(e) => setSearchType(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="shopping">Productos</option>
-              <option value="organic">Información</option>
-            </select>
-            
             <button
               onClick={searchMaterials}
               disabled={loading}
@@ -228,7 +218,7 @@ const BuscadorMateriales = () => {
                   Buscando...
                 </>
               ) : (
-                '🔍 Buscar'
+                '🔍 Buscar Productos'
               )}
             </button>
           </div>
@@ -259,7 +249,7 @@ const BuscadorMateriales = () => {
       {!loading && results.length === 0 && !searchTerm && (
         <div className="bg-white rounded-lg shadow-md p-6">
           <h3 className="text-xl font-semibold text-gray-800 mb-4">
-            🔥 Productos Más Usados en tus Cotizaciones
+            🚨 Productos Más Usados en tus Cotizaciones
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {getProductosMasUsados(6).map((producto, index) => (
@@ -368,107 +358,56 @@ const BuscadorMateriales = () => {
                     </div>
                   </div>
                 ) : (
-                  // Cards originales para resultados de internet
-                  result.type === 'shopping' ? (
-                    // Card para resultados de shopping
-                    <div className="space-y-3">
-                      {result.thumbnail && (
-                        <img 
-                          src={result.thumbnail} 
-                          alt={result.title}
-                          className="w-full h-32 object-cover rounded-md"
-                        />
-                      )}
-                      <h4 className="font-semibold text-sm text-gray-800 overflow-hidden" style={{
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical'
-                      }}>
-                        {result.title}
-                      </h4>
-                      {result.price && (
-                        <p className="text-lg font-bold text-green-600">
-                          {formatPrice(result.price)}
-                        </p>
-                      )}
-                      <p className="text-xs text-gray-500">
-                        {result.source}
+                  // Cards para resultados de internet (siempre productos)
+                  <div className="space-y-3">
+                    {result.thumbnail && (
+                      <img 
+                        src={result.thumbnail} 
+                        alt={result.title}
+                        className="w-full h-32 object-cover rounded-md"
+                      />
+                    )}
+                    <h4 className="font-semibold text-sm text-gray-800 overflow-hidden" style={{
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical'
+                    }}>
+                      {result.title}
+                    </h4>
+                    {result.price && (
+                      <p className="text-lg font-bold text-green-600">
+                        {formatPrice(result.price)}
                       </p>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        <button
-                          onClick={() => handleAddToCart(result)}
-                          className="bg-green-600 text-white py-2 px-3 rounded-md hover:bg-green-700 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                        >
-                          🛒 Carrito
-                        </button>
-                        <button
-                          onClick={() => copyToClipboard(`${result.title} - ${result.price} - ${result.source}`)}
-                          className="bg-gray-600 text-white py-2 px-3 rounded-md hover:bg-gray-700 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-gray-500"
-                        >
-                          📋 Copiar
-                        </button>
-                        <button
-                          onClick={() => handleLinkClick(result.link)}
-                          disabled={!result.link}
-                          className={`py-2 px-3 rounded-md transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                            result.link 
-                              ? 'bg-blue-600 text-white hover:bg-blue-700 cursor-pointer' 
-                              : 'bg-gray-400 text-gray-200 cursor-not-allowed'
-                          }`}
-                        >
-                          {result.link ? '🔗 Ver' : 'Sin enlace'}
-                        </button>
-                      </div>
+                    )}
+                    <p className="text-xs text-gray-500">
+                      {result.source}
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <button
+                        onClick={() => handleAddToCart(result)}
+                        className="bg-green-600 text-white py-2 px-3 rounded-md hover:bg-green-700 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                      >
+                        🛒 Carrito
+                      </button>
+                      <button
+                        onClick={() => copyToClipboard(`${result.title} - ${result.price} - ${result.source}`)}
+                        className="bg-gray-600 text-white py-2 px-3 rounded-md hover:bg-gray-700 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-gray-500"
+                      >
+                        📋 Copiar
+                      </button>
+                      <button
+                        onClick={() => handleLinkClick(result.link)}
+                        disabled={!result.link}
+                        className={`py-2 px-3 rounded-md transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                          result.link 
+                            ? 'bg-blue-600 text-white hover:bg-blue-700 cursor-pointer' 
+                            : 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                        }`}
+                      >
+                        {result.link ? '🔗 Ver' : 'Sin enlace'}
+                      </button>
                     </div>
-                  ) : (
-                    // Card para resultados orgánicos
-                    <div className="space-y-3">
-                      <h4 className={`font-semibold text-sm ${
-                        result.link 
-                          ? 'text-blue-600 hover:text-blue-800 cursor-pointer' 
-                          : 'text-gray-600 cursor-default'
-                      }`}>
-                        <span onClick={() => result.link && handleLinkClick(result.link)}>
-                          {result.title}
-                        </span>
-                      </h4>
-                      <p className="text-xs text-gray-600 overflow-hidden" style={{
-                        display: '-webkit-box',
-                        WebkitLineClamp: 3,
-                        WebkitBoxOrient: 'vertical'
-                      }}>
-                        {result.snippet}
-                      </p>
-                      <p className="text-xs text-green-600">
-                        {result.source}
-                      </p>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        <button
-                          onClick={() => handleAddToCart(result)}
-                          className="bg-green-600 text-white py-2 px-3 rounded-md hover:bg-green-700 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                        >
-                          🛒 Carrito
-                        </button>
-                        <button
-                          onClick={() => copyToClipboard(`${result.title} - ${result.snippet} - ${result.source}`)}
-                          className="bg-gray-600 text-white py-2 px-3 rounded-md hover:bg-gray-700 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-gray-500"
-                        >
-                          📋 Copiar
-                        </button>
-                        <button
-                          onClick={() => handleLinkClick(result.link)}
-                          disabled={!result.link}
-                          className={`py-2 px-3 rounded-md transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-gray-500 ${
-                            result.link 
-                              ? 'bg-blue-600 text-white hover:bg-blue-700 cursor-pointer' 
-                              : 'bg-gray-400 text-gray-200 cursor-not-allowed'
-                          }`}
-                        >
-                          {result.link ? '🔗 Ver' : 'Sin enlace'}
-                        </button>
-                      </div>
-                    </div>
-                  )
+                  </div>
                 )}
               </div>
             ))}
@@ -497,7 +436,7 @@ const BuscadorMateriales = () => {
         <h4 className="font-semibold text-gray-800 mb-2">💡 Consejos para mejores búsquedas:</h4>
         <ul className="text-sm text-gray-600 space-y-1">
           <li>• Usa términos específicos: "cemento portland", "acero estructural", "ladrillos cerámicos"</li>
-          <li>• Cambia entre "Productos" e "Información" según lo que necesites</li>
+          <li>• El buscador encuentra productos con precios y proveedores</li>
           <li>• Los resultados incluyen precios y proveedores de Chile</li>
           <li>• Puedes comparar precios entre diferentes proveedores</li>
         </ul>
@@ -506,7 +445,7 @@ const BuscadorMateriales = () => {
           <h5 className="font-semibold text-blue-800 mb-1">🛒 Sistema Inteligente de Cotizaciones</h5>
           <p className="text-sm text-blue-700">
             • Primero busca en tu base de datos de productos ya usados<br/>
-            • Si no encuentra, busca en internet con SerpApi<br/>
+            • Si no encuentra, busca productos en internet con los API<br/>
             • Cada cotización exportada mejora tu base de datos<br/>
             • Accede al historial completo desde la barra superior
           </p>
