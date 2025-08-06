@@ -32,8 +32,17 @@ export default function Presupuestos() {
         
         if (response.ok && data) {
           // El backend devuelve directamente el array de proyectos
-          setProjects(data || []);
-          console.log(`✅ ${data.length} proyectos cargados exitosamente:`, data.map(p => ({ id: p._id, name: p.nombre, code: p.codigo })));
+          const projectsWithCorrectFormat = data.map(project => ({
+            id: project._id,
+            name: project.nombre,
+            code: project.codigo,
+            description: project.descripcion,
+            status: project.estado,
+            budget: project.presupuesto || null,
+            type: project.tipo || 'construcción'
+          }));
+          setProjects(projectsWithCorrectFormat);
+          console.log(`✅ ${projectsWithCorrectFormat.length} proyectos cargados exitosamente:`, projectsWithCorrectFormat.map(p => ({ id: p.id, name: p.name, code: p.code })));
         } else {
           console.error('❌ Error en respuesta del servidor:', data);
           setProjects([]);
@@ -427,9 +436,18 @@ export default function Presupuestos() {
       const data = await response.json();
       
       if (response.ok && data) {
-        setProjects(data || []);
-        notifySuccess(`${data.length} proyectos recargados exitosamente`);
-        console.log(`✅ ${data.length} proyectos recargados:`, data.map(p => ({ id: p._id, name: p.nombre, code: p.codigo })));
+        const projectsWithCorrectFormat = data.map(project => ({
+          id: project._id,
+          name: project.nombre,
+          code: project.codigo,
+          description: project.descripcion,
+          status: project.estado,
+          budget: project.presupuesto || null,
+          type: project.tipo || 'construcción'
+        }));
+        setProjects(projectsWithCorrectFormat);
+        notifySuccess(`${projectsWithCorrectFormat.length} proyectos recargados exitosamente`);
+        console.log(`✅ ${projectsWithCorrectFormat.length} proyectos recargados:`, projectsWithCorrectFormat.map(p => ({ id: p.id, name: p.name, code: p.code })));
       } else {
         console.error('❌ Error en respuesta del servidor:', data);
         setProjects([]);
@@ -546,6 +564,7 @@ export default function Presupuestos() {
                 }`}
               >
                 <div className="font-semibold text-sm mb-2">{project.name}</div>
+                <div className="text-xs text-blue-600 font-mono mb-2">#{project.code}</div>
                 {project.description && (
                   <div className="text-xs text-gray-500 mb-2 line-clamp-2">{project.description}</div>
                 )}
@@ -554,13 +573,15 @@ export default function Presupuestos() {
                     {project.budget ? `$${(project.budget / 1000000).toFixed(1)}M` : 'Sin presupuesto'}
                   </div>
                   <div className={`text-xs px-2 py-1 rounded-full ${
-                    project.status === 'active' || project.status === 'En Progreso'
+                    project.status === 'Finalizado' || project.status === 'Completado'
                       ? 'bg-green-100 text-green-800' 
-                      : project.status === 'completed' || project.status === 'Completado'
+                      : project.status === 'En Ejecución' || project.status === 'En ejecución'
                       ? 'bg-blue-100 text-blue-800'
+                      : project.status === 'Planificación'
+                      ? 'bg-yellow-100 text-yellow-800'
                       : 'bg-gray-100 text-gray-800'
                   }`}>
-                    {project.status || 'activo'}
+                    {project.status || 'Planificación'}
                   </div>
                 </div>
                 {project.type && (
