@@ -58,6 +58,13 @@ const Projects = () => {
       setLoading(true);
       const response = await fetch(`${API_BASE_URL}/projects`);
       const data = await response.json();
+      
+      console.log('📋 Proyectos cargados desde el backend:', data);
+      if (data && data.length > 0) {
+        console.log('📋 Primer proyecto como ejemplo:', data[0]);
+        console.log('📋 Subencargado del primer proyecto:', data[0].subencargado);
+      }
+      
       // El backend devuelve directamente el array de proyectos
       setProjects(data || []);
     } catch (error) {
@@ -150,6 +157,9 @@ const Projects = () => {
   const handleEditProject = async (e) => {
     e.preventDefault();
     try {
+      console.log('💾 Guardando proyecto editado:', projectToEdit);
+      console.log('💾 Subencargado a enviar:', projectToEdit.subencargado);
+      
       // Validar que los campos requeridos estén presentes
       if (!projectToEdit.nombre || !projectToEdit.codigo || !projectToEdit.fechaInicio || !projectToEdit.fechaTermino || !projectToEdit.subencargado) {
         alert('Por favor complete todos los campos requeridos (nombre, código, fechas y coordinador)');
@@ -162,6 +172,8 @@ const Projects = () => {
         subencargado: projectToEdit.subencargado
       };
 
+      console.log('💾 Datos finales a enviar:', projectData);
+
       const response = await fetch(`${API_BASE_URL}/projects/${projectToEdit._id}`, {
         method: 'PUT',
         headers: {
@@ -171,6 +183,7 @@ const Projects = () => {
       });
 
       const result = await response.json();
+      console.log('💾 Respuesta del servidor:', result);
 
       if (response.ok) {
         setShowEditModal(false);
@@ -249,10 +262,26 @@ const Projects = () => {
   };
 
   // Obtener nombre del supervisor por ID
-  const getSupervisorName = (supervisorId) => {
-    if (!supervisorId) return 'No asignado';
+  const getSupervisorName = (supervisorData) => {
+    console.log('👤 getSupervisorName recibió:', supervisorData);
+    
+    if (!supervisorData) return 'No asignado';
+    
+    // Si supervisorData es un objeto (populado), usar su información directamente
+    if (typeof supervisorData === 'object' && supervisorData.nombre) {
+      return `${supervisorData.nombre} (${supervisorData.rol})`;
+    }
+    
+    // Si supervisorData es un string (ObjectId), buscar en la lista de supervisores
+    const supervisorId = typeof supervisorData === 'string' ? supervisorData : supervisorData._id;
     const supervisor = supervisores.find(sup => sup._id === supervisorId);
-    return supervisor ? `${supervisor.nombre} (${supervisor.rol})` : supervisorId;
+    
+    if (supervisor) {
+      return `${supervisor.nombre} (${supervisor.rol})`;
+    }
+    
+    // Si no se encuentra, devolver el ID
+    return supervisorId || 'No asignado';
   };
 
   // Manejar filtros de búsqueda
@@ -291,10 +320,18 @@ const Projects = () => {
 
   // Activar modo edición en detalles
   const handleStartEditingInDetails = () => {
+    console.log('🔧 Iniciando edición en detalles para proyecto:', selectedProject);
+    console.log('🔧 Subencargado actual:', selectedProject.subencargado);
+    
+    // Extraer el ObjectId del subencargado si es un objeto
+    const subencargadoId = selectedProject.subencargado?._id || selectedProject.subencargado || '';
+    console.log('🔧 Subencargado ID extraído:', subencargadoId);
+    
     setDetailsProjectEdit({
       ...selectedProject,
       fechaInicio: selectedProject.fechaInicio ? new Date(selectedProject.fechaInicio).toISOString().split('T')[0] : '',
-      fechaTermino: selectedProject.fechaTermino ? new Date(selectedProject.fechaTermino).toISOString().split('T')[0] : ''
+      fechaTermino: selectedProject.fechaTermino ? new Date(selectedProject.fechaTermino).toISOString().split('T')[0] : '',
+      subencargado: subencargadoId // Asegurar que sea el ObjectId
     });
     setIsEditingInDetails(true);
   };
@@ -308,6 +345,9 @@ const Projects = () => {
   // Guardar cambios desde detalles
   const handleSaveFromDetails = async () => {
     try {
+      console.log('💾 Guardando cambios desde detalles:', detailsProjectEdit);
+      console.log('💾 Subencargado a enviar:', detailsProjectEdit.subencargado);
+      
       // Validar que los campos requeridos estén presentes
       if (!detailsProjectEdit.nombre || !detailsProjectEdit.codigo || !detailsProjectEdit.fechaInicio || !detailsProjectEdit.fechaTermino || !detailsProjectEdit.subencargado) {
         alert('Por favor complete todos los campos requeridos (nombre, código, fechas y coordinador)');
@@ -320,6 +360,8 @@ const Projects = () => {
         subencargado: detailsProjectEdit.subencargado
       };
 
+      console.log('💾 Datos finales a enviar:', projectData);
+
       const response = await fetch(`${API_BASE_URL}/projects/${detailsProjectEdit._id}`, {
         method: 'PUT',
         headers: {
@@ -329,6 +371,7 @@ const Projects = () => {
       });
 
       const result = await response.json();
+      console.log('💾 Respuesta del servidor:', result);
 
       if (response.ok) {
         // Actualizar el proyecto seleccionado
@@ -349,10 +392,18 @@ const Projects = () => {
 
   // Editar proyecto (solo para supervisores y administradores)
   const handleOpenEditModal = (project) => {
+    console.log('🔧 Abriendo modal de edición para proyecto:', project);
+    console.log('🔧 Subencargado actual:', project.subencargado);
+    
+    // Extraer el ObjectId del subencargado si es un objeto
+    const subencargadoId = project.subencargado?._id || project.subencargado || '';
+    console.log('🔧 Subencargado ID extraído:', subencargadoId);
+    
     setProjectToEdit({
       ...project,
       fechaInicio: project.fechaInicio ? new Date(project.fechaInicio).toISOString().split('T')[0] : '',
-      fechaTermino: project.fechaTermino ? new Date(project.fechaTermino).toISOString().split('T')[0] : ''
+      fechaTermino: project.fechaTermino ? new Date(project.fechaTermino).toISOString().split('T')[0] : '',
+      subencargado: subencargadoId // Asegurar que sea el ObjectId
     });
     setShowEditModal(true);
   };
