@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNotifications } from '../context/NotificationContext';
-import ApiService from '../services/ApiService';
 import CotizacionService from '../services/CotizacionService';
-import ProjectService from '../services/ProjectService';
 
 export default function Presupuestos() {
+  // URL base del API - sincronizada con Projects.jsx
+  const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+  
   const [projects, setProjects] = useState([]);
   const [selectedProject, setSelectedProject] = useState(null);
   const [budgetData, setBudgetData] = useState([]);
@@ -25,27 +26,25 @@ export default function Presupuestos() {
         setLoading(true);
         console.log('📊 Cargando proyectos para presupuestos...');
         
-        // Intentar cargar desde API primero
-        const response = await ApiService.get('/projects');
+        // Usar la misma lógica que Projects.jsx
+        const response = await fetch(`${API_BASE_URL}/projects`);
+        const data = await response.json();
         
-        if (response.success && response.data) {
-          setProjects(response.data);
-          // Carga exitosa sin notificación al usuario
+        if (response.ok && data) {
+          // El backend devuelve directamente el array de proyectos
+          setProjects(data || []);
+          console.log(`✅ ${data.length} proyectos cargados exitosamente:`, data.map(p => ({ id: p._id, name: p.nombre, code: p.codigo })));
         } else {
-          // Fallback a ProjectService si no hay conexión
-          const fallbackProjects = ProjectService.getAllProjectsOffline();
-          setProjects(fallbackProjects);
-          // Carga de fallback sin notificación al usuario
+          console.error('❌ Error en respuesta del servidor:', data);
+          setProjects([]);
+          notifyError('Error al cargar proyectos desde el servidor');
         }
       } catch (error) {
         console.error('❌ Error cargando proyectos:', error);
-        
-        // Fallback a ProjectService
-        const fallbackProjects = ProjectService.getAllProjectsOffline();
-        setProjects(fallbackProjects);
-        notifyError('Error de conexión. Usando datos locales');
+        setProjects([]);
+        notifyError('Error de conexión al cargar proyectos');
       } finally {
-        setLoading(false);
+        setLoading(false); 
       }
     };
 
@@ -422,20 +421,24 @@ export default function Presupuestos() {
   const reloadProjects = async () => {
     try {
       setLoading(true);
-      const response = await ApiService.get('/projects');
+      console.log('🔄 Recargando proyectos...');
       
-      if (response.success && response.data) {
-        setProjects(response.data);
-        notifySuccess(`${response.data.length} proyectos recargados`);
+      const response = await fetch(`${API_BASE_URL}/projects`);
+      const data = await response.json();
+      
+      if (response.ok && data) {
+        setProjects(data || []);
+        notifySuccess(`${data.length} proyectos recargados exitosamente`);
+        console.log(`✅ ${data.length} proyectos recargados:`, data.map(p => ({ id: p._id, name: p.nombre, code: p.codigo })));
       } else {
-        const fallbackProjects = ProjectService.getAllProjectsOffline();
-        setProjects(fallbackProjects);
-        // Fallback sin notificación automática
+        console.error('❌ Error en respuesta del servidor:', data);
+        setProjects([]);
+        notifyError('Error al recargar proyectos desde el servidor');
       }
     } catch (error) {
-      const fallbackProjects = ProjectService.getAllProjectsOffline();
-      setProjects(fallbackProjects);
-      notifyError('Error de conexión. Usando datos locales');
+      console.error('❌ Error recargando proyectos:', error);
+      setProjects([]);
+      notifyError('Error de conexión al recargar proyectos');
     } finally {
       setLoading(false);
     }
@@ -499,7 +502,12 @@ export default function Presupuestos() {
 
       {/* Selector de Proyectos */}
       <div className="bg-white rounded-lg shadow-sm border p-6">
-        <h2 className="text-xl font-semibold mb-4">🏗️ Seleccionar Proyecto</h2>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold">🏗️ Seleccionar Proyecto</h2>
+          <div className="text-sm text-gray-500">
+            Total proyectos: <span className="font-semibold">{projects.length}</span>
+          </div>
+        </div>
         
         {loading ? (
           <div className="flex items-center justify-center py-8">
@@ -508,10 +516,19 @@ export default function Presupuestos() {
           </div>
         ) : projects.length === 0 ? (
           <div className="text-center py-8">
-            <div className="text-gray-500 mb-4">No hay proyectos disponibles</div>
+            <div className="text-gray-500 mb-4">
+              <div className="text-6xl mb-4">🏗️</div>
+              <h3 className="text-lg font-semibold mb-2">No hay proyectos disponibles</h3>
+              <p className="text-sm mb-4">
+                Los proyectos creados en la página "Proyectos" aparecerán aquí automáticamente.
+              </p>
+              <div className="text-xs text-gray-400 mb-4">
+                URL de API: {API_BASE_URL}/projects
+              </div>
+            </div>
             <button
               onClick={reloadProjects}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               🔄 Recargar Proyectos
             </button>

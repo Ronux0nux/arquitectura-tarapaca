@@ -7,17 +7,22 @@ const Projects = () => {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showActasModal, setShowActasModal] = useState(false);
   const [showActaDetailsModal, setShowActaDetailsModal] = useState(false);
   const [showMaterialesModal, setShowMaterialesModal] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
+  const [projectToEdit, setProjectToEdit] = useState(null);
   const [selectedActa, setSelectedActa] = useState(null);
   const [actas, setActas] = useState([]);
   const [loadingActas, setLoadingActas] = useState(false);
   const [cotizaciones, setCotizaciones] = useState([]);
   const [loadingCotizaciones, setLoadingCotizaciones] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  
+  // Simulando rol del usuario (en producción vendría del contexto de autenticación)
+  const [userRole, setUserRole] = useState('supervisor'); // 'supervisor', 'administrador', 'usuario'
   
   // Estados para búsqueda avanzada
   const [searchFilters, setSearchFilters] = useState({
@@ -137,6 +142,47 @@ const Projects = () => {
     }
   };
 
+  // Editar proyecto existente
+  const handleEditProject = async (e) => {
+    e.preventDefault();
+    try {
+      // Validar que los campos requeridos estén presentes
+      if (!projectToEdit.nombre || !projectToEdit.codigo || !projectToEdit.fechaInicio || !projectToEdit.fechaTermino) {
+        alert('Por favor complete todos los campos requeridos (nombre, código, fechas)');
+        return;
+      }
+
+      const projectData = {
+        ...projectToEdit,
+        // Mantener el subencargado existente si no se proporciona uno nuevo
+        subencargado: projectToEdit.subencargado || '507f1f77bcf86cd799439011'
+      };
+
+      const response = await fetch(`${API_BASE_URL}/projects/${projectToEdit._id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(projectData),
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        setShowEditModal(false);
+        setProjectToEdit(null);
+        fetchProjects();
+        alert('Proyecto actualizado exitosamente');
+      } else {
+        console.error('Error del servidor:', result);
+        alert(`Error al actualizar el proyecto: ${result.error || 'Error desconocido'}`);
+      }
+    } catch (error) {
+      console.error('Error al actualizar proyecto:', error);
+      alert(`Error al actualizar el proyecto: ${error.message}`);
+    }
+  };
+
   // Cargar actas de un proyecto
   const fetchActasForProject = async (projectId) => {
     try {
@@ -199,6 +245,21 @@ const Projects = () => {
     setShowDetailsModal(true);
   };
 
+  // Editar proyecto (solo para supervisores y administradores)
+  const handleOpenEditModal = (project) => {
+    setProjectToEdit({
+      ...project,
+      fechaInicio: project.fechaInicio ? new Date(project.fechaInicio).toISOString().split('T')[0] : '',
+      fechaTermino: project.fechaTermino ? new Date(project.fechaTermino).toISOString().split('T')[0] : ''
+    });
+    setShowEditModal(true);
+  };
+
+  // Verificar si el usuario puede editar proyectos
+  const canEditProjects = () => {
+    return userRole === 'supervisor' || userRole === 'administrador';
+  };
+
   // Ver actas del proyecto
   const handleViewActas = (project) => {
     setSelectedProject(project);
@@ -235,7 +296,28 @@ const Projects = () => {
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-800">Gestión de Proyectos</h1>
+        <div>
+          <h1 className="text-3xl font-bold text-gray-800">Gestión de Proyectos</h1>
+          <div className="flex items-center gap-4 mt-2">
+            <span className="text-sm text-gray-600">Rol actual:</span>
+            <select
+              value={userRole}
+              onChange={(e) => setUserRole(e.target.value)}
+              className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="usuario">Usuario</option>
+              <option value="supervisor">Supervisor</option>
+              <option value="administrador">Administrador</option>
+            </select>
+            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+              userRole === 'administrador' ? 'bg-red-100 text-red-800' :
+              userRole === 'supervisor' ? 'bg-blue-100 text-blue-800' :
+              'bg-gray-100 text-gray-800'
+            }`}>
+              {userRole.charAt(0).toUpperCase() + userRole.slice(1)}
+            </span>
+          </div>
+        </div>
         <button
           onClick={() => setShowCreateModal(true)}
           className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2"
@@ -476,6 +558,18 @@ const Projects = () => {
                         >
                           Actas
                         </button>
+                        {canEditProjects() && (
+                          <>
+                            <span className="text-gray-300">|</span>
+                            <button
+                              onClick={() => handleOpenEditModal(project)}
+                              className="text-orange-600 hover:text-orange-900 font-medium"
+                              title="Editar proyecto (Solo supervisores y administradores)"
+                            >
+                              ✏️ Editar
+                            </button>
+                          </>
+                        )}
                       </td>
                     </tr>
                   ))
@@ -625,6 +719,163 @@ const Projects = () => {
                   className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
                 >
                   Crear Proyecto
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para editar proyecto */}
+      {showEditModal && projectToEdit && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold">Editar Proyecto</h2>
+              <button 
+                onClick={() => setShowEditModal(false)}
+                className="text-gray-500 hover:text-gray-700 text-2xl"
+              >
+                ×
+              </button>
+            </div>
+            
+            <form onSubmit={handleEditProject} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nombre del Proyecto *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={projectToEdit.nombre}
+                  onChange={(e) => setProjectToEdit({...projectToEdit, nombre: e.target.value})}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Ingrese el nombre del proyecto"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Código del Proyecto *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={projectToEdit.codigo}
+                  onChange={(e) => setProjectToEdit({...projectToEdit, codigo: e.target.value})}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Código único del proyecto"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Descripción
+                </label>
+                <textarea
+                  value={projectToEdit.descripcion}
+                  onChange={(e) => setProjectToEdit({...projectToEdit, descripcion: e.target.value})}
+                  rows={3}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Descripción del proyecto"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Ubicación
+                </label>
+                <input
+                  type="text"
+                  value={projectToEdit.ubicacion}
+                  onChange={(e) => setProjectToEdit({...projectToEdit, ubicacion: e.target.value})}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Ubicación del proyecto"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Fecha de Inicio *
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={projectToEdit.fechaInicio}
+                    onChange={(e) => setProjectToEdit({...projectToEdit, fechaInicio: e.target.value})}
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Fecha de Término *
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={projectToEdit.fechaTermino}
+                    onChange={(e) => setProjectToEdit({...projectToEdit, fechaTermino: e.target.value})}
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Estado *
+                </label>
+                <select
+                  required
+                  value={projectToEdit.estado}
+                  onChange={(e) => setProjectToEdit({...projectToEdit, estado: e.target.value})}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                >
+                  {estados.map(estado => (
+                    <option key={estado} value={estado}>{estado}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Coordinador Encargado
+                </label>
+                <input
+                  type="text"
+                  placeholder="ID del coordinador encargado (ObjectId)"
+                  value={projectToEdit.subencargado}
+                  onChange={(e) => setProjectToEdit({...projectToEdit, subencargado: e.target.value})}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Ingrese un ObjectId válido o déjelo vacío para mantener el actual
+                </p>
+              </div>
+
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <h4 className="text-sm font-semibold text-blue-800 mb-2">⚠️ Privilegios de Edición</h4>
+                <p className="text-xs text-blue-700">
+                  Como <strong>{userRole}</strong>, puedes editar todos los campos del proyecto. 
+                  Los cambios se aplicarán inmediatamente y afectarán todos los módulos relacionados.
+                </p>
+              </div>
+
+              <div className="flex justify-end space-x-4 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(false)}
+                  className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600"
+                >
+                  ✏️ Actualizar Proyecto
                 </button>
               </div>
             </form>
