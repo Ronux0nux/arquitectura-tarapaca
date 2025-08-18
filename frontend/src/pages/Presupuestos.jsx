@@ -880,7 +880,18 @@ export default function Presupuestos() {
                       </td>
                       <td className="px-6 py-4">
                         <div>
-                          <div className="text-sm text-gray-900">{item.proveedor}</div>
+                          {item.metadata?.link ? (
+                            <a
+                              href={item.metadata.link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm text-blue-700 underline hover:text-blue-900"
+                            >
+                              {item.proveedor}
+                            </a>
+                          ) : (
+                            <div className="text-sm text-gray-900">{item.proveedor}</div>
+                          )}
                           {item.proveedorContacto && (
                             <div className="text-xs text-gray-500">📞 {item.proveedorContacto}</div>
                           )}
