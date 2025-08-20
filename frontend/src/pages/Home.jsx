@@ -123,20 +123,7 @@ export default function Home() {
             </div>
             
             <div className="flex items-center space-x-4">
-              <div className="text-right">
-                <p className="text-sm font-medium text-gray-900">{user?.name}</p>
-                <p className="text-xs text-gray-500 capitalize">{user?.role}</p>
-              </div>
-              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                <span className="text-lg">{user?.avatar}</span>
-              </div>
-              <button
-                onClick={handleLogout}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-                title="Cerrar Sesión"
-              >
-                �
-              </button>
+              {/* Eliminado nombre, rol y avatar del usuario */}
             </div>
           </div>
         </div>
