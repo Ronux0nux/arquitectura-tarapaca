@@ -93,14 +93,14 @@ export default function NavbarResponsive() {
   }, [showUserMenu]);
 
   return (
-    <nav className="bg-blue-600 text-white shadow-lg">
+  <nav className="bg-[#03045e] text-white shadow-xl border-b-4 border-[#0077b6]">
       <div className="px-4 py-4">
         <div className="flex items-center justify-between">
           {/* Icono Tara a la izquierda, clickeable para ir a Home */}
           <NavLink to="/" className="flex items-center">
-            <div className="flex items-center bg-blue-800 rounded-lg px-2 py-1">
-              <img src="/taracopia.png" alt="Logo Tara" className="w-10 h-10 mr-2" />
-              <span className="text-white font-bold text-lg">Tarapaka</span>
+            <div className="flex items-center bg-[#023e8a] hover:bg-[#0077b6] transition-colors rounded-xl px-3 py-2 shadow-md border border-[#0077b6]">
+              <img src="/taracopia.png" alt="Logo Tara" className="w-10 h-10 mr-2 drop-shadow-lg" />
+              <span className="text-white font-extrabold text-xl tracking-wide drop-shadow">Tarapaka</span>
             </div>
           </NavLink>
 
