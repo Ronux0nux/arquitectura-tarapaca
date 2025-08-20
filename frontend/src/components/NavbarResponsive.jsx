@@ -96,11 +96,10 @@ export default function NavbarResponsive() {
     <nav className="bg-blue-600 text-white shadow-lg">
       <div className="px-4 py-4">
         <div className="flex items-center justify-between">
-          {/* Icono Tara a la izquierda */}
-          <img src="/tara - copia.png" alt="Logo Tara" className="w-10 h-10 mr-4" />
-          {/* Logo/Home */}
-          <NavLink to="/" className="font-bold text-lg">
-            Home
+          {/* Icono Tara a la izquierda, clickeable para ir a Home */}
+          <NavLink to="/" className="flex items-center">
+            <img src="/tara - copia.png" alt="Logo Tara" className="w-10 h-10 mr-2" />
+            <span className="font-bold text-lg">Arquitectura Tarapaka</span>
           </NavLink>
 
           {/* Desktop Navigation */}
