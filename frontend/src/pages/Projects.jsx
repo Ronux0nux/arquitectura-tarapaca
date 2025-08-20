@@ -1,3 +1,48 @@
+      {/* Modal para crear acta */}
+      {showCreateActaModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <h2 className="text-xl font-bold mb-4">Crear Nueva Acta</h2>
+            <form onSubmit={e => {e.preventDefault(); saveNewActa();}} className="space-y-4">
+              <input type="text" className="w-full p-2 border rounded" placeholder="Entidad/Título" value={newActa.entidad} onChange={e => setNewActa({...newActa, entidad: e.target.value})} required />
+              <input type="date" className="w-full p-2 border rounded" placeholder="Fecha" value={newActa.fecha} onChange={e => setNewActa({...newActa, fecha: e.target.value})} required />
+              <input type="text" className="w-full p-2 border rounded" placeholder="Lugar" value={newActa.lugar} onChange={e => setNewActa({...newActa, lugar: e.target.value})} required />
+              <input type="text" className="w-full p-2 border rounded" placeholder="Hora Inicio" value={newActa.horaInicio} onChange={e => setNewActa({...newActa, horaInicio: e.target.value})} required />
+              <input type="text" className="w-full p-2 border rounded" placeholder="Hora Término" value={newActa.horaTermino} onChange={e => setNewActa({...newActa, horaTermino: e.target.value})} required />
+              <textarea className="w-full p-2 border rounded" placeholder="Objetivo" value={newActa.objetivo} onChange={e => setNewActa({...newActa, objetivo: e.target.value})} required />
+              <textarea className="w-full p-2 border rounded" placeholder="Temas Tratados" value={newActa.temasTratados} onChange={e => setNewActa({...newActa, temasTratados: e.target.value})} />
+              <textarea className="w-full p-2 border rounded" placeholder="Acuerdos" value={newActa.acuerdos} onChange={e => setNewActa({...newActa, acuerdos: e.target.value})} />
+              <div className="flex justify-end space-x-2 mt-4">
+                <button type="button" className="px-4 py-2 bg-gray-300 rounded" onClick={() => setShowCreateActaModal(false)}>Cancelar</button>
+                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded">Guardar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para editar acta */}
+      {showEditActaModal && editActa && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <h2 className="text-xl font-bold mb-4">Editar Acta</h2>
+            <form onSubmit={e => {e.preventDefault(); saveEditActa();}} className="space-y-4">
+              <input type="text" className="w-full p-2 border rounded" placeholder="Entidad/Título" value={editActa.entidad} onChange={e => setEditActa({...editActa, entidad: e.target.value})} required />
+              <input type="date" className="w-full p-2 border rounded" placeholder="Fecha" value={editActa.fecha} onChange={e => setEditActa({...editActa, fecha: e.target.value})} required />
+              <input type="text" className="w-full p-2 border rounded" placeholder="Lugar" value={editActa.lugar} onChange={e => setEditActa({...editActa, lugar: e.target.value})} required />
+              <input type="text" className="w-full p-2 border rounded" placeholder="Hora Inicio" value={editActa.horaInicio} onChange={e => setEditActa({...editActa, horaInicio: e.target.value})} required />
+              <input type="text" className="w-full p-2 border rounded" placeholder="Hora Término" value={editActa.horaTermino} onChange={e => setEditActa({...editActa, horaTermino: e.target.value})} required />
+              <textarea className="w-full p-2 border rounded" placeholder="Objetivo" value={editActa.objetivo} onChange={e => setEditActa({...editActa, objetivo: e.target.value})} required />
+              <textarea className="w-full p-2 border rounded" placeholder="Temas Tratados" value={editActa.temasTratados} onChange={e => setEditActa({...editActa, temasTratados: e.target.value})} />
+              <textarea className="w-full p-2 border rounded" placeholder="Acuerdos" value={editActa.acuerdos} onChange={e => setEditActa({...editActa, acuerdos: e.target.value})} />
+              <div className="flex justify-end space-x-2 mt-4">
+                <button type="button" className="px-4 py-2 bg-gray-300 rounded" onClick={() => setShowEditActaModal(false)}>Cancelar</button>
+                <button type="submit" className="px-4 py-2 bg-yellow-600 text-white rounded">Guardar Cambios</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 import React, { useState, useEffect } from 'react';
 
 const Projects = () => {
@@ -209,6 +254,105 @@ const Projects = () => {
     }
   };
 
+    // Función para crear acta
+
+    // Estado para nueva acta
+    const [newActa, setNewActa] = useState({
+      entidad: '',
+      fecha: '',
+      lugar: '',
+      horaInicio: '',
+      horaTermino: '',
+      objetivo: '',
+      temasTratados: '',
+      acuerdos: '',
+      asistencia: [],
+      creadoPor: '',
+    });
+
+    // Estado para edición de acta
+    const [editActa, setEditActa] = useState(null);
+
+    // Modal para crear acta
+    const [showCreateActaModal, setShowCreateActaModal] = useState(false);
+    // Modal para editar acta
+    const [showEditActaModal, setShowEditActaModal] = useState(false);
+
+    // Abrir modal de creación
+    const handleCreateActa = () => {
+      setNewActa({
+        entidad: '',
+        fecha: '',
+        lugar: '',
+        horaInicio: '',
+        horaTermino: '',
+        objetivo: '',
+        temasTratados: '',
+        acuerdos: '',
+        asistencia: [],
+        creadoPor: userRole,
+      });
+      setShowCreateActaModal(true);
+    };
+
+    // Abrir modal de edición
+
+    // Guardar nueva acta
+    const saveNewActa = async () => {
+      if (!selectedProject) return;
+      try {
+        const payload = {
+          ...newActa,
+          proyectoId: selectedProject._id,
+          creadoPor: userRole,
+        };
+        const response = await fetch(`${API_BASE_URL}/actas-reunion`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (response.ok) {
+          setShowCreateActaModal(false);
+          fetchActasForProject(selectedProject._id);
+          alert('Acta creada exitosamente');
+        } else {
+          alert('Error al crear acta');
+        }
+      } catch (error) {
+        alert('Error al crear acta: ' + error.message);
+      }
+    };
+
+    // Guardar edición de acta
+    const saveEditActa = async () => {
+      if (!selectedProject || !editActa) return;
+      try {
+        const payload = {
+          ...editActa,
+          proyectoId: selectedProject._id,
+        };
+        const response = await fetch(`${API_BASE_URL}/actas-reunion/${editActa._id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (response.ok) {
+          setShowEditActaModal(false);
+          fetchActasForProject(selectedProject._id);
+          alert('Acta actualizada exitosamente');
+        } else {
+          alert('Error al actualizar acta');
+        }
+      } catch (error) {
+        alert('Error al actualizar acta: ' + error.message);
+      }
+    };
+
+    // Función para editar acta
+    const handleEditActa = (acta) => {
+      // TODO: Implementar lógica para editar acta
+      alert('Función para editar acta no implementada');
+    };
   // Cargar actas de un proyecto
   const fetchActasForProject = async (projectId) => {
     try {
