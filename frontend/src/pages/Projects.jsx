@@ -1331,6 +1331,12 @@ const Projects = () => {
                 </svg>
                 <h3 className="text-lg font-medium text-gray-900 mb-2">No hay actas de reunión</h3>
                 <p>Este proyecto aún no tiene actas de reunión registradas.</p>
+                <button
+                  onClick={handleCreateActa}
+                  className="mt-6 px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                >
+                  Crear nueva acta
+                </button>
               </div>
             ) : (
               <div className="space-y-4">
@@ -1373,6 +1379,12 @@ const Projects = () => {
                         className="ml-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
                       >
                         Ver Detalles
+                      </button>
+                      <button
+                        onClick={() => handleEditActa(acta)}
+                        className="ml-2 px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600 transition-colors"
+                      >
+                        Editar
                       </button>
                     </div>
                   </div>
