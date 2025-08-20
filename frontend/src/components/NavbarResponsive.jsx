@@ -98,9 +98,10 @@ export default function NavbarResponsive() {
         <div className="flex items-center justify-between">
           {/* Icono Tara a la izquierda, clickeable para ir a Home */}
           <NavLink to="/" className="flex items-center">
-            <img src="/taracopia.png" alt="Logo Tara" className="w-10 h-10 mr-2" />
-            <span className="font-bold text-lg text-white flex items-center h-10">TaraPaka</span>
-  
+            <div className="flex items-center bg-blue-800 rounded-lg px-2 py-1">
+              <img src="/taracopia.png" alt="Logo Tara" className="w-10 h-10 mr-2" />
+              <span className="text-white font-bold text-lg">Tarapaka</span>
+            </div>
           </NavLink>
 
           {/* Desktop Navigation */}
