@@ -62,7 +62,7 @@ export default function Login() {
         {/* Logo y Branding */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-full mb-4">
-            <span className="text-2xl text-white">🏗️</span>
+            <img src="/tara - copia.png" alt="Logo" className="w-10 h-10" />
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Arquitectura Tarapaka</h1>
           <p className="text-gray-600">Sistema de Gestión de Construcción</p>
