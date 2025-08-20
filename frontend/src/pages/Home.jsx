@@ -120,7 +120,6 @@ export default function Home() {
               <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
                 <span className="text-white text-sm">🏗️</span>
               </div>
-              <h1 className="text-xl font-bold text-gray-900">Arquitectura Tarapacá</h1>
             </div>
             
             <div className="flex items-center space-x-4">
