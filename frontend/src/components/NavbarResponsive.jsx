@@ -132,8 +132,8 @@ export default function NavbarResponsive() {
 
             {/* Herramientas */}
             <div className="flex items-center gap-2">
-              <span className="text-blue-200 text-sm font-medium">Tools</span>
-              <NavLink to="/buscador">Buscador</NavLink>
+              <span className="text-blue-200 text-sm font-medium"> 🛠️ Herramientas</span>
+              <NavLink to="/buscador">Buscador de Materiales</NavLink>
               <NavLink to="/presupuestos">💰 Presupuestos</NavLink>
               <NavLink to="/excel">📊 Excel</NavLink>
             </div>
@@ -227,16 +227,16 @@ export default function NavbarResponsive() {
 
               {/* Gestión de construcción */}
               {canAccess('proyectos') && (
-                <DropdownGroup title="Construcción" groupKey="construction">
+                <DropdownGroup title="Administración" groupKey="proyectos">
                   <NavLink to="/projects" onClick={closeMenu}>Proyectos</NavLink>
                 </DropdownGroup>
               )}
 
               {/* Herramientas */}
-              <DropdownGroup title="Herramientas" groupKey="tools">
-                <NavLink to="/buscador" onClick={closeMenu}>Buscador</NavLink>
-                <NavLink to="/presupuestos" onClick={closeMenu}>💰 Presupuestos</NavLink>
-                <NavLink to="/excel" onClick={closeMenu}>📊 Excel Online</NavLink>
+              <DropdownGroup title=" 🔧Herramientas" groupKey="tools">
+                <NavLink to="/buscador" onClick={closeMenu}>Buscador de Materiales</NavLink>
+                <NavLink to="/presupuestos" onClick={closeMenu}>Gestión de Materiales</NavLink>
+                <NavLink to="/excel" onClick={closeMenu}>otización de Materiales</NavLink>
               </DropdownGroup>
             </div>
           </div>

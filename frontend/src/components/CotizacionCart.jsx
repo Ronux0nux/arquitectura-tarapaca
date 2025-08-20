@@ -193,7 +193,7 @@ const CotizacionCart = () => {
           {cartItems.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-gray-500 text-lg">Tu carrito está vacío</p>
-              <p className="text-gray-400 mt-2">Agrega productos desde el buscador</p>
+              <p className="text-gray-400 mt-2">Agrega materiales desde el buscador</p>
             </div>
           ) : (
             <>

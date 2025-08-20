@@ -29,14 +29,20 @@ const supervisoresEjemplo = [
   {
     nombre: 'Carlos Marcoleta',
     email: 'carlos.marcoleta@aceleratarapaka.cl',
+    rol: 'supervisor',
+    password: 'admin123'
+  },
+  {
+    nombre: 'Romina Marcoleta',
+    email: 'romina.marcoleta@aceleratarapaka.cl',
     rol: 'administrador',
     password: 'admin123'
   },
   {
     nombre: 'José Miguel Astudillo',
     email: 'jose.astudillo@aceleratarapaka.cl',
-    rol: 'coordinador de especialidades',
-    password: 'coordinador123'
+    rol: 'supervisor',
+    password: 'supervisor123'
   }
 ];
 
