@@ -99,7 +99,7 @@ export default function NavbarResponsive() {
           {/* Icono Tara a la izquierda, clickeable para ir a Home */}
           <NavLink to="/" className="flex items-center">
             <div className="flex items-center bg-[#023e8a] hover:bg-[#0077b6] transition-colors rounded-xl px-3 py-2 shadow-md border border-[#0077b6]">
-              <img src="/taracopia.png" alt="Logo Tara" className="w-10 h-10 mr-2 drop-shadow-lg" />
+              <img src="/logo192.png" alt="Logo Tara" className="w-10 h-10 mr-2 drop-shadow-lg" />
               <span className="text-white font-extrabold text-xl tracking-wide drop-shadow">Tarapaka</span>
             </div>
           </NavLink>
