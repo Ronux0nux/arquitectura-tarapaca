@@ -38,14 +38,9 @@ exports.uploadOrdenCompra = async (req, res) => {
 };
 
 // Obtener todas las órdenes de compra
-exports.getOrdenesCompra = async (req, res) => {
+exports.getOrdenesCompra = (req, res) => {
   try {
-    const ordenes = await OrdenCompra.find()
-      .populate('proyectoId', 'nombre codigo')
-      .populate('cotizacionId')
-      .populate('proveedorId', 'nombre contacto')
-      .populate('creadoPor', 'nombre email')
-      .sort({ creadoEn: -1 });
+    const ordenes = OrdenCompra.findAll();
     res.json(ordenes);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -53,16 +48,10 @@ exports.getOrdenesCompra = async (req, res) => {
 };
 
 // Obtener órdenes de compra por proyecto
-exports.getOrdenesCompraByProject = async (req, res) => {
+exports.getOrdenesCompraByProject = (req, res) => {
   try {
     const { proyectoId } = req.params;
-    const ordenes = await OrdenCompra.find({ proyectoId })
-      .populate('cotizacionId')
-      .populate('proveedorId', 'nombre contacto')
-      .populate('creadoPor', 'nombre email')
-      .sort({ creadoEn: -1 });
-    
-    // Calcular resumen
+    const ordenes = OrdenCompra.findAll().filter(o => o.proyectoId == proyectoId);
     const resumen = {
       total: ordenes.length,
       pendientes: ordenes.filter(o => o.estado === 'Pendiente').length,
@@ -70,7 +59,6 @@ exports.getOrdenesCompraByProject = async (req, res) => {
       recibidas: ordenes.filter(o => o.estado === 'Recibida').length,
       montoTotal: ordenes.reduce((sum, o) => sum + o.montoNeto, 0)
     };
-    
     res.json({ ordenes, resumen });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -78,42 +66,10 @@ exports.getOrdenesCompraByProject = async (req, res) => {
 };
 
 // Crear nueva orden de compra
-exports.createOrdenCompra = async (req, res) => {
+exports.createOrdenCompra = (req, res) => {
   try {
-    const {
-      proyectoId, cotizacionId, numeroOrden, comprador, proveedor, proveedorId,
-      montoBruto, descuento, impuestos, tipoOrden, fechaEntregaEstimada,
-      observaciones, condicionesPago, creadoPor
-    } = req.body;
-
-    // Verificar que el proyecto existe
-    const proyecto = await Project.findById(proyectoId);
-    if (!proyecto) {
-      return res.status(404).json({ error: 'Proyecto no encontrado' });
-    }
-
-    // Si se basa en una cotización, actualizar su estado
-    if (cotizacionId) {
-      await Cotizacion.findByIdAndUpdate(cotizacionId, { estado: 'Comprada' });
-    }
-
-    const newOrden = new OrdenCompra({
-      proyectoId, cotizacionId, numeroOrden, comprador, proveedor, proveedorId,
-      montoBruto, descuento, impuestos, tipoOrden, fechaEntregaEstimada,
-      observaciones, condicionesPago, creadoPor
-    });
-
-    await newOrden.save();
-    
-    // Poblar los datos antes de enviar la respuesta
-    await newOrden.populate([
-      { path: 'proyectoId', select: 'nombre codigo' },
-      { path: 'cotizacionId' },
-      { path: 'proveedorId', select: 'nombre contacto' },
-      { path: 'creadoPor', select: 'nombre email' }
-    ]);
-
-    res.status(201).json(newOrden);
+    const result = OrdenCompra.create(req.body);
+    res.status(201).json({ id: result.lastInsertRowid, ...req.body });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
@@ -167,18 +123,12 @@ exports.createOrdenFromCotizacion = async (req, res) => {
 };
 
 // Obtener orden de compra por ID
-exports.getOrdenCompraById = async (req, res) => {
+exports.getOrdenCompraById = (req, res) => {
   try {
-    const orden = await OrdenCompra.findById(req.params.id)
-      .populate('proyectoId', 'nombre codigo')
-      .populate('cotizacionId')
-      .populate('proveedorId', 'nombre contacto')
-      .populate('creadoPor', 'nombre email');
-    
+    const orden = OrdenCompra.findById(req.params.id);
     if (!orden) {
       return res.status(404).json({ error: 'Orden de compra no encontrada' });
     }
-    
     res.json(orden);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -186,23 +136,16 @@ exports.getOrdenCompraById = async (req, res) => {
 };
 
 // Actualizar orden de compra
-exports.updateOrdenCompra = async (req, res) => {
+exports.updateOrdenCompra = (req, res) => {
   try {
-    const updatedOrden = await OrdenCompra.findByIdAndUpdate(
-      req.params.id,
-      { ...req.body, actualizadoEn: new Date() },
-      { new: true }
-    ).populate([
-      { path: 'proyectoId', select: 'nombre codigo' },
-      { path: 'cotizacionId' },
-      { path: 'proveedorId', select: 'nombre contacto' }
-    ]);
-    
-    if (!updatedOrden) {
+    const stmt = OrdenCompra.db.prepare(`UPDATE ordenes_compra SET proyectoId = ?, cotizacionId = ?, numeroOrden = ?, comprador = ?, proveedor = ?, proveedorId = ?, estado = ?, moneda = ?, conversionRate = ?, montoBruto = ?, descuento = ?, impuestos = ?, montoNeto = ?, tipoOrden = ?, fechaEntregaEstimada = ?, fechaEntregaReal = ?, observaciones = ?, condicionesPago = ?, creadoPor = ?, actualizadoEn = datetime('now') WHERE id = ?`);
+    const montoNeto = (req.body.montoBruto || 0) - (req.body.descuento || 0) + (req.body.impuestos || 0);
+    stmt.run(req.body.proyectoId, req.body.cotizacionId, req.body.numeroOrden, req.body.comprador, req.body.proveedor, req.body.proveedorId, req.body.estado, req.body.moneda, req.body.conversionRate, req.body.montoBruto, req.body.descuento, req.body.impuestos, montoNeto, req.body.tipoOrden, req.body.fechaEntregaEstimada, req.body.fechaEntregaReal, req.body.observaciones, req.body.condicionesPago, req.body.creadoPor, req.params.id);
+    const updated = OrdenCompra.findById(req.params.id);
+    if (!updated) {
       return res.status(404).json({ error: 'Orden de compra no encontrada' });
     }
-    
-    res.json(updatedOrden);
+    res.json(updated);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
@@ -238,18 +181,10 @@ exports.marcarComoRecibida = async (req, res) => {
 };
 
 // Eliminar orden de compra
-exports.deleteOrdenCompra = async (req, res) => {
+exports.deleteOrdenCompra = (req, res) => {
   try {
-    const orden = await OrdenCompra.findByIdAndDelete(req.params.id);
-    if (!orden) {
-      return res.status(404).json({ error: 'Orden de compra no encontrada' });
-    }
-    
-    // Si había una cotización asociada, cambiar su estado de vuelta a Aprobada
-    if (orden.cotizacionId) {
-      await Cotizacion.findByIdAndUpdate(orden.cotizacionId, { estado: 'Aprobada' });
-    }
-    
+    const stmt = OrdenCompra.db.prepare(`DELETE FROM ordenes_compra WHERE id = ?`);
+    stmt.run(req.params.id);
     res.json({ message: 'Orden de compra eliminada exitosamente' });
   } catch (err) {
     res.status(500).json({ error: err.message });

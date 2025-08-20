@@ -4,10 +4,7 @@ const Project = require('../models/Project');
 // Obtener todas las actas de reunión
 exports.getActas = async (req, res) => {
   try {
-    const actas = await ActaReunion.find()
-      .populate('proyectoId', 'nombre codigo')
-      .populate('creadoPor', 'nombre email')
-      .sort({ fecha: -1 });
+    const actas = await ActaReunion.findAll();
     res.json(actas);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -18,10 +15,7 @@ exports.getActas = async (req, res) => {
 exports.getActasByProject = async (req, res) => {
   try {
     const { proyectoId } = req.params;
-    const actas = await ActaReunion.find({ proyectoId })
-      .populate('proyectoId', 'nombre codigo')
-      .populate('creadoPor', 'nombre email')
-      .sort({ fecha: -1 });
+    const actas = await ActaReunion.findByProject(proyectoId);
     res.json(actas);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -31,14 +25,8 @@ exports.getActasByProject = async (req, res) => {
 // Crear nueva acta de reunión
 exports.createActa = async (req, res) => {
   try {
-    const nuevaActa = new ActaReunion(req.body);
-    await nuevaActa.save();
-    
-    // Poblar los datos para la respuesta
-    await nuevaActa.populate('proyectoId', 'nombre codigo');
-    await nuevaActa.populate('creadoPor', 'nombre email');
-    
-    res.status(201).json(nuevaActa);
+    const result = await ActaReunion.create(req.body);
+    res.status(201).json({ id: result.lastInsertRowid, ...req.body });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -47,10 +35,7 @@ exports.createActa = async (req, res) => {
 // Obtener un acta por ID
 exports.getActaById = async (req, res) => {
   try {
-    const acta = await ActaReunion.findById(req.params.id)
-      .populate('proyectoId', 'nombre codigo descripcion ubicacion')
-      .populate('creadoPor', 'nombre email');
-    
+    const acta = await ActaReunion.findById(req.params.id);
     if (!acta) return res.status(404).json({ error: 'Acta no encontrada' });
     res.json(acta);
   } catch (err) {
@@ -61,14 +46,12 @@ exports.getActaById = async (req, res) => {
 // Actualizar acta
 exports.updateActa = async (req, res) => {
   try {
-    const actualizada = await ActaReunion.findByIdAndUpdate(
-      req.params.id, 
-      req.body, 
-      { new: true }
-    )
-    .populate('proyectoId', 'nombre codigo')
-    .populate('creadoPor', 'nombre email');
-    
+    const acta = await ActaReunion.findById(req.params.id);
+    if (!acta) return res.status(404).json({ error: 'Acta no encontrada' });
+    if (String(acta.proyectoId) !== String(req.params.proyectoId)) {
+      return res.status(403).json({ error: 'No se puede editar el acta fuera del proyecto correspondiente' });
+    }
+    const actualizada = await ActaReunion.update(req.params.id, req.body);
     res.json(actualizada);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -78,7 +61,7 @@ exports.updateActa = async (req, res) => {
 // Eliminar acta
 exports.deleteActa = async (req, res) => {
   try {
-    await ActaReunion.findByIdAndDelete(req.params.id);
+    await ActaReunion.delete(req.params.id);
     res.json({ mensaje: 'Acta eliminada correctamente' });
   } catch (error) {
     res.status(500).json({ error: error.message });

@@ -7,7 +7,7 @@ router.get('/search', actaReunionController.searchActas);
 router.get('/proyecto/:proyectoId', actaReunionController.getActasByProject);
 router.post('/', actaReunionController.createActa);
 router.get('/:id', actaReunionController.getActaById);
-router.put('/:id', actaReunionController.updateActa);
+router.put('/proyecto/:proyectoId/:id', actaReunionController.updateActa);
 router.delete('/:id', actaReunionController.deleteActa);
 
 module.exports = router;

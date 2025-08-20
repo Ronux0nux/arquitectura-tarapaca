@@ -2,14 +2,9 @@ const Cotizacion = require('../models/Cotizacion');
 const Project = require('../models/Project');
 
 // Obtener todas las cotizaciones
-exports.getCotizaciones = async (req, res) => {
+exports.getCotizaciones = (req, res) => {
   try {
-    const cotizaciones = await Cotizacion.find()
-      .populate('proyectoId', 'nombre codigo')
-      .populate('proveedorId', 'nombre contacto')
-      .populate('insumoId', 'nombre unidad')
-      .populate('creadoPor', 'nombre email')
-      .sort({ creadoEn: -1 });
+    const cotizaciones = Cotizacion.findAll();
     res.json(cotizaciones);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -17,16 +12,10 @@ exports.getCotizaciones = async (req, res) => {
 };
 
 // Obtener cotizaciones por proyecto
-exports.getCotizacionesByProject = async (req, res) => {
+exports.getCotizacionesByProject = (req, res) => {
   try {
     const { proyectoId } = req.params;
-    const cotizaciones = await Cotizacion.find({ proyectoId })
-      .populate('proveedorId', 'nombre contacto')
-      .populate('insumoId', 'nombre unidad')
-      .populate('creadoPor', 'nombre email')
-      .sort({ creadoEn: -1 });
-    
-    // Calcular resumen de cotizaciones
+    const cotizaciones = Cotizacion.findAll().filter(c => c.proyectoId == proyectoId);
     const resumen = {
       total: cotizaciones.length,
       pendientes: cotizaciones.filter(c => c.estado === 'Pendiente').length,
@@ -34,7 +23,6 @@ exports.getCotizacionesByProject = async (req, res) => {
       compradas: cotizaciones.filter(c => c.estado === 'Comprada').length,
       montoTotal: cotizaciones.reduce((sum, c) => sum + (c.cantidad * c.precioUnitario), 0)
     };
-    
     res.json({ cotizaciones, resumen });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -42,49 +30,18 @@ exports.getCotizacionesByProject = async (req, res) => {
 };
 
 // Crear nueva cotización
-exports.createCotizacion = async (req, res) => {
+exports.createCotizacion = (req, res) => {
   try {
-    const { 
-      proyectoId, insumoId, partidaId, proveedorId, 
-      nombreMaterial, unidad, cantidad, precioUnitario,
-      validezOferta, detalles, observaciones, creadoPor 
-    } = req.body;
-    
-    // Verificar que el proyecto existe
-    const proyecto = await Project.findById(proyectoId);
-    if (!proyecto) {
-      return res.status(404).json({ error: 'Proyecto no encontrado' });
-    }
-    
-    const newCotizacion = new Cotizacion({
-      proyectoId, insumoId, partidaId, proveedorId,
-      nombreMaterial, unidad, cantidad, precioUnitario,
-      validezOferta, detalles, observaciones, creadoPor
-    });
-    
-    await newCotizacion.save();
-    
-    // Poblar los datos antes de enviar la respuesta
-    await newCotizacion.populate([
-      { path: 'proyectoId', select: 'nombre codigo' },
-      { path: 'proveedorId', select: 'nombre contacto' },
-      { path: 'insumoId', select: 'nombre unidad' },
-      { path: 'creadoPor', select: 'nombre email' }
-    ]);
-    
-    res.status(201).json(newCotizacion);
+    const result = Cotizacion.create(req.body);
+    res.status(201).json({ id: result.lastInsertRowid, ...req.body });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 };
 
-exports.getCotizacionById = async (req, res) => {
+exports.getCotizacionById = (req, res) => {
   try {
-    const cotizacion = await Cotizacion.findById(req.params.id)
-      .populate('proyectoId', 'nombre codigo')
-      .populate('proveedorId', 'nombre contacto')
-      .populate('insumoId', 'nombre unidad')
-      .populate('creadoPor', 'nombre email');
+    const cotizacion = Cotizacion.findById(req.params.id);
     if (!cotizacion) return res.status(404).json({ error: 'Cotización no encontrada' });
     res.json(cotizacion);
   } catch (err) {
@@ -92,45 +49,29 @@ exports.getCotizacionById = async (req, res) => {
   }
 };
 
-exports.updateCotizacion = async (req, res) => {
+exports.updateCotizacion = (req, res) => {
   try {
-    const updatedCotizacion = await Cotizacion.findByIdAndUpdate(
-      req.params.id,
-      { ...req.body, actualizadoEn: new Date() },
-      { new: true }
-    ).populate([
-      { path: 'proyectoId', select: 'nombre codigo' },
-      { path: 'proveedorId', select: 'nombre contacto' },
-      { path: 'insumoId', select: 'nombre unidad' },
-      { path: 'creadoPor', select: 'nombre email' }
-    ]);
-    
-    if (!updatedCotizacion) {
+    const stmt = Cotizacion.db.prepare(`UPDATE cotizaciones SET proyectoId = ?, insumoId = ?, partidaId = ?, proveedorId = ?, nombreMaterial = ?, unidad = ?, cantidad = ?, precioUnitario = ?, validezOferta = ?, estado = ?, detalles = ?, observaciones = ?, creadoPor = ?, actualizadoEn = datetime('now') WHERE id = ?`);
+    stmt.run(req.body.proyectoId, req.body.insumoId, req.body.partidaId, req.body.proveedorId, req.body.nombreMaterial, req.body.unidad, req.body.cantidad, req.body.precioUnitario, req.body.validezOferta, req.body.estado, req.body.detalles, req.body.observaciones, req.body.creadoPor, req.params.id);
+    const updated = Cotizacion.findById(req.params.id);
+    if (!updated) {
       return res.status(404).json({ error: 'Cotización no encontrada' });
     }
-    
-    res.json(updatedCotizacion);
+    res.json(updated);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 };
 
 // Aprobar cotización
-exports.aprobarCotizacion = async (req, res) => {
+exports.aprobarCotizacion = (req, res) => {
   try {
-    const cotizacion = await Cotizacion.findByIdAndUpdate(
-      req.params.id,
-      { estado: 'Aprobada', actualizadoEn: new Date() },
-      { new: true }
-    ).populate([
-      { path: 'proyectoId', select: 'nombre codigo' },
-      { path: 'proveedorId', select: 'nombre contacto' }
-    ]);
-    
+    const stmt = Cotizacion.db.prepare(`UPDATE cotizaciones SET estado = 'Aprobada', actualizadoEn = datetime('now') WHERE id = ?`);
+    stmt.run(req.params.id);
+    const cotizacion = Cotizacion.findById(req.params.id);
     if (!cotizacion) {
       return res.status(404).json({ error: 'Cotización no encontrada' });
     }
-    
     res.json({ message: 'Cotización aprobada exitosamente', cotizacion });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -138,38 +79,25 @@ exports.aprobarCotizacion = async (req, res) => {
 };
 
 // Rechazar cotización
-exports.rechazarCotizacion = async (req, res) => {
+exports.rechazarCotizacion = (req, res) => {
   try {
     const { observaciones } = req.body;
-    const cotizacion = await Cotizacion.findByIdAndUpdate(
-      req.params.id,
-      { 
-        estado: 'Rechazada', 
-        observaciones: observaciones || cotizacion.observaciones,
-        actualizadoEn: new Date() 
-      },
-      { new: true }
-    ).populate([
-      { path: 'proyectoId', select: 'nombre codigo' },
-      { path: 'proveedorId', select: 'nombre contacto' }
-    ]);
-    
+    const stmt = Cotizacion.db.prepare(`UPDATE cotizaciones SET estado = 'Rechazada', observaciones = ?, actualizadoEn = datetime('now') WHERE id = ?`);
+    stmt.run(observaciones, req.params.id);
+    const cotizacion = Cotizacion.findById(req.params.id);
     if (!cotizacion) {
       return res.status(404).json({ error: 'Cotización no encontrada' });
     }
-    
     res.json({ message: 'Cotización rechazada', cotizacion });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-exports.deleteCotizacion = async (req, res) => {
+exports.deleteCotizacion = (req, res) => {
   try {
-    const cotizacion = await Cotizacion.findByIdAndDelete(req.params.id);
-    if (!cotizacion) {
-      return res.status(404).json({ error: 'Cotización no encontrada' });
-    }
+    const stmt = Cotizacion.db.prepare(`DELETE FROM cotizaciones WHERE id = ?`);
+    stmt.run(req.params.id);
     res.json({ message: 'Cotización eliminada exitosamente' });
   } catch (err) {
     res.status(500).json({ error: err.message });

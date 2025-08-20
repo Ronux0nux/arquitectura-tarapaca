@@ -1,40 +1,40 @@
-const mongoose = require('mongoose');
+// Modelo Cotizacion usando better-sqlite3
+const Database = require('better-sqlite3');
+const db = new Database('data.db');
 
-const cotizacionSchema = new mongoose.Schema({
-  proyectoId: { type: mongoose.Schema.Types.ObjectId, ref: 'Project', required: true },
-  insumoId: { type: mongoose.Schema.Types.ObjectId, ref: 'Insumo' },
-  partidaId: { type: String }, // Para partidas específicas del proyecto
-  proveedorId: { type: mongoose.Schema.Types.ObjectId, ref: 'Provider', required: true },
-  
-  // Detalles del material/insumo
-  nombreMaterial: { type: String, required: true },
-  unidad: { type: String, required: true },
-  cantidad: { type: Number, required: true },
-  precioUnitario: { type: Number, required: true },
-  
-  // Información adicional
-  fechaCotizacion: { type: Date, default: Date.now },
-  validezOferta: { type: Date }, // Hasta cuándo es válida la cotización
-  estado: { 
-    type: String, 
-    enum: ['Pendiente', 'Aprobada', 'Rechazada', 'Comprada'], 
-    default: 'Pendiente' 
+// Crear tabla si no existe
+db.exec(`CREATE TABLE IF NOT EXISTS cotizaciones (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  proyectoId INTEGER,
+  insumoId INTEGER,
+  partidaId TEXT,
+  proveedorId INTEGER,
+  nombreMaterial TEXT NOT NULL,
+  unidad TEXT NOT NULL,
+  cantidad REAL NOT NULL,
+  precioUnitario REAL NOT NULL,
+  fechaCotizacion TEXT DEFAULT (datetime('now')),
+  validezOferta TEXT,
+  estado TEXT DEFAULT 'Pendiente',
+  detalles TEXT,
+  observaciones TEXT,
+  creadoPor INTEGER,
+  creadoEn TEXT DEFAULT (datetime('now')),
+  actualizadoEn TEXT DEFAULT (datetime('now'))
+)`);
+
+module.exports = {
+  create: (data) => {
+    const stmt = db.prepare(`INSERT INTO cotizaciones (proyectoId, insumoId, partidaId, proveedorId, nombreMaterial, unidad, cantidad, precioUnitario, validezOferta, estado, detalles, observaciones, creadoPor) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+    return stmt.run(data.proyectoId, data.insumoId, data.partidaId, data.proveedorId, data.nombreMaterial, data.unidad, data.cantidad, data.precioUnitario, data.validezOferta, data.estado || 'Pendiente', data.detalles, data.observaciones, data.creadoPor);
   },
-  detalles: { type: String },
-  observaciones: { type: String },
-  
-  // Metadatos
-  creadoPor: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  creadoEn: { type: Date, default: Date.now },
-  actualizadoEn: { type: Date, default: Date.now }
-});
-
-// Calcular precio total antes de guardar
-cotizacionSchema.virtual('precioTotal').get(function() {
-  return this.cantidad * this.precioUnitario;
-});
-
-// Asegurar que las virtuals se incluyan en JSON
-cotizacionSchema.set('toJSON', { virtuals: true });
-
-module.exports = mongoose.model('Cotizacion', cotizacionSchema);
+  findAll: () => {
+    const stmt = db.prepare(`SELECT *, cantidad * precioUnitario AS precioTotal FROM cotizaciones`);
+    return stmt.all();
+  },
+  findById: (id) => {
+    const stmt = db.prepare(`SELECT *, cantidad * precioUnitario AS precioTotal FROM cotizaciones WHERE id = ?`);
+    return stmt.get(id);
+  },
+  // Agrega más métodos según necesidad
+};

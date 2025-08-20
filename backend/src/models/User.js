@@ -1,16 +1,33 @@
-const mongoose = require('mongoose');
+// Modelo User usando better-sqlite3
+const Database = require('better-sqlite3');
+const db = new Database('data.db');
 
-const userSchema = new mongoose.Schema({
-  nombre: { type: String, required: true },
-  email: { type: String, required: true, unique: true },
-  rol: { 
-    type: String, 
-    enum: ['usuario', 'supervisor', 'administrador', 'coordinador', 'coordinador de especialidades'], 
-    default: 'usuario' 
+// Crear tabla si no existe
+db.exec(`CREATE TABLE IF NOT EXISTS users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  nombre TEXT NOT NULL,
+  email TEXT NOT NULL UNIQUE,
+  rol TEXT DEFAULT 'usuario',
+  passwordHash TEXT NOT NULL,
+  proyectos TEXT,
+  fechaRegistro TEXT DEFAULT (datetime('now'))
+)`);
+
+module.exports = {
+  create: (data) => {
+    const stmt = db.prepare(`INSERT INTO users (nombre, email, rol, passwordHash, proyectos) VALUES (?, ?, ?, ?, ?)`);
+    return stmt.run(data.nombre, data.email, data.rol || 'usuario', data.passwordHash, JSON.stringify(data.proyectos || []));
   },
-  passwordHash: { type: String, required: true },
-  proyectos: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Project' }],
-  fechaRegistro: { type: Date, default: Date.now },
-});
-
-module.exports = mongoose.model('User', userSchema);
+  findAll: () => {
+    const stmt = db.prepare(`SELECT * FROM users`);
+    return stmt.all().map(u => ({ ...u, proyectos: JSON.parse(u.proyectos || '[]') }));
+  },
+  findById: (id) => {
+    const stmt = db.prepare(`SELECT * FROM users WHERE id = ?`);
+    const u = stmt.get(id);
+    if (!u) return null;
+    u.proyectos = JSON.parse(u.proyectos || '[]');
+    return u;
+  },
+  // Agrega más métodos según necesidad
+};

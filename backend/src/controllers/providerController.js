@@ -1,9 +1,9 @@
 const Provider = require('../models/Provider');
 
 // Obtener todos los proveedores
-exports.getProviders = async (req, res) => {
+exports.getProviders = (req, res) => {
   try {
-    const providers = await Provider.find();
+    const providers = Provider.findAll();
     res.json(providers);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -11,21 +11,19 @@ exports.getProviders = async (req, res) => {
 };
 
 // Crear proveedor nuevo
-exports.createProvider = async (req, res) => {
+exports.createProvider = (req, res) => {
   try {
-    const { nombre, contacto, historialPrecios } = req.body;
-    const newProvider = new Provider({ nombre, contacto, historialPrecios });
-    await newProvider.save();
-    res.status(201).json(newProvider);
+    const result = Provider.create(req.body);
+    res.status(201).json({ id: result.lastInsertRowid, ...req.body });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 };
 
 // Obtener proveedor por ID
-exports.getProviderById = async (req, res) => {
+exports.getProviderById = (req, res) => {
   try {
-    const provider = await Provider.findById(req.params.id);
+    const provider = Provider.findById(req.params.id);
     if (!provider) return res.status(404).json({ error: 'Proveedor no encontrado' });
     res.json(provider);
   } catch (err) {
@@ -34,23 +32,22 @@ exports.getProviderById = async (req, res) => {
 };
 
 // Actualizar proveedor
-exports.updateProvider = async (req, res) => {
+exports.updateProvider = (req, res) => {
   try {
-    const updatedProvider = await Provider.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true }
-    );
-    res.json(updatedProvider);
+    const stmt = Provider.db.prepare(`UPDATE providers SET nombre = ?, rut = ?, direccion = ?, telefono = ?, email = ?, sitioWeb = ?, rubros = ? WHERE id = ?`);
+    stmt.run(req.body.nombre, req.body.rut, req.body.direccion, req.body.telefono, req.body.email, req.body.sitioWeb, JSON.stringify(req.body.rubros || []), req.params.id);
+    const updated = Provider.findById(req.params.id);
+    res.json(updated);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 };
 
 // Eliminar proveedor
-exports.deleteProvider = async (req, res) => {
+exports.deleteProvider = (req, res) => {
   try {
-    await Provider.findByIdAndDelete(req.params.id);
+    const stmt = Provider.db.prepare(`DELETE FROM providers WHERE id = ?`);
+    stmt.run(req.params.id);
     res.json({ message: 'Proveedor eliminado' });
   } catch (err) {
     res.status(500).json({ error: err.message });

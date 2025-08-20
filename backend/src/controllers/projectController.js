@@ -3,9 +3,9 @@ const Cotizacion = require('../models/Cotizacion');
 const OrdenCompra = require('../models/OrdenCompra');
 
 // Obtener todos los proyectos
-exports.getProjects = async (req, res) => {
+exports.getProjects = (req, res) => {
   try {
-    const projects = await Project.find().populate('equipo').populate('subencargado');
+    const projects = Project.findAll();
     res.json(projects);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -13,37 +13,15 @@ exports.getProjects = async (req, res) => {
 };
 
 // Buscar proyectos con filtros
-exports.searchProjects = async (req, res) => {
+exports.searchProjects = (req, res) => {
   try {
     const { id, nombre, codigo, fechaInicio, fechaTermino } = req.query;
-    let query = {};
-
-    // Buscar por ID
-    if (id) {
-      query._id = id;
-    }
-
-    // Buscar por nombre (búsqueda parcial, insensible a mayúsculas)
-    if (nombre) {
-      query.nombre = { $regex: nombre, $options: 'i' };
-    }
-
-    // Buscar por código (búsqueda parcial, insensible a mayúsculas)
-    if (codigo) {
-      query.codigo = { $regex: codigo, $options: 'i' };
-    }
-
-    // Buscar por fecha de inicio
-    if (fechaInicio) {
-      query.fechaInicio = { $gte: new Date(fechaInicio) };
-    }
-
-    // Buscar por fecha de término
-    if (fechaTermino) {
-      query.fechaTermino = { $lte: new Date(fechaTermino) };
-    }
-
-    const projects = await Project.find(query).populate('equipo').populate('subencargado');
+    let projects = Project.findAll();
+    if (id) projects = projects.filter(p => p.id == id);
+    if (nombre) projects = projects.filter(p => p.nombre.toLowerCase().includes(nombre.toLowerCase()));
+    if (codigo) projects = projects.filter(p => p.codigo.toLowerCase().includes(codigo.toLowerCase()));
+    if (fechaInicio) projects = projects.filter(p => new Date(p.fechaInicio) >= new Date(fechaInicio));
+    if (fechaTermino) projects = projects.filter(p => new Date(p.fechaTermino) <= new Date(fechaTermino));
     res.json(projects);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -51,20 +29,19 @@ exports.searchProjects = async (req, res) => {
 };
 
 // Crear nuevo proyecto
-exports.createProject = async (req, res) => {
+exports.createProject = (req, res) => {
   try {
-    const nuevoProyecto = new Project(req.body);
-    await nuevoProyecto.save();
-    res.status(201).json(nuevoProyecto);
+    const result = Project.create(req.body);
+    res.status(201).json({ id: result.lastInsertRowid, ...req.body });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
 // Obtener un proyecto por ID
-exports.getProjectById = async (req, res) => {
+exports.getProjectById = (req, res) => {
   try {
-    const project = await Project.findById(req.params.id).populate('equipo').populate('partidasApu.insumos.insumoId');
+    const project = Project.findById(req.params.id);
     if (!project) return res.status(404).json({ error: 'Proyecto no encontrado' });
     res.json(project);
   } catch (err) {
@@ -169,9 +146,11 @@ exports.getProjectMaterialSummary = async (req, res) => {
 };
 
 // Actualizar proyecto
-exports.updateProject = async (req, res) => {
+exports.updateProject = (req, res) => {
   try {
-    const actualizado = await Project.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const stmt = Project.db.prepare(`UPDATE projects SET nombre = ?, codigo = ?, estado = ?, fechaInicio = ?, fechaTermino = ?, subencargado = ?, equipo = ?, ubicacion = ?, descripcion = ?, archivoCotizacion = ? WHERE id = ?`);
+    stmt.run(req.body.nombre, req.body.codigo, req.body.estado, req.body.fechaInicio, req.body.fechaTermino, req.body.subencargado, JSON.stringify(req.body.equipo || []), req.body.ubicacion, req.body.descripcion, req.body.archivoCotizacion, req.params.id);
+    const actualizado = Project.findById(req.params.id);
     res.json(actualizado);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -179,9 +158,10 @@ exports.updateProject = async (req, res) => {
 };
 
 // Eliminar proyecto
-exports.deleteProject = async (req, res) => {
+exports.deleteProject = (req, res) => {
   try {
-    await Project.findByIdAndDelete(req.params.id);
+    const stmt = Project.db.prepare(`DELETE FROM projects WHERE id = ?`);
+    stmt.run(req.params.id);
     res.json({ mensaje: 'Proyecto eliminado correctamente' });
   } catch (error) {
     res.status(500).json({ error: error.message });

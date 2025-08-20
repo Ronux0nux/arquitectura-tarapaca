@@ -1,28 +1,26 @@
 const Insumo = require('../models/Insumo');
 
-exports.getInsumos = async (req, res) => {
+exports.getInsumos = (req, res) => {
   try {
-    const insumos = await Insumo.find().populate('proveedorId');
+    const insumos = Insumo.findAll();
     res.json(insumos);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-exports.createInsumo = async (req, res) => {
+exports.createInsumo = (req, res) => {
   try {
-    const { nombre, unidad, precioActual, proveedorId } = req.body;
-    const newInsumo = new Insumo({ nombre, unidad, precioActual, proveedorId });
-    await newInsumo.save();
-    res.status(201).json(newInsumo);
+    const result = Insumo.create(req.body);
+    res.status(201).json({ id: result.lastInsertRowid, ...req.body });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 };
 
-exports.getInsumoById = async (req, res) => {
+exports.getInsumoById = (req, res) => {
   try {
-    const insumo = await Insumo.findById(req.params.id).populate('proveedorId');
+    const insumo = Insumo.findById(req.params.id);
     if (!insumo) return res.status(404).json({ error: 'Insumo no encontrado' });
     res.json(insumo);
   } catch (err) {
@@ -30,22 +28,21 @@ exports.getInsumoById = async (req, res) => {
   }
 };
 
-exports.updateInsumo = async (req, res) => {
+exports.updateInsumo = (req, res) => {
   try {
-    const updatedInsumo = await Insumo.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true }
-    );
-    res.json(updatedInsumo);
+    const stmt = Insumo.db.prepare(`UPDATE insumos SET nombre = ?, unidad = ?, precioActual = ?, precioReferencia = ?, proveedorId = ? WHERE id = ?`);
+    stmt.run(req.body.nombre, req.body.unidad, req.body.precioActual, req.body.precioReferencia, req.body.proveedorId, req.params.id);
+    const updated = Insumo.findById(req.params.id);
+    res.json(updated);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 };
 
-exports.deleteInsumo = async (req, res) => {
+exports.deleteInsumo = (req, res) => {
   try {
-    await Insumo.findByIdAndDelete(req.params.id);
+    const stmt = Insumo.db.prepare(`DELETE FROM insumos WHERE id = ?`);
+    stmt.run(req.params.id);
     res.json({ message: 'Insumo eliminado' });
   } catch (err) {
     res.status(500).json({ error: err.message });
