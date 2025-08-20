@@ -82,7 +82,7 @@ export default function Navbar() {
 
         {/* Herramientas */}
         <div className="flex items-center gap-2">
-          <span className="text-blue-200 text-sm font-medium"> 🛠️ Herramientas</span>
+          <span className="text-blue-200 text-sm font-medium"> 🛠️ Construcción</span>
           <NavLink to="/buscador">
             Buscador de Materiales
           </NavLink>

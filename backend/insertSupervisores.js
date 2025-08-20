@@ -1,17 +1,8 @@
-// Script para insertar usuarios supervisores de ejemplo
+// Script para insertar usuarios supervisores de ejemplo en SQLite
 // Ejecutar con: node insertSupervisores.js
 
-const mongoose = require('mongoose');
-const bcrypt = require('bcrypt');
-require('dotenv').config();
-const User = require('./src/models/User');
-
-// Conectar a MongoDB usando la misma URI que el backend
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/arquitectura-tarapaca';
-
-mongoose.connect(MONGODB_URI)
-.then(() => console.log('✅ Conectado a MongoDB'))
-.catch(err => console.error('❌ Error conectando a MongoDB:', err));
+const Database = require('better-sqlite3');
+const db = new Database('data.db');
 
 const supervisoresEjemplo = [
   {
@@ -46,48 +37,28 @@ const supervisoresEjemplo = [
   }
 ];
 
-async function insertSupervisores() {
-  try {
-    // Verificar si ya existen usuarios
-    const existingUsers = await User.find({ rol: { $in: ['supervisor', 'administrador', 'coordinador de especialidades'] } });
-    
-    if (existingUsers.length > 0) {
-      console.log('🟡 Ya existen supervisores en la base de datos:');
-      existingUsers.forEach(user => {
-        console.log(`   - ${user.nombre} (${user.rol})`);
-      });
-      process.exit(0);
-    }
+function insertSupervisores() {
+  // Crear tabla si no existe
+  db.prepare(`CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nombre TEXT,
+    email TEXT,
+    rol TEXT,
+    password TEXT
+  )`).run();
 
-    console.log('🚀 Insertando usuarios supervisores...');
-
-    for (const supervisorData of supervisoresEjemplo) {
-      const { nombre, email, rol, password } = supervisorData;
-      
-      // Encriptar contraseña
-      const salt = await bcrypt.genSalt(10);
-      const passwordHash = await bcrypt.hash(password, salt);
-
-      // Crear usuario
-      const newUser = new User({
-        nombre,
-        email,
-        rol,
-        passwordHash
-      });
-
-      await newUser.save();
-      console.log(`✅ Usuario creado: ${nombre} (${rol})`);
-    }
-
-    console.log('🎉 Todos los supervisores han sido insertados exitosamente');
-    process.exit(0);
-
-  } catch (error) {
-    console.error('❌ Error insertando supervisores:', error);
-    process.exit(1);
+  // Verificar si ya existen supervisores
+  const existing = db.prepare("SELECT COUNT(*) as count FROM users WHERE rol IN ('supervisor','administrador','coordinador de especialidades')").get();
+  if (existing.count > 0) {
+    console.log('🟡 Ya existen supervisores en la base de datos SQLite.');
+    return;
   }
+
+  for (const s of supervisoresEjemplo) {
+    db.prepare("INSERT INTO users (nombre, email, rol, password) VALUES (?, ?, ?, ?)").run(s.nombre, s.email, s.rol, s.password);
+    console.log(`✅ Usuario creado: ${s.nombre} (${s.rol})`);
+  }
+  console.log('🎉 Todos los supervisores han sido insertados exitosamente en SQLite');
 }
 
-// Ejecutar la función
 insertSupervisores();
