@@ -99,12 +99,13 @@ export default function NavbarResponsive() {
           {/* Icono Tara a la izquierda, clickeable para ir a Home */}
           <NavLink to="/" className="flex items-center">
             <img src="/taracopia.png" alt="Logo Tara" className="w-10 h-10 mr-2" />
-            <span className="font-bold text-lg text-white flex items-center h-10">TaraPaka</span>
+            
   
           </NavLink>
 
           {/* Desktop Navigation */}
           <div className="hidden lg:flex items-center gap-2 flex-1 justify-center">
+            <span className="font-bold text-lg text-white flex items-center h-10">TaraPaka</span>
             {/* Administración */}
             {(canAccess('all') || canAccess('proveedores') || user?.role === 'admin') && (
               <>
