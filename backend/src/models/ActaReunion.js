@@ -20,6 +20,23 @@ db.exec(`CREATE TABLE IF NOT EXISTS actas_reunion (
 )`);
 
 module.exports = {
+  update: (id, data) => {
+    const stmt = db.prepare(`UPDATE actas_reunion SET entidad = ?, fecha = ?, lugar = ?, horaInicio = ?, horaTermino = ?, objetivoReunion = ?, temasTratados = ?, acuerdos = ?, asistencia = ?, creadoPor = ? WHERE id = ?`);
+    stmt.run(
+      data.entidad,
+      data.fecha,
+      data.lugar,
+      data.horaInicio,
+      data.horaTermino,
+      data.objetivoReunion,
+      data.temasTratados,
+      data.acuerdos,
+      JSON.stringify(data.asistencia || []),
+      data.creadoPor,
+      id
+    );
+    return module.exports.findById(id);
+  },
   db,
   create: (data) => {
     const stmt = db.prepare(`INSERT INTO actas_reunion (proyectoId, entidad, fecha, lugar, horaInicio, horaTermino, objetivoReunion, temasTratados, acuerdos, asistencia, creadoPor) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);

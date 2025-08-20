@@ -19,6 +19,22 @@ db.exec(`CREATE TABLE IF NOT EXISTS projects (
 )`);
 
 module.exports = {
+  update: (id, data) => {
+    const stmt = db.prepare(`UPDATE projects SET nombre = ?, codigo = ?, estado = ?, fechaInicio = ?, fechaTermino = ?, subencargado = ?, equipo = ?, ubicacion = ?, descripcion = ?, archivoCotizacion = ? WHERE id = ?`);
+    return stmt.run(
+      data.nombre,
+      data.codigo,
+      data.estado || 'Planificación',
+      data.fechaInicio,
+      data.fechaTermino,
+      data.subencargado,
+      JSON.stringify(data.equipo || []),
+      data.ubicacion,
+      data.descripcion,
+      data.archivoCotizacion,
+      id
+    );
+  },
   create: (data) => {
     const stmt = db.prepare(`INSERT INTO projects (nombre, codigo, estado, fechaInicio, fechaTermino, subencargado, equipo, ubicacion, descripcion, archivoCotizacion) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
     return stmt.run(data.nombre, data.codigo, data.estado || 'Planificación', data.fechaInicio, data.fechaTermino, data.subencargado, JSON.stringify(data.equipo || []), data.ubicacion, data.descripcion, data.archivoCotizacion);
