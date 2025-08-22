@@ -419,9 +419,21 @@ const ExcelOnline = () => {
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
 
+  // Estado para subir nuevo formato
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadedFormat, setUploadedFormat] = useState(null);
+
+  // Procesar archivo subido y mostrar vista previa
+  const [previewData, setPreviewData] = useState(null);
+
   // Abrir modal de selección de plantilla
   const handleAddSheet = () => {
     setShowTemplateModal(true);
+  };
+
+  // Abrir modal de subida
+  const handleShowUploadModal = () => {
+    setShowUploadModal(true);
   };
 
   // Crear hoja nueva con plantilla seleccionada
@@ -452,6 +464,62 @@ const ExcelOnline = () => {
     notifySuccess(`Hoja "${newSheetName}" agregada con formato de plantilla.`);
   };
 
+  // Procesar archivo subido (solo estructura base, falta lógica de parseo)
+  const handleFormatUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setUploadedFormat(file);
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        const data = evt.target.result;
+        let workbook;
+        if (file.name.endsWith('.csv')) {
+          workbook = XLSX.read(data, { type: 'binary', codepage: 65001 });
+        } else {
+          workbook = XLSX.read(data, { type: 'binary' });
+        }
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        setPreviewData(jsonData);
+      };
+      reader.readAsBinaryString(file);
+    }
+  };
+
+  // Guardar como plantilla (integración backend)
+  const handleSaveTemplate = async () => {
+    if (previewData && uploadedFormat) {
+      const newTemplate = {
+        name: uploadedFormat.name,
+        description: ['Formato subido por el usuario'],
+        table: previewData,
+        totals: [],
+        cotizaciones: [],
+        notas: []
+      };
+      try {
+        const response = await fetch('/api/templates', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(newTemplate)
+        });
+        if (response.ok) {
+          notifySuccess('Formato guardado en el sistema.');
+          setShowUploadModal(false);
+          setPreviewData(null);
+          setUploadedFormat(null);
+        } else {
+          notifyError('Error al guardar la plantilla en el backend.');
+        }
+      } catch (err) {
+        notifyError('Error de conexión al guardar plantilla.');
+      }
+    }
+  };
+
   const currentSheetName = sheetNames[activeSheet];
   const currentSheetData = excelData[currentSheetName] || [];
 
@@ -463,7 +531,7 @@ const ExcelOnline = () => {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-                📊 Presupuestos de Proyectos Reales
+                📊 Plantillas de Recursos
                 {selectedProject && (
                   <span className="text-lg text-blue-600">
                     - {selectedProject.name}
@@ -473,16 +541,15 @@ const ExcelOnline = () => {
               <p className="text-sm text-gray-600">
                 {selectedProject 
                   ? `Presupuesto detallado con compras y cotizaciones del proyecto` 
-                  : 'Selecciona un proyecto para ver su presupuesto con compras reales'
-                }
+                  : 'Selecciona un proyecto para ver su presupuesto con compras reales'}
               </p>
             </div>
             <div className="flex gap-2">
               <button
-                onClick={() => setShowCartPanel(!showCartPanel)}
-                className="bg-orange-600 text-white px-4 py-2 rounded hover:bg-orange-700 transition-colors"
+                onClick={handleShowUploadModal}
+                className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 transition-colors"
               >
-                🛒 Carrito ({cartItems.length})
+                + Subir nuevo formato
               </button>
               <button
                 onClick={exportExcel}
@@ -495,6 +562,53 @@ const ExcelOnline = () => {
           </div>
         </div>
       </div>
+
+      {/* Modal para subir formato */}
+      {showUploadModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center" style={{ zIndex: 50 }}>
+          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md relative">
+            <h2 className="text-xl font-bold mb-4">Subir nuevo formato de tabla</h2>
+            <input type="file" accept=".xlsx,.csv" onChange={handleFormatUpload} className="mb-4" />
+            <button
+              className="absolute top-2 right-2 text-gray-500 hover:text-gray-800"
+              onClick={() => { setShowUploadModal(false); setPreviewData(null); setUploadedFormat(null); }}
+            >
+              ✕
+            </button>
+            {uploadedFormat && (
+              <div className="text-green-600 mt-2">Archivo listo para procesar: {uploadedFormat.name}</div>
+            )
+            }
+            {previewData && (
+              <div className="mt-4">
+                <h3 className="font-semibold mb-2">Vista previa:</h3>
+                <div className="overflow-auto max-h-64 border rounded">
+                  <table className="min-w-full text-xs">
+                    <tbody>
+                      {previewData.map((row, i) => (
+                        <tr key={i}>
+                          {row.map((cell, j) => (
+                            <td key={j} className="border px-2 py-1">{cell}</td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <button
+                  className="bg-blue-600 text-white px-4 py-2 rounded mt-4"
+                  onClick={handleSaveTemplate}
+                >
+                  Guardar como plantilla
+                </button>
+              </div>
+            )}
+            {!previewData && (
+              <p className="text-xs text-gray-500 mt-4">Selecciona un archivo Excel o CSV para ver la vista previa y guardar como plantilla.</p>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="container mx-auto px-4 py-6">
         <div className="flex gap-6">
