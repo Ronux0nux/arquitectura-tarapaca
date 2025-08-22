@@ -20,6 +20,7 @@ import ExcelOnline from './pages/ExcelOnline';
 import Presupuestos from './pages/Presupuestos';
 import CotizacionCartV2 from './components/CotizacionCartV2';
 import CartButton from './components/CartButton';
+import CorporacionTarapaka from './pages/CorporacionTarapaka';
 
 export default function App() {
   return (
@@ -76,44 +77,45 @@ export default function App() {
                   path="/cotizaciones" 
                   element={
                     <ProtectedRoute requiredPermission="cotizaciones">
-                      <Cotizaciones />
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route 
-                  path="/actas" 
-                  element={
-                    <ProtectedRoute requiredRole="supervisor">
-                      <ActasReunion />
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route 
-                  path="/buscador" 
-                  element={
-                    <ProtectedRoute>
-                      <BuscadorPage />
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route 
-                  path="/historial" 
-                  element={
-                    <ProtectedRoute requiredPermission="cotizaciones">
-                      <HistorialCotizaciones />
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route 
-                  path="/configuracion" 
-                  element={
-                    <ProtectedRoute requiredRole="admin">
-                      <ConfiguracionPage />
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route 
-                  path="/presupuestos" 
+                      <Router>
+                        <Routes>
+                          {/* Página pública sin Navbar ni ProtectedRoute */}
+                          <Route path="/corporacion-tarapaka" element={<CorporacionTarapaka />} />
+                          {/* Resto de rutas protegidas y privadas */}
+                          <Route path="/" element={<Home />} />
+                          <Route 
+                            path="/users" 
+                            element={
+                              <ProtectedRoute requiredRole="admin">
+                                <Users />
+                              </ProtectedRoute>
+                            }
+                          />
+                          <Route 
+                            path="/projects" 
+                            element={
+                              <ProtectedRoute requiredPermission="proyectos">
+                                <Projects />
+                              </ProtectedRoute>
+                            }
+                          />
+                          <Route 
+                            path="/projects/:id/materiales" 
+                            element={<ProjectMaterials />} 
+                          />
+                          <Route path="/providers" element={<Providers />} />
+                          <Route path="/insumos" element={<Insumos />} />
+                          <Route path="/cotizaciones" element={<Cotizaciones />} />
+                          <Route path="/actas-reunion" element={<ActasReunion />} />
+                          <Route path="/buscador" element={<BuscadorPage />} />
+                          <Route path="/historial-cotizaciones" element={<HistorialCotizaciones />} />
+                          <Route path="/configuracion" element={<ConfiguracionPage />} />
+                          <Route path="/excel-online" element={<ExcelOnline />} />
+                          <Route path="/presupuestos" element={<Presupuestos />} />
+                          <Route path="/cotizacion-cart-v2" element={<CotizacionCartV2 />} />
+                          <Route path="/cart-button" element={<CartButton />} />
+                        </Routes>
+                      </Router>
                   element={
                     <ProtectedRoute requiredPermission="proyectos">
                       <Presupuestos />
