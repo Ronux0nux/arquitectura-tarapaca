@@ -1,5 +1,6 @@
-"
-"
+import React, { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { useNotifications } from '../context/NotificationContext';
 
 export default function Login() {
   const [formData, setFormData] = useState({
@@ -25,6 +26,7 @@ export default function Login() {
       notifyError(result.error, 'Error de Autenticación');
     }
   };
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({
@@ -32,21 +34,25 @@ export default function Login() {
       [name]: type === 'checkbox' ? checked : value
     }));
   };
+
   const handleRecovery = (e) => {
     e.preventDefault();
     notifyInfo('Se ha enviado un enlace de recuperación a tu email', 'Recuperación de Contraseña');
-  // Usuarios de demostración
+    setShowRecovery(false);
+  };
+
   const demoUsers = [
     { email: 'admin@aceleratarapaka.cl', password: 'admin123', role: 'Administrador', icon: '👨‍💼' },
     { email: 'supervisor@aceleratarapaka.cl', password: 'super123', role: 'Supervisor', icon: '👨‍🔧' },
     { email: 'empleado@aceleratarapaka.cl', password: 'emp123', role: 'Empleado', icon: '👩‍💻' }
   ];
+
   const fillDemo = (email, password) => {
     setFormData(prev => ({ ...prev, email, password }));
   };
 
   return (
-  <div className="min-h-screen w-full flex items-center justify-center bg-cover bg-center" style={{ backgroundImage: "url('/edificiotarapaka.png')" }}>
+    <div className="min-h-screen w-full flex items-center justify-center bg-cover bg-center" style={{ backgroundImage: "url('/edificiotarapaka.png')" }}>
       <div className="w-full max-w-5xl mx-auto flex flex-col md:flex-row bg-black bg-opacity-40 rounded-xl shadow-2xl overflow-hidden">
         {/* Columna izquierda: Welcome Back */}
         <div className="md:w-1/2 w-full flex flex-col justify-center items-start p-10 text-white">
