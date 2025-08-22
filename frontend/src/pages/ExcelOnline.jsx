@@ -582,7 +582,7 @@ const ExcelOnline = () => {
 
       {/* Modal para subir formato */}
       {showUploadModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center" style={{ zIndex: 50 }}>
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center" style={{ zIndex: 10050 }}>
           <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md relative">
             <h2 className="text-xl font-bold mb-4">Subir nuevo formato de tabla</h2>
             <input type="file" accept=".xlsx,.csv" onChange={handleFormatUpload} className="mb-4" />
@@ -623,6 +623,35 @@ const ExcelOnline = () => {
             {!previewData && (
               <p className="text-xs text-gray-500 mt-4">Selecciona un archivo Excel o CSV para ver la vista previa y guardar como plantilla.</p>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal de selección de plantilla */}
+      {showTemplateModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center" style={{ zIndex: 10050 }}>
+          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-xl relative">
+            <h2 className="text-xl font-bold mb-4">Selecciona una plantilla</h2>
+            <ul>
+              {templates.map((tpl, idx) => (
+                <li key={tpl.name} className="mb-4 border-b pb-2">
+                  <div className="font-semibold">{tpl.name}</div>
+                  <div className="text-sm text-gray-700 whitespace-pre-line mb-2">{tpl.description}</div>
+                  <button
+                    className="bg-green-600 text-white px-3 py-1 rounded"
+                    onClick={() => handleSelectTemplate(idx)}
+                  >
+                    Usar esta plantilla
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <button
+              className="absolute top-2 right-2 text-gray-500 hover:text-gray-800"
+              onClick={() => setShowTemplateModal(false)}
+            >
+              ✕
+            </button>
           </div>
         </div>
       )}
@@ -722,35 +751,6 @@ const ExcelOnline = () => {
                   </button>
               </div>
             </div>
-
-              {/* Modal de selección de plantilla */}
-              {showTemplateModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center" style={{ zIndex: 50 }}>
-                  <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-xl relative">
-                    <h2 className="text-xl font-bold mb-4">Selecciona una plantilla</h2>
-                    <ul>
-                      {templates.map((tpl, idx) => (
-                        <li key={tpl.name} className="mb-4 border-b pb-2">
-                          <div className="font-semibold">{tpl.name}</div>
-                          <div className="text-sm text-gray-700 whitespace-pre-line mb-2">{tpl.description}</div>
-                          <button
-                            className="bg-green-600 text-white px-3 py-1 rounded"
-                            onClick={() => handleSelectTemplate(idx)}
-                          >
-                            Usar esta plantilla
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                    <button
-                      className="absolute top-2 right-2 text-gray-500 hover:text-gray-800"
-                      onClick={() => setShowTemplateModal(false)}
-                    >
-                      ✕
-                    </button>
-                  </div>
-                </div>
-              )}
 
             {/* Editor Excel */}
             <div className="bg-white rounded-b-lg border">
