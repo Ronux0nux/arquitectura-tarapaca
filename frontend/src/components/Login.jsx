@@ -35,8 +35,6 @@ export default function Login() {
   const handleRecovery = (e) => {
     e.preventDefault();
     notifyInfo('Se ha enviado un enlace de recuperación a tu email', 'Recuperación de Contraseña');
-    setShowRecovery(false);
-  };
   // Usuarios de demostración
   const demoUsers = [
     { email: 'admin@aceleratarapaka.cl', password: 'admin123', role: 'Administrador', icon: '👨‍💼' },
