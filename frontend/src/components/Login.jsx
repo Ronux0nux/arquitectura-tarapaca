@@ -52,7 +52,7 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-cover bg-center" style={{ backgroundImage: "url('/edificiotarapaka.png')" }}>
+    <div className="min-h-screen w-full flex items-center justify-center bg-cover bg-center" style={{ backgroundImage: "url('/edificiotarapaka.jpg')" }}>
       <div className="w-full max-w-5xl mx-auto flex flex-col md:flex-row bg-black bg-opacity-40 rounded-xl shadow-2xl overflow-hidden">
         {/* Columna izquierda: Welcome Back */}
         <div className="md:w-1/2 w-full flex flex-col justify-center items-start p-10 text-white">
@@ -82,7 +82,7 @@ export default function Login() {
                   value={formData.email}
                   onChange={handleChange}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-colors"
-                  placeholder="your@email.com"
+                  placeholder="tucorreo@aceleratarapaka.cl"
                   required
                 />
               </div>
@@ -103,19 +103,19 @@ export default function Login() {
                 <label className="flex items-center">
                   <input
                     type="checkbox"
-                    name="rememberMe"
+                    name="Recuerdame"
                     checked={formData.rememberMe}
                     onChange={handleChange}
                     className="w-4 h-4 text-orange-500 bg-gray-100 border-gray-300 rounded focus:ring-orange-500"
                   />
-                  <span className="ml-2 text-sm text-gray-600">Remember Me</span>
+                  <span className="ml-2 text-sm text-gray-600">Recuerdame</span>
                 </label>
                 <button
                   type="button"
                   onClick={() => setShowRecovery(true)}
                   className="text-sm text-orange-600 hover:text-orange-800 transition-colors"
                 >
-                  Lost your password?
+                  Perdiste tu contraseña?
                 </button>
               </div>
               <button
@@ -129,16 +129,16 @@ export default function Login() {
                     Signing in...
                   </div>
                 ) : (
-                  'Sign in now'
+                  'Iniciar Sesión'
                 )}
               </button>
             </form>
             <div className="mt-4 text-center">
-              <span className="text-sm text-gray-600">By clicking on "Sign in now" you agree to <a href="#" className="text-orange-600 underline">Terms of Service</a> | <a href="#" className="text-orange-600 underline">Privacy Policy</a></span>
+              <span className="text-sm text-gray-600">By clicking on "Iniciar Sesión" you agree to <a href="#" className="text-orange-600 underline">Terms of Service</a> | <a href="#" className="text-orange-600 underline">Privacy Policy</a></span>
             </div>
             {/* Demo Users opcional */}
             <div className="mt-8 pt-6 border-t border-gray-200">
-              <p className="text-sm text-gray-600 mb-4 text-center">🧪 Demo Users:</p>
+              <p className="text-sm text-gray-600 mb-4 text-center">🧪 Demostración Usuarios:</p>
               <div className="space-y-2">
                 {demoUsers.map((user, index) => (
                   <button
@@ -157,10 +157,10 @@ export default function Login() {
             {showRecovery && (
               <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                 <div className="bg-white rounded-lg max-w-sm w-full p-6">
-                  <h3 className="text-lg font-bold text-gray-900 mb-4">Password Recovery</h3>
+                  <h3 className="text-lg font-bold text-gray-900 mb-4">Recuperación de Contraseña</h3>
                   <form onSubmit={handleRecovery}>
                     <div className="mb-4">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Recovery Email</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Recuperar por correo</label>
                       <input
                         type="email"
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
@@ -174,13 +174,13 @@ export default function Login() {
                         onClick={() => setShowRecovery(false)}
                         className="flex-1 px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
                       >
-                        Cancel
+                        Cancelar
                       </button>
                       <button
                         type="submit"
                         className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
                       >
-                        Send
+                        Enviar
                       </button>
                     </div>
                   </form>
