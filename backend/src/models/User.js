@@ -8,15 +8,15 @@ db.exec(`CREATE TABLE IF NOT EXISTS users (
   nombre TEXT NOT NULL,
   email TEXT NOT NULL UNIQUE,
   rol TEXT DEFAULT 'usuario',
-  passwordHash TEXT NOT NULL,
+  password TEXT NOT NULL,
   proyectos TEXT,
   fechaRegistro TEXT DEFAULT (datetime('now'))
 )`);
 
 module.exports = {
   create: (data) => {
-    const stmt = db.prepare(`INSERT INTO users (nombre, email, rol, passwordHash, proyectos) VALUES (?, ?, ?, ?, ?)`);
-    return stmt.run(data.nombre, data.email, data.rol || 'usuario', data.passwordHash, JSON.stringify(data.proyectos || []));
+    const stmt = db.prepare(`INSERT INTO users (nombre, email, rol, password, proyectos) VALUES (?, ?, ?, ?, ?)`);
+    return stmt.run(data.nombre, data.email, data.rol || 'usuario', data.password, JSON.stringify(data.proyectos || []));
   },
   findAll: () => {
     const stmt = db.prepare(`SELECT * FROM users`);

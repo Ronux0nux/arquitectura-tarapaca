@@ -54,10 +54,10 @@ export default function Login() {
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-cover bg-center" style={{ backgroundImage: "url('/edificiotarapaka.jpg')" }}>
       <div className="w-full max-w-5xl mx-auto flex flex-col md:flex-row bg-black bg-opacity-40 rounded-xl shadow-2xl overflow-hidden">
-        {/* Columna izquierda: Welcome Back */}
+        {/* Columna izquierda: Bienvenida */}
         <div className="md:w-1/2 w-full flex flex-col justify-center items-start p-10 text-white">
-          <h1 className="text-5xl font-bold mb-4">Welcome<br />Back</h1>
-          <p className="mb-6 text-lg max-w-md">It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout. The point of using</p>
+          <h1 className="text-5xl font-bold mb-4">Bienvenido<br />De Nuevo</h1>
+          <p className="mb-6 text-lg max-w-md">Al Sistema Web de gestión de procesos de la construcción de proyectos TaraPaka</p>
           <div className="flex gap-4 mb-8">
             <a href="#" aria-label="Facebook" className="hover:text-blue-400 text-2xl"><i className="fab fa-facebook-f"></i></a>
             <a href="#" aria-label="Twitter" className="hover:text-blue-400 text-2xl"><i className="fab fa-twitter"></i></a>
@@ -71,10 +71,10 @@ export default function Login() {
             <div className="flex justify-center mb-6">
               <img src="/logo512.png" alt="Logo" className="w-20 h-20 rounded-full shadow-lg border-4 border-orange-200 bg-white" />
             </div>
-            <h2 className="text-3xl font-bold text-gray-900 mb-6 text-center">Sign in</h2>
+            <h2 className="text-3xl font-bold text-gray-900 mb-6 text-center">Iniciar Sesión</h2>
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">Correo Corporativo</label>
                 <input
                   type="email"
                   id="email"
@@ -87,7 +87,7 @@ export default function Login() {
                 />
               </div>
               <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">Contraseña</label>
                 <input
                   type={showPassword ? 'text' : 'password'}
                   id="password"
@@ -108,14 +108,14 @@ export default function Login() {
                     onChange={handleChange}
                     className="w-4 h-4 text-orange-500 bg-gray-100 border-gray-300 rounded focus:ring-orange-500"
                   />
-                  <span className="ml-2 text-sm text-gray-600">Recuerdame</span>
+                  <span className="ml-2 text-sm text-gray-600">Recuérdame</span>
                 </label>
                 <button
                   type="button"
                   onClick={() => setShowRecovery(true)}
                   className="text-sm text-orange-600 hover:text-orange-800 transition-colors"
                 >
-                  Perdiste tu contraseña?
+                  ¿Perdiste tu contraseña?
                 </button>
               </div>
               <button
@@ -126,7 +126,7 @@ export default function Login() {
                 {isLoading ? (
                   <div className="flex items-center justify-center">
                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                    Signing in...
+                    Iniciando sesión...
                   </div>
                 ) : (
                   'Iniciar Sesión'
@@ -134,11 +134,11 @@ export default function Login() {
               </button>
             </form>
             <div className="mt-4 text-center">
-              <span className="text-sm text-gray-600">By clicking on "Iniciar Sesión" you agree to <a href="#" className="text-orange-600 underline">Terms of Service</a> | <a href="#" className="text-orange-600 underline">Privacy Policy</a></span>
+              <span className="text-sm text-gray-600">Al hacer clic en "Iniciar Sesión" aceptas los <a href="#" className="text-orange-600 underline">Términos de Servicio</a> | <a href="#" className="text-orange-600 underline">Política de Privacidad</a></span>
             </div>
             {/* Demo Users opcional */}
             <div className="mt-8 pt-6 border-t border-gray-200">
-              <p className="text-sm text-gray-600 mb-4 text-center">🧪 Demostración Usuarios:</p>
+              <p className="text-sm text-gray-600 mb-4 text-center">🧪 Usuarios de Demostración:</p>
               <div className="space-y-2">
                 {demoUsers.map((user, index) => (
                   <button
@@ -164,7 +164,7 @@ export default function Login() {
                       <input
                         type="email"
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                        placeholder="your@email.com"
+                        placeholder="tucorreo@aceleratarapaka.cl"
                         required
                       />
                     </div>
