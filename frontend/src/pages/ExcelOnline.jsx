@@ -345,7 +345,7 @@ const ExcelOnline = () => {
         ['Material', 'Reja metálica galvanizada 2,00 m altura', 'ml', 1, 42000, 42000],
         ['Material', 'Pilar metálico cuadrado 60x60x2 mm', 'ml', 1.8, 5800, 10440],
         ['Material', 'Hormigón G-25 para fundación (considerando zanja 20x40 cm)', 'm³', 0.08, 133700, 10696],
-        ['Material', 'Acero A63-A2H Ø10 mm (para fundación)', 'kg', 5, 1250, 6250],
+        ['Material', 'Acero A63-42H Ø10 mm (para fundación)', 'kg', 5, 1250, 6250],
         ['Material', 'Aditivos impermeabilizantes', 'lt', 0.3, 3500, 1050],
         ['Equipo/Herr.', 'Herramientas menores y encofrado manual', 'global', 1, 2000, 2000],
         ['Mano de Obra', 'Maestro albañil', 'día', 0.1, 55000, 5500],
@@ -356,6 +356,22 @@ const ExcelOnline = () => {
       totals: [
         ['Total parcial', '', '', '', '', 113823],
         ['Total general', '', '', '', '', 103578475]
+      ],
+      cotizaciones: [
+        ['Recurso', 'Cotización real', 'Fuente / Observación'],
+        ['Bloque de hormigón vibrado tipo G 14×19×39 cm', '1.590/un', 'Sodimac – Bloque liso gris'],
+        ['Mortero cemento-arena 1:4 (saco 25 kg)', '2.880', 'Sodimac – Hormigón preparado TOPEX 25 kg'],
+        ['Reja metálica galvanizada 2,00 m', '42.000/ml', 'CYM Chile – Panel malla electrosoldada galvanizada'],
+        ['Pilar metálico cuadrado 60×60×2 mm', '5.800/ml', 'Fierronet – Perfil cuadrado 60×60×2 mm x 6 m'],
+        ['Hormigón G-25 (fundaciones muro y pilares)', '133.700/m³', 'Manual ONDAC 2024 – Hormigón fundaciones pequeñas'],
+        ['Acero A63-42H Ø10 mm', '1.249/kg', 'ONDAC Manual julio 2025 – Acero para armaduras A63-42H Ø10 mm'],
+        ['Aditivo impermeabilizante Sika 1', '3.500/lt', 'Sodimac – Aditivo Sika 1 L'],
+      ],
+      notas: [
+        'Se considera fundación corrida para muro y pilares metálicos embebidos.',
+        'Reja metálica tipo panel modular galvanizado con fijación mecánica superior.',
+        'Espaciamiento entre pilares: 2,50 m',
+        'Altura total desde fundación hasta extremo superior: 3,00 m'
       ]
     },
     {
@@ -367,7 +383,7 @@ const ExcelOnline = () => {
       ],
       table: [
         ['Tipo', 'Recurso', 'Unidad', 'Cantidad', 'P.U (CLP)', 'Subtotal (CLP)'],
-        ['Material', 'Malla Acma galvanizada 2,40 m alto, paso 100x50 mm', 'ml', 1, 29500, 29500],
+        ['Material', 'Malla Acma galvanizada 2,40 m alto, paso 100×50 mm', 'ml', 1, 29500, 29500],
         ['Material', 'Postes metálicos 60x60x2 mm (cada 2,5 m)', 'ml', 0.4, 5800, 2320],
         ['Material', 'Hormigón simple para fundación de postes', 'm³', 0.025, 133700, 3343],
         ['Material', 'Zócalo hormigón ciclópeo (20x20 cm)', 'm³', 0.04, 102000, 4080],
@@ -379,6 +395,21 @@ const ExcelOnline = () => {
       totals: [
         ['Total parcial', '', '', '', '', 62278],
         ['Total general', '', '', '', '', 56672525]
+      ],
+      cotizaciones: [
+        ['Recurso', 'Cotización real', 'Fuente / Observación'],
+        ['Malla Acma galvanizada 2,4 m (electrosoldada)', '29.500/ml', 'CYM Chile – Malla Acma electrosoldada 2,4 m altura'],
+        ['Poste metálico galvanizado 60x60x2 mm', '5.800/ml', 'Fierronet – Perfil cuadrado 60x60x2 mm x 6 m'],
+        ['Hormigón simple para fundación puntual', '133.700/m³', 'Manual ONDAC 2024 – Hormigón fundaciones pequeñas'],
+        ['Zócalo de hormigón ciclópeo', '102.000/m³', 'CYM Chile – Precio referencia hormigón ciclópeo m³'],
+        ['Acero A63-42H Ø10 mm', '1.249/kg', 'ONDAC Manual julio 2025 – Acero para armaduras A63-42H Ø10 mm'],
+      ],
+      notas: [
+        'Postes metálicos galvanizados 60x60x2 mm, cada 2,5 m',
+        'Malla Acma galvanizada electrosoldada 2,4 m alto',
+        'Zócalo de hormigón ciclópeo de 0,30 m altura (seguridad y estabilidad)',
+        'Fundación de hormigón simple por poste',
+        'Portón metálico de 6 m + acceso peatonal universal'
       ]
     },
     // Puedes agregar más plantillas aquí
@@ -397,14 +428,18 @@ const ExcelOnline = () => {
   const handleSelectTemplate = (templateIdx) => {
     const template = templates[templateIdx];
     const newSheetName = template.name;
-    // Estructura: descripción, tabla, totales
+    // Estructura: descripción, tabla principal, totales, cotizaciones y notas
     const sheetData = [
-      // Descripción en las primeras filas
       ...template.description.map((desc) => [desc]),
-      [], // Espacio
+      [],
       ...template.table,
-      [], // Espacio
-      ...template.totals
+      [],
+      ...template.totals,
+      [],
+      ['Cotizaciones'],
+      ...template.cotizaciones,
+      [],
+      ...template.notas.map((nota, i) => i === 0 ? [nota] : [nota]),
     ];
     setSheetNames([...sheetNames, newSheetName]);
     setExcelData({
