@@ -329,6 +329,94 @@ const ExcelOnline = () => {
     }
   };
 
+  // Plantillas predefinidas
+  const templates = [
+    {
+      name: 'Opción 1: Cierre Sólido Mixto de Alta Seguridad',
+      description: [
+        'Altura total: 3,00 m (1,00 m muro + 2,00 m reja metálica)',
+        'Unidad: metro lineal (ml)',
+        'Cantidad estimada: 910'
+      ],
+      table: [
+        ['Tipo', 'Recurso', 'Unidad', 'Cantidad', 'P.U (CLP)', 'Subtotal (CLP)'],
+        ['Material', 'Bloque de hormigón vibrado tipo G 39x19x14 cm', 'un', 15, 1050, 15750],
+        ['Material', 'Mortero cemento-arena 1:4', 'kg', 12, 180, 2160],
+        ['Material', 'Reja metálica galvanizada 2,00 m altura', 'ml', 1, 42000, 42000],
+        ['Material', 'Pilar metálico cuadrado 60x60x2 mm', 'ml', 1.8, 5800, 10440],
+        ['Material', 'Hormigón G-25 para fundación (considerando zanja 20x40 cm)', 'm³', 0.08, 133700, 10696],
+        ['Material', 'Acero A63-A2H Ø10 mm (para fundación)', 'kg', 5, 1250, 6250],
+        ['Material', 'Aditivos impermeabilizantes', 'lt', 0.3, 3500, 1050],
+        ['Equipo/Herr.', 'Herramientas menores y encofrado manual', 'global', 1, 2000, 2000],
+        ['Mano de Obra', 'Maestro albañil', 'día', 0.1, 55000, 5500],
+        ['Mano de Obra', 'Ayudante albañil', 'día', 0.15, 45000, 6750],
+        ['Mano de Obra', 'Instalador metálico', 'día', 0.08, 55000, 4400],
+        ['Leyes Sociales', 'Leyes Sociales', '%', 0.41, 16650, 6827],
+      ],
+      totals: [
+        ['Total parcial', '', '', '', '', 113823],
+        ['Total general', '', '', '', '', 103578475]
+      ]
+    },
+    {
+      name: 'Opción 2: Cierre Económico Reforzado',
+      description: [
+        'Altura total: 3,00 m',
+        'Unidad: metro lineal (ml)',
+        'Cantidad estimada: 910'
+      ],
+      table: [
+        ['Tipo', 'Recurso', 'Unidad', 'Cantidad', 'P.U (CLP)', 'Subtotal (CLP)'],
+        ['Material', 'Malla Acma galvanizada 2,40 m alto, paso 100x50 mm', 'ml', 1, 29500, 29500],
+        ['Material', 'Postes metálicos 60x60x2 mm (cada 2,5 m)', 'ml', 0.4, 5800, 2320],
+        ['Material', 'Hormigón simple para fundación de postes', 'm³', 0.025, 133700, 3343],
+        ['Material', 'Zócalo hormigón ciclópeo (20x20 cm)', 'm³', 0.04, 102000, 4080],
+        ['Material', 'Acero Ø10 mm para estribos y refuerzo zócalo', 'kg', 2, 1250, 2500],
+        ['Equipo/Herr.', 'Herramientas menores y cortes', 'global', 1, 1500, 1500],
+        ['Mano de Obra', 'Cuadrilla mixta (1 oficial + 1 ayudante)', 'día', 0.15, 90000, 13500],
+        ['Leyes Sociales', 'Leyes Sociales', '%', 0.41, 13500, 5535],
+      ],
+      totals: [
+        ['Total parcial', '', '', '', '', 62278],
+        ['Total general', '', '', '', '', 56672525]
+      ]
+    },
+    // Puedes agregar más plantillas aquí
+  ];
+
+  // Modal de selección de plantilla
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState(null);
+
+  // Abrir modal de selección de plantilla
+  const handleAddSheet = () => {
+    setShowTemplateModal(true);
+  };
+
+  // Crear hoja nueva con plantilla seleccionada
+  const handleSelectTemplate = (templateIdx) => {
+    const template = templates[templateIdx];
+    const newSheetName = template.name;
+    // Estructura: descripción, tabla, totales
+    const sheetData = [
+      // Descripción en las primeras filas
+      ...template.description.map((desc) => [desc]),
+      [], // Espacio
+      ...template.table,
+      [], // Espacio
+      ...template.totals
+    ];
+    setSheetNames([...sheetNames, newSheetName]);
+    setExcelData({
+      ...excelData,
+      [newSheetName]: sheetData
+    });
+    setActiveSheet(sheetNames.length); // Selecciona la nueva hoja
+    setShowTemplateModal(false);
+    setSelectedTemplate(null);
+    notifySuccess(`Hoja "${newSheetName}" agregada con formato de plantilla.`);
+  };
+
   const currentSheetName = sheetNames[activeSheet];
   const currentSheetData = excelData[currentSheetName] || [];
 
@@ -459,14 +547,44 @@ const ExcelOnline = () => {
                     {sheetName}
                   </button>
                 ))}
-                <button
-                  onClick={addNewSheet}
-                  className="px-4 py-3 text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-                >
-                  + Nueva Hoja
-                </button>
+                  <button
+                    onClick={handleAddSheet}
+                    className="px-4 py-3 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 font-semibold"
+                    style={{ zIndex: 10 }}
+                  >
+                    + Agregar hoja
+                  </button>
               </div>
             </div>
+
+              {/* Modal de selección de plantilla */}
+              {showTemplateModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center" style={{ zIndex: 50 }}>
+                  <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-xl relative">
+                    <h2 className="text-xl font-bold mb-4">Selecciona una plantilla</h2>
+                    <ul>
+                      {templates.map((tpl, idx) => (
+                        <li key={tpl.name} className="mb-4 border-b pb-2">
+                          <div className="font-semibold">{tpl.name}</div>
+                          <div className="text-sm text-gray-700 whitespace-pre-line mb-2">{tpl.description}</div>
+                          <button
+                            className="bg-green-600 text-white px-3 py-1 rounded"
+                            onClick={() => handleSelectTemplate(idx)}
+                          >
+                            Usar esta plantilla
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                    <button
+                      className="absolute top-2 right-2 text-gray-500 hover:text-gray-800"
+                      onClick={() => setShowTemplateModal(false)}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              )}
 
             {/* Editor Excel */}
             <div className="bg-white rounded-b-lg border">
