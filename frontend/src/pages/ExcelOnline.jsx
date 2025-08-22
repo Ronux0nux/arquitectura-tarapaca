@@ -329,8 +329,8 @@ const ExcelOnline = () => {
     }
   };
 
-  // Plantillas predefinidas
-  const templates = [
+  // Plantillas predefinidas (solo para fallback)
+  const defaultTemplates = [
     {
       name: 'Opción 1: Cierre Sólido Mixto de Alta Seguridad',
       description: [
@@ -414,6 +414,22 @@ const ExcelOnline = () => {
     },
     // Puedes agregar más plantillas aquí
   ];
+
+  const [templates, setTemplates] = useState([]);
+
+  // Cargar plantillas desde el backend al iniciar
+  useEffect(() => {
+    fetch('/api/templates')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0) {
+          setTemplates(data);
+        } else {
+          setTemplates(defaultTemplates);
+        }
+      })
+      .catch(() => setTemplates(defaultTemplates));
+  }, []);
 
   // Modal de selección de plantilla
   const [showTemplateModal, setShowTemplateModal] = useState(false);
@@ -507,6 +523,7 @@ const ExcelOnline = () => {
           body: JSON.stringify(newTemplate)
         });
         if (response.ok) {
+          setTemplates(prev => [...prev, newTemplate]);
           notifySuccess('Formato guardado en el sistema.');
           setShowUploadModal(false);
           setPreviewData(null);
