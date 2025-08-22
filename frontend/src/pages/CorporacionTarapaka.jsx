@@ -1,9 +1,12 @@
 import React, { useEffect, useState, useRef } from 'react';
 
 const carruselImages = [
-  '/imagenes-carrusel/img1.jpg',
-  '/imagenes-carrusel/img2.jpg',
-  '/imagenes-carrusel/img3.jpg',
+  '/imagenes-carrusel/14.jpeg',
+  '/imagenes-carrusel/19.jpeg',
+  '/imagenes-carrusel/20.jpeg',
+  '/imagenes-carrusel/21.jpeg',
+  '/imagenes-carrusel/26.jpeg',
+
   // ...agrega más imágenes aquí
 ];
 
