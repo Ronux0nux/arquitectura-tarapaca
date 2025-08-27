@@ -38,9 +38,9 @@ exports.uploadOrdenCompra = async (req, res) => {
 };
 
 // Obtener todas las órdenes de compra
-exports.getOrdenesCompra = (req, res) => {
+exports.getOrdenesCompra = async (req, res) => {
   try {
-    const ordenes = OrdenCompra.findAll();
+    const ordenes = await OrdenCompra.findAll();
     res.json(ordenes);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -66,10 +66,10 @@ exports.getOrdenesCompraByProject = (req, res) => {
 };
 
 // Crear nueva orden de compra
-exports.createOrdenCompra = (req, res) => {
+exports.createOrdenCompra = async (req, res) => {
   try {
-    const result = OrdenCompra.create(req.body);
-    res.status(201).json({ id: result.lastInsertRowid, ...req.body });
+    const result = await OrdenCompra.create(req.body);
+    res.status(201).json(result);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
@@ -123,12 +123,10 @@ exports.createOrdenFromCotizacion = async (req, res) => {
 };
 
 // Obtener orden de compra por ID
-exports.getOrdenCompraById = (req, res) => {
+exports.getOrdenCompraById = async (req, res) => {
   try {
-    const orden = OrdenCompra.findById(req.params.id);
-    if (!orden) {
-      return res.status(404).json({ error: 'Orden de compra no encontrada' });
-    }
+    const orden = await OrdenCompra.findById(req.params.id);
+    if (!orden) return res.status(404).json({ error: 'Orden de compra no encontrada' });
     res.json(orden);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -136,15 +134,9 @@ exports.getOrdenCompraById = (req, res) => {
 };
 
 // Actualizar orden de compra
-exports.updateOrdenCompra = (req, res) => {
+exports.updateOrdenCompra = async (req, res) => {
   try {
-    const stmt = OrdenCompra.db.prepare(`UPDATE ordenes_compra SET proyectoId = ?, cotizacionId = ?, numeroOrden = ?, comprador = ?, proveedor = ?, proveedorId = ?, estado = ?, moneda = ?, conversionRate = ?, montoBruto = ?, descuento = ?, impuestos = ?, montoNeto = ?, tipoOrden = ?, fechaEntregaEstimada = ?, fechaEntregaReal = ?, observaciones = ?, condicionesPago = ?, creadoPor = ?, actualizadoEn = datetime('now') WHERE id = ?`);
-    const montoNeto = (req.body.montoBruto || 0) - (req.body.descuento || 0) + (req.body.impuestos || 0);
-    stmt.run(req.body.proyectoId, req.body.cotizacionId, req.body.numeroOrden, req.body.comprador, req.body.proveedor, req.body.proveedorId, req.body.estado, req.body.moneda, req.body.conversionRate, req.body.montoBruto, req.body.descuento, req.body.impuestos, montoNeto, req.body.tipoOrden, req.body.fechaEntregaEstimada, req.body.fechaEntregaReal, req.body.observaciones, req.body.condicionesPago, req.body.creadoPor, req.params.id);
-    const updated = OrdenCompra.findById(req.params.id);
-    if (!updated) {
-      return res.status(404).json({ error: 'Orden de compra no encontrada' });
-    }
+    const updated = await OrdenCompra.update(req.params.id, req.body);
     res.json(updated);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -181,11 +173,10 @@ exports.marcarComoRecibida = async (req, res) => {
 };
 
 // Eliminar orden de compra
-exports.deleteOrdenCompra = (req, res) => {
+exports.deleteOrdenCompra = async (req, res) => {
   try {
-    const stmt = OrdenCompra.db.prepare(`DELETE FROM ordenes_compra WHERE id = ?`);
-    stmt.run(req.params.id);
-    res.json({ message: 'Orden de compra eliminada exitosamente' });
+    await OrdenCompra.delete(req.params.id);
+    res.json({ message: 'Orden de compra eliminada' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

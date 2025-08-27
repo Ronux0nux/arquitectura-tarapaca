@@ -11,4 +11,7 @@ router.put('/:id', userController.updateUser);
 router.delete('/:id', userController.deleteUser);
 router.post('/login', userController.loginUser);
 
+// Verificar token JWT
+router.get('/verify', userController.verifyToken);
+
 module.exports = router;

@@ -24,11 +24,11 @@ class AuthService {
     // CONFIGURACIÓN DE ENDPOINTS
     // Si cambias las rutas del backend, modificar estos endpoints
     this.endpoints = {
-      login: '/auth/login',
+  login: '/users/login',
       register: '/auth/register', 
-      verify: '/auth/verify',
+  verify: '/api/users/verify',
       refresh: '/auth/refresh',
-      logout: '/auth/logout',
+  logout: '/api/users/logout',
       forgotPassword: '/auth/forgot-password',
       resetPassword: '/auth/reset-password',
       updateProfile: '/auth/profile'
@@ -93,7 +93,7 @@ class AuthService {
     const mockUsers = [
       {
         id: 'offline_1',
-        email: 'admin@tarapaca.cl',
+        email: 'admin@aceleratarapaka.cl',
         password: 'admin123',
         name: 'Administrator (Offline)',
         role: 'admin',
@@ -101,7 +101,7 @@ class AuthService {
       },
       {
         id: 'offline_2', 
-        email: 'supervisor@tarapaca.cl',
+        email: 'supervisor@aceleratarapaka.cl',
         password: 'super123',
         name: 'Carlos Supervisor (Offline)',
         role: 'supervisor',
@@ -109,7 +109,7 @@ class AuthService {
       },
       {
         id: 'offline_3',
-        email: 'empleado@tarapaca.cl', 
+        email: 'empleado@aceleratarapaka.cl', 
         password: 'emp123',
         name: 'María Empleada (Offline)',
         role: 'empleado',
@@ -172,7 +172,7 @@ class AuthService {
       const token = this.getStoredToken();
       if (!token) return { valid: false };
 
-      const response = await this.apiService.get(this.endpoints.verify);
+  const response = await this.apiService.get(this.endpoints.verify);
       
       if (response.success && response.user) {
         // Actualizar datos del usuario en storage

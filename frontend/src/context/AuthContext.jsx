@@ -210,6 +210,29 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const loginOffline = async (email, password, rememberMe = false) => {
+    setIsLoading(true);
+
+    try {
+      console.warn('⚠️ Usando autenticación offline (sin BD)');
+      const result = await AuthService.loginOffline(email, password, rememberMe);
+      if (result.success) {
+        setUser(result.user);
+        setIsAuthenticated(true);
+        setConnectionStatus('offline');
+        console.log('✅ Login offline exitoso:', result.user.name);
+      } else {
+        console.error('❌ Error en login offline:', result.message);
+      }
+      return result;
+    } catch (error) {
+      console.error('❌ Error en login offline:', error);
+      return { success: false, error: error.message };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Valores del contexto
   const value = {
     // Estado
@@ -220,6 +243,7 @@ export const AuthProvider = ({ children }) => {
     
     // Acciones
     login,
+    loginOffline,
     register,
     logout,
     forgotPassword,

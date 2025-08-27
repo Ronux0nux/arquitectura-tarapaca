@@ -1,339 +1,136 @@
+
 import React, { useState, useEffect } from 'react';
-import { useNotifications } from '../context/NotificationContext';
-import ProviderDataImporter from '../utils/providerDataImporter';
 import CSVProviders from '../components/CSVProviders';
-import ProjectIntegrationSummary from '../components/ProjectIntegrationSummary';
-import PDFMassiveImporter from '../components/PDFMassiveImporter';
-import ProvidersList from '../components/ProvidersList';
-import DirectPDFViewer from '../components/DirectPDFViewer';
 
 export default function Providers() {
-  const [providers, setProviders] = useState([]);
-  const [showImportModal, setShowImportModal] = useState(false);
-  const [importData, setImportData] = useState('');
-  const [importType, setImportType] = useState('text');
-  const [activeTab, setActiveTab] = useState('pdf-direct'); // Cambiar a PDF directo por defecto
-  const { notifySuccess, notifyError } = useNotifications();
+  // Formulario de creación
+  const [form, setForm] = useState({ nombre: '', rut: '', direccion: '', telefono: '', email: '', sitioWeb: '' });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // Pop-up vinculación
+  const [showPopup, setShowPopup] = useState(false);
+  const [projects, setProjects] = useState([]);
+  const [selectedProject, setSelectedProject] = useState('');
+  const [selectedProvider, setSelectedProvider] = useState('');
+  const [providersList, setProvidersList] = useState([]);
+  const [linkSuccess, setLinkSuccess] = useState(null);
+  const [linkError, setLinkError] = useState(null);
 
   useEffect(() => {
-    // Cargar proveedores importados si existen
-    const importedProviders = ProviderDataImporter.loadProvidersFromLocalStorage();
-    if (importedProviders.length > 0) {
-      setProviders(importedProviders);
-      // Datos cargados sin notificación automática
-    } else {
-      // Inicializar con arreglo vacío
-      setProviders([]);
+    if (showPopup) {
+      fetch('/api/projects')
+        .then(res => res.json())
+        .then(data => setProjects(data));
+      fetch('/api/providers')
+        .then(res => res.json())
+        .then(data => setProvidersList(data));
     }
-  }, []);
+  }, [showPopup]);
 
-  const handleExportData = () => {
-    const dataToExport = {
-      providers: providers,
-      exportDate: new Date().toISOString(),
-      totalProviders: providers.length
-    };
-    
-    const dataStr = JSON.stringify(dataToExport, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `proveedores_${new Date().toISOString().split('T')[0]}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
-    
-    notifySuccess('Datos exportados exitosamente', 'Exportación Completada');
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleResetToDefault = () => {
-    localStorage.removeItem('importedProviders');
-    localStorage.removeItem('providersImportDate');
-    setProviders([]);
-    notifySuccess('Se limpiaron todos los proveedores importados', 'Datos Limpiados');
-  };
-
-  const handleImportData = () => {
-    if (!importData.trim()) {
-      notifyError('Por favor ingresa los datos a importar', 'Error de Importación');
-      return;
-    }
-
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
     try {
-      let newProviders = [];
-      
-      switch (importType) {
-        case 'text':
-          newProviders = ProviderDataImporter.processRawProviderData(importData);
-          break;
-        case 'csv':
-          newProviders = ProviderDataImporter.processCsvProviderData(importData);
-          break;
-        case 'json':
-          newProviders = ProviderDataImporter.processJsonProviderData(importData);
-          break;
-        default:
-          notifyError('Tipo de importación no válido', 'Error de Importación');
-          return;
-      }
+      const res = await fetch('/api/providers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form)
+      });
+      if (!res.ok) throw new Error('Error al crear proveedor');
+      setSuccess('Proveedor creado exitosamente');
+      setForm({ nombre: '', rut: '', direccion: '', telefono: '', email: '', sitioWeb: '' });
+      setRefreshKey(k => k + 1); // fuerza refresco del listado
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      // Validar datos
-      const validation = ProviderDataImporter.validateProviders(newProviders);
-      
-      if (!validation.isValid) {
-        notifyError(`Errores encontrados: ${validation.errors.join(', ')}`, 'Error de Validación');
-        return;
-      }
-
-      if (validation.warnings.length > 0) {
-        notifySuccess(`Advertencias: ${validation.warnings.join(', ')}`, 'Advertencias de Importación');
-      }
-
-      // Guardar y actualizar
-      ProviderDataImporter.saveProvidersToLocalStorage(newProviders);
-      setProviders(newProviders);
-      
-      notifySuccess(`Se importaron ${validation.validProviders} proveedores exitosamente`, 'Importación Completada');
-      setShowImportModal(false);
-      setImportData('');
-      
-    } catch (error) {
-      notifyError(`Error al procesar datos: ${error.message}`, 'Error de Importación');
+  const handleLinkProvider = async (e) => {
+    e.preventDefault();
+    setLinkSuccess(null);
+    setLinkError(null);
+    try {
+      const res = await fetch(`/api/projects/${selectedProject}/providers`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ providerId: selectedProvider })
+      });
+      if (!res.ok) throw new Error('Error al vincular proveedor');
+      setLinkSuccess('Proveedor vinculado exitosamente');
+      setShowPopup(false);
+    } catch (err) {
+      setLinkError(err.message);
     }
   };
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="mb-6">
-        <div className="flex justify-between items-center mb-2">
-          <h1 className="text-3xl font-bold text-gray-800">🏢 Gestión de Proveedores</h1>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setShowImportModal(true)}
-              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 flex items-center gap-2"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-              </svg>
-              Importar PDF/Excel
-            </button>
-            <button
-              onClick={handleExportData}
-              className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 flex items-center gap-2"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              Exportar
-            </button>
-            <button
-              onClick={handleResetToDefault}
-              className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 flex items-center gap-2"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-              Limpiar Importados
-            </button>
-          </div>
-        </div>
-        <p className="text-gray-600">Gestión de proveedores basada en ListadoProveedoresVigentes-04-08-2025.pdf</p>
-      </div>
+      <h1 className="text-3xl font-bold text-gray-800 mb-6">🏢 Gestión de Proveedores</h1>
 
-      {/* Pestañas */}
-      <div className="border-b border-gray-200 mb-6">
-        <nav className="-mb-px flex space-x-8">
-          <button
-            onClick={() => setActiveTab('pdf-direct')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'pdf-direct'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            � PDF ListadoProveedores (9,751 pág)
-          </button>
-          <button
-            onClick={() => setActiveTab('lista')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'lista'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            � Lista Estructurada
-          </button>
-          <button
-            onClick={() => setActiveTab('integration')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'integration'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            📊 Integración de Proyectos
-          </button>
-          <button
-            onClick={() => setActiveTab('pdf-massive')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'pdf-massive'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            📄 Procesamiento Masivo
-          </button>
-          <button
-            onClick={() => setActiveTab('management')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'management'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            🏢 Gestión de Proveedores
-          </button>
-        </nav>
-      </div>
+      {/* Formulario para agregar proveedor */}
+      <form onSubmit={handleSubmit} className="mb-8 bg-white p-6 rounded-lg shadow flex flex-wrap gap-4 items-end">
+        <input name="nombre" value={form.nombre} onChange={handleChange} required placeholder="Nombre" className="border p-2 rounded w-40" />
+        <input name="rut" value={form.rut} onChange={handleChange} placeholder="RUT" className="border p-2 rounded w-32" />
+        <input name="direccion" value={form.direccion} onChange={handleChange} placeholder="Dirección" className="border p-2 rounded w-48" />
+        <input name="telefono" value={form.telefono} onChange={handleChange} placeholder="Teléfono" className="border p-2 rounded w-32" />
+        <input name="email" value={form.email} onChange={handleChange} placeholder="Email" className="border p-2 rounded w-40" />
+        <input name="sitioWeb" value={form.sitioWeb} onChange={handleChange} placeholder="Sitio Web" className="border p-2 rounded w-40" />
+        <button type="submit" disabled={loading} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">{loading ? 'Agregando...' : 'Agregar Proveedor'}</button>
+        {error && <span className="text-red-600 ml-4">{error}</span>}
+        {success && <span className="text-green-600 ml-4">{success}</span>}
+      </form>
 
-      {/* Contenido de las pestañas */}
-      {activeTab === 'pdf-direct' && (
-        <DirectPDFViewer />
-      )}
+      {/* Botón para abrir pop-up de vinculación */}
+      <button onClick={() => setShowPopup(true)} className="mb-4 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Vincular proveedor a proyecto</button>
 
-      {activeTab === 'lista' && (
-        <ProvidersList />
-      )}
-
-      {activeTab === 'integration' && (
-        <ProjectIntegrationSummary />
-      )}
-
-      {activeTab === 'pdf-massive' && (
-        <PDFMassiveImporter />
-      )}
-
-      {activeTab === 'management' && (
-        <CSVProviders />
-      )}
-
-      {/* Import Modal */}
-      {showImportModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-2xl font-bold text-gray-800">📄 Importar Datos de Proveedores</h2>
-                <button
-                  onClick={() => setShowImportModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
+      {/* Pop-up de vinculación */}
+      {showPopup && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 shadow-lg w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4">Vincular proveedor a proyecto</h2>
+            <form onSubmit={handleLinkProvider} className="flex flex-col gap-4">
+              <label>
+                Proyecto:
+                <select value={selectedProject} onChange={e => setSelectedProject(e.target.value)} required className="border p-2 rounded w-full">
+                  <option value="">Selecciona un proyecto</option>
+                  {projects.map(p => (
+                    <option key={p.id || p._id} value={p.id || p._id}>{p.nombre}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Proveedor:
+                <select value={selectedProvider} onChange={e => setSelectedProvider(e.target.value)} required className="border p-2 rounded w-full">
+                  <option value="">Selecciona un proveedor</option>
+                  {providersList.map(pr => (
+                    <option key={pr.id} value={pr.id}>{pr.nombre}</option>
+                  ))}
+                </select>
+              </label>
+              <div className="flex gap-2 justify-end">
+                <button type="button" onClick={() => setShowPopup(false)} className="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50">Cancelar</button>
+                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Vincular</button>
               </div>
-
-              <div className="space-y-4">
-                <div>
-                  <h3 className="font-semibold text-gray-800 mb-2">Formato de Datos</h3>
-                  <div className="flex gap-4 mb-4">
-                    <label className="flex items-center">
-                      <input
-                        type="radio"
-                        value="text"
-                        checked={importType === 'text'}
-                        onChange={(e) => setImportType(e.target.value)}
-                        className="mr-2"
-                      />
-                      Texto del PDF
-                    </label>
-                    <label className="flex items-center">
-                      <input
-                        type="radio"
-                        value="csv"
-                        checked={importType === 'csv'}
-                        onChange={(e) => setImportType(e.target.value)}
-                        className="mr-2"
-                      />
-                      CSV
-                    </label>
-                    <label className="flex items-center">
-                      <input
-                        type="radio"
-                        value="json"
-                        checked={importType === 'json'}
-                        onChange={(e) => setImportType(e.target.value)}
-                        className="mr-2"
-                      />
-                      JSON
-                    </label>
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="font-semibold text-gray-800 mb-2">Instrucciones</h3>
-                  <div className="bg-blue-50 p-4 rounded-lg text-sm text-blue-800">
-                    {importType === 'text' && (
-                      <div>
-                        <p className="mb-2"><strong>Para texto del PDF:</strong></p>
-                        <ol className="list-decimal list-inside space-y-1">
-                          <li>Abre el archivo PDF "ListadoProveedoresVigentes-04-08-2025.pdf"</li>
-                          <li>Selecciona todo el texto (Ctrl+A) y cópialo (Ctrl+C)</li>
-                          <li>Pega el contenido en el área de texto abajo</li>
-                          <li>El sistema detectará automáticamente nombres, teléfonos, emails y direcciones</li>
-                        </ol>
-                      </div>
-                    )}
-                    {importType === 'csv' && (
-                      <div>
-                        <p className="mb-2"><strong>Para CSV:</strong></p>
-                        <p>Formato: Nombre,Teléfono,Email,Dirección,Sitio Web,Categorías,Descripción</p>
-                        <p className="mt-2">Las categorías deben estar separadas por ";"</p>
-                      </div>
-                    )}
-                    {importType === 'json' && (
-                      <div>
-                        <p className="mb-2"><strong>Para JSON:</strong></p>
-                        <p>Array de objetos con propiedades: nombre, telefono, email, direccion, categorias, etc.</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="font-semibold text-gray-800 mb-2">Datos a Importar</h3>
-                  <textarea
-                    value={importData}
-                    onChange={(e) => setImportData(e.target.value)}
-                    placeholder={importType === 'text' ? "Pega aquí el contenido del PDF..." : 
-                                importType === 'csv' ? "Pega aquí los datos CSV..." : 
-                                "Pega aquí los datos JSON..."}
-                    className="w-full h-64 p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div className="flex justify-end gap-2">
-                  <button
-                    onClick={() => setShowImportModal(false)}
-                    className="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    onClick={handleImportData}
-                    disabled={!importData.trim()}
-                    className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
-                  >
-                    Importar Datos
-                  </button>
-                </div>
-              </div>
-            </div>
+              {linkError && <span className="text-red-600">{linkError}</span>}
+              {linkSuccess && <span className="text-green-600">{linkSuccess}</span>}
+            </form>
           </div>
         </div>
       )}
+
+      {/* Listado de proveedores */}
+      <CSVProviders key={refreshKey} />
     </div>
   );
 }

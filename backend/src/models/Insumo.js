@@ -1,29 +1,29 @@
-// Modelo Insumo usando better-sqlite3
-const Database = require('better-sqlite3');
-const db = new Database('data.db');
-
-// Crear tabla si no existe
-db.exec(`CREATE TABLE IF NOT EXISTS insumos (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  nombre TEXT NOT NULL,
-  unidad TEXT,
-  precioActual REAL,
-  precioReferencia REAL,
-  proveedorId INTEGER
-)`);
+const pool = require('../db');
 
 module.exports = {
-  create: (data) => {
-    const stmt = db.prepare(`INSERT INTO insumos (nombre, unidad, precioActual, precioReferencia, proveedorId) VALUES (?, ?, ?, ?, ?)`);
-    return stmt.run(data.nombre, data.unidad, data.precioActual, data.precioReferencia, data.proveedorId);
+  create: async (data) => {
+    const res = await pool.query(
+      'INSERT INTO insumos (nombre, unidad, precioactual, precioreferencia, proveedorid) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [data.nombre, data.unidad, data.precioActual, data.precioReferencia, data.proveedorId]
+    );
+    return res.rows[0];
   },
-  findAll: () => {
-    const stmt = db.prepare(`SELECT * FROM insumos`);
-    return stmt.all();
+  findAll: async () => {
+    const res = await pool.query('SELECT * FROM insumos');
+    return res.rows;
   },
-  findById: (id) => {
-    const stmt = db.prepare(`SELECT * FROM insumos WHERE id = ?`);
-    return stmt.get(id);
+  findById: async (id) => {
+    const res = await pool.query('SELECT * FROM insumos WHERE id = $1', [id]);
+    return res.rows[0] || null;
   },
-  // Agrega más métodos según necesidad
+  update: async (id, data) => {
+    await pool.query(
+      'UPDATE insumos SET nombre = $1, unidad = $2, precioactual = $3, precioreferencia = $4, proveedorid = $5 WHERE id = $6',
+      [data.nombre, data.unidad, data.precioActual, data.precioReferencia, data.proveedorId, id]
+    );
+    return await module.exports.findById(id);
+  },
+  delete: async (id) => {
+    await pool.query('DELETE FROM insumos WHERE id = $1', [id]);
+  },
 };

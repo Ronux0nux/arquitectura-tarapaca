@@ -222,7 +222,7 @@ const ExcelOnline = () => {
   const loadExcelTemplate = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(`${API_BASE_URL}/excel/template?projectId=${selectedProject}`);
+  const response = await axios.get(`${API_BASE_URL}/api/excel/template?projectId=${selectedProject}`);
       if (response.data.success) {
         setExcelData(response.data.data.sheets);
         setSheetNames(response.data.data.sheetNames);
@@ -243,7 +243,7 @@ const ExcelOnline = () => {
         ? proyectos.find(p => p._id === selectedProject)?.nombre || 'proyecto'
         : 'presupuesto';
         
-      const response = await axios.post(`${API_BASE_URL}/excel/export`, {
+  const response = await axios.post(`${API_BASE_URL}/api/excel/export`, {
         sheets: excelData,
         fileName: projectName.toLowerCase().replace(/\s+/g, '_'),
         projectId: selectedProject
@@ -279,7 +279,7 @@ const ExcelOnline = () => {
 
     try {
       const currentSheetName = sheetNames[activeSheet];
-      const response = await axios.post(`${API_BASE_URL}/excel/add-dataset`, {
+  const response = await axios.post(`${API_BASE_URL}/api/excel/add-dataset`, {
         sheetName: currentSheetName,
         products: productosDatabase,
         format: format,
@@ -414,7 +414,7 @@ const ExcelOnline = () => {
     }
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/excel/restore/${backupName}`);
+  const response = await axios.post(`${API_BASE_URL}/api/excel/restore/${backupName}`);
       if (response.data.success) {
         alert('✅ Archivo restaurado exitosamente');
         await loadExcelTemplate(); // Cambiar loadExcelData por loadExcelTemplate

@@ -3,6 +3,8 @@ const router = express.Router();
 const projectController = require('../controllers/projectController');
 
 router.get('/', projectController.getProjects);
+// Vincular proveedor a proyecto
+router.post('/:id/providers', projectController.linkProviderToProject);
 router.get('/search', projectController.searchProjects);
 router.post('/', projectController.createProject);
 router.get('/:id', projectController.getProjectById);

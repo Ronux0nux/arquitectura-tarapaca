@@ -1,10 +1,40 @@
 import React, { useState, useEffect } from 'react';
 import { useNotifications } from '../context/NotificationContext';
-import { sampleCSVProviders } from '../data/sampleCSVData';
+// import { sampleCSVProviders } from '../data/sampleCSVData';
 
 export default function CSVProviders() {
-  const [csvProviders, setCsvProviders] = useState(sampleCSVProviders);
-  const [filteredCsvProviders, setFilteredCsvProviders] = useState(sampleCSVProviders);
+  const [csvProviders, setCsvProviders] = useState([]);
+  const [filteredCsvProviders, setFilteredCsvProviders] = useState([]);
+  // Cargar proveedores desde la API al montar el componente
+  useEffect(() => {
+    const fetchProviders = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/providers');
+        if (!response.ok) throw new Error('Error al cargar proveedores');
+        const data = await response.json();
+        // Adaptar los datos del backend a los campos esperados por la tabla
+        const adapted = data.map(p => ({
+          id: p.id,
+          fullName: p.nombre,
+          rut: p.rut,
+          profession: p.direccion, // Usamos dirección como profesión si no existe
+          telefono: p.telefono,
+          email: p.email,
+          sitioWeb: p.sitioWeb,
+          date: p.fechaRegistro,
+          fileName: '', // No hay archivo en la respuesta del backend
+        }));
+        setCsvProviders(adapted);
+        setFilteredCsvProviders(adapted);
+      } catch (err) {
+        console.error('Error cargando proveedores:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProviders();
+  }, []);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -20,7 +50,9 @@ export default function CSVProviders() {
       const filtered = csvProviders.filter(provider => 
         provider.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         provider.rut?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        provider.profession?.toLowerCase().includes(searchTerm.toLowerCase())
+        provider.profession?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        provider.telefono?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        provider.email?.toLowerCase().includes(searchTerm.toLowerCase())
       );
       setFilteredCsvProviders(filtered);
     }
@@ -61,13 +93,15 @@ export default function CSVProviders() {
   const exportToExcel = () => {
     // Convertir datos a CSV
     const csvContent = [
-      ['Nombre Completo', 'RUT', 'Profesión', 'Fecha', 'Archivo'],
+      ['Nombre', 'RUT', 'Dirección', 'Teléfono', 'Email', 'Sitio Web', 'Fecha'],
       ...csvProviders.map(provider => [
         provider.fullName || '',
         provider.rut || '',
         provider.profession || '',
-        provider.date || '',
-        provider.fileName || ''
+        provider.telefono || '',
+        provider.email || '',
+        provider.sitioWeb || '',
+        provider.date || ''
       ])
     ].map(row => row.join(',')).join('\n');
 
@@ -157,100 +191,39 @@ export default function CSVProviders() {
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th 
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleSort('fullName')}
-                    >
-                      <div className="flex items-center gap-1">
-                        Nombre Completo
-                        {sortConfig.key === 'fullName' && (
-                          <span className="text-blue-500">
-                            {sortConfig.direction === 'asc' ? '↑' : '↓'}
-                          </span>
-                        )}
-                      </div>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('fullName')}>
+                      <div className="flex items-center gap-1">Nombre</div>
                     </th>
-                    <th 
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleSort('rut')}
-                    >
-                      <div className="flex items-center gap-1">
-                        RUT
-                        {sortConfig.key === 'rut' && (
-                          <span className="text-blue-500">
-                            {sortConfig.direction === 'asc' ? '↑' : '↓'}
-                          </span>
-                        )}
-                      </div>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('rut')}>
+                      <div className="flex items-center gap-1">RUT</div>
                     </th>
-                    <th 
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleSort('profession')}
-                    >
-                      <div className="flex items-center gap-1">
-                        Profesión
-                        {sortConfig.key === 'profession' && (
-                          <span className="text-blue-500">
-                            {sortConfig.direction === 'asc' ? '↑' : '↓'}
-                          </span>
-                        )}
-                      </div>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('profession')}>
+                      <div className="flex items-center gap-1">Dirección</div>
                     </th>
-                    <th 
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleSort('date')}
-                    >
-                      <div className="flex items-center gap-1">
-                        Fecha
-                        {sortConfig.key === 'date' && (
-                          <span className="text-blue-500">
-                            {sortConfig.direction === 'asc' ? '↑' : '↓'}
-                          </span>
-                        )}
-                      </div>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('telefono')}>
+                      <div className="flex items-center gap-1">Teléfono</div>
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Archivo Origen
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('email')}>
+                      <div className="flex items-center gap-1">Email</div>
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('sitioWeb')}>
+                      <div className="flex items-center gap-1">Sitio Web</div>
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('date')}>
+                      <div className="flex items-center gap-1">Fecha</div>
                     </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {currentProviders.map((provider, index) => (
                     <tr key={provider.id || index} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
-                          {provider.fullName || 'N/A'}
-                        </div>
-                        {provider.firstName && provider.lastName && (
-                          <div className="text-xs text-gray-500">
-                            {provider.firstName} {provider.lastName}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          {provider.rut || 'Sin RUT'}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          provider.profession 
-                            ? 'bg-blue-100 text-blue-800'
-                            : 'bg-gray-100 text-gray-800'
-                        }`}>
-                          {provider.profession || 'No especificada'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          {provider.date ? new Date(provider.date).toLocaleDateString() : 'N/A'}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-xs text-gray-500 max-w-xs truncate">
-                          {provider.fileName || 'N/A'}
-                        </div>
-                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">{provider.fullName || 'N/A'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{provider.rut || 'Sin RUT'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{provider.profession || 'No especificada'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{provider.telefono || ''}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{provider.email || ''}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{provider.sitioWeb || ''}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{provider.date ? new Date(provider.date).toLocaleDateString() : ''}</td>
                     </tr>
                   ))}
                 </tbody>

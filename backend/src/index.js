@@ -1,5 +1,4 @@
 const express = require('express');
-const Database = require('better-sqlite3');
 const cors = require('cors');
 const path = require('path');
 require('dotenv').config();
@@ -11,9 +10,6 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-// Inicializar base de datos SQLite
-const db = new Database('data.db');
-console.log('✅ Conectado a SQLite (data.db)');
 // Importar rutas
 const userRoutes = require('./routes/userRoutes');
 const projectRoutes = require('./routes/projectRoutes');

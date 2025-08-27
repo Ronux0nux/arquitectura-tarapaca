@@ -1,6 +1,7 @@
 // Script para insertar usuarios supervisores de ejemplo en SQLite
 // Ejecutar con: node insertSupervisores.js
 
+const bcrypt = require('bcrypt');
 const Database = require('better-sqlite3');
 const db = new Database('data.db');
 
@@ -54,9 +55,17 @@ function insertSupervisores() {
     return;
   }
 
-  for (const s of supervisoresEjemplo) {
-    db.prepare("INSERT INTO users (nombre, email, rol, password) VALUES (?, ?, ?, ?)").run(s.nombre, s.email, s.rol, s.password);
-    console.log(`✅ Usuario creado: ${s.nombre} (${s.rol})`);
+  const supervisores = [
+    { nombre: 'Monica Rodriguez', email: 'monica.rodriguez@aceleratarapaka.cl', rol: 'supervisor', password: 'supervisor123' },
+    { nombre: 'Cecilia Garcia', email: 'cecilia.garcia@aceleratarapaka.cl', rol: 'supervisor', password: 'supervisor123' },
+    { nombre: 'Carlos Marcoleta', email: 'carlos.marcoleta@aceleratarapaka.cl', rol: 'supervisor', password: 'supervisor123' },
+    { nombre: 'Jose Miguel Astudillo', email: 'arq@aceleratarapaka.cl', rol: 'coordinador', password: 'coordinador123' }
+  ];
+
+  for (const s of supervisores) {
+    const hash = bcrypt.hashSync(s.password, 10);
+    db.prepare('INSERT INTO users (nombre, email, rol, password) VALUES (?, ?, ?, ?)').run(s.nombre, s.email, s.rol, hash);
+    console.log(`Insertado: ${s.nombre}`);
   }
   console.log('🎉 Todos los supervisores han sido insertados exitosamente en SQLite');
 }

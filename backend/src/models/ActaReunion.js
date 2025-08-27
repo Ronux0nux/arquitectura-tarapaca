@@ -1,69 +1,53 @@
-// Modelo ActaReunion usando better-sqlite3
-const Database = require('better-sqlite3');
-const db = new Database('data.db');
-
-// Crear tabla si no existe
-db.exec(`CREATE TABLE IF NOT EXISTS actas_reunion (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  proyectoId INTEGER NOT NULL,
-  entidad TEXT NOT NULL,
-  fecha TEXT NOT NULL,
-  lugar TEXT NOT NULL,
-  horaInicio TEXT NOT NULL,
-  horaTermino TEXT NOT NULL,
-  objetivoReunion TEXT NOT NULL,
-  temasTratados TEXT NOT NULL,
-  acuerdos TEXT NOT NULL,
-  asistencia TEXT,
-  creadoPor INTEGER NOT NULL,
-  fechaCreacion TEXT DEFAULT (datetime('now'))
-)`);
+// Modelo ActaReunion usando PostgreSQL
+const pool = require('../db');
 
 module.exports = {
-  update: (id, data) => {
-    const stmt = db.prepare(`UPDATE actas_reunion SET entidad = ?, fecha = ?, lugar = ?, horaInicio = ?, horaTermino = ?, objetivoReunion = ?, temasTratados = ?, acuerdos = ?, asistencia = ?, creadoPor = ? WHERE id = ?`);
-    stmt.run(
-      data.entidad,
-      data.fecha,
-      data.lugar,
-      data.horaInicio,
-      data.horaTermino,
-      data.objetivoReunion,
-      data.temasTratados,
-      data.acuerdos,
-      JSON.stringify(data.asistencia || []),
-      data.creadoPor,
-      id
+  create: async (data) => {
+    const res = await pool.query(
+      `INSERT INTO actas_reunion (
+        proyectoId, entidad, fecha, lugar, horaInicio, horaTermino, objetivoReunion, temasTratados, acuerdos, asistencia, creadoPor,
+        titulo, info_breve, proposito, descripcion, asistentes
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
+        $12, $13, $14, $15, $16
+      ) RETURNING *`,
+      [
+        data.proyectoId, data.entidad, data.fecha, data.lugar, data.horaInicio, data.horaTermino, data.objetivoReunion, data.temasTratados, data.acuerdos, JSON.stringify(data.asistencia || []), data.creadoPor,
+        data.titulo, data.info_breve, data.proposito, data.descripcion, JSON.stringify(data.asistentes || [])
+      ]
     );
-    return module.exports.findById(id);
+    return res.rows[0];
   },
-  db,
-  create: (data) => {
-    const stmt = db.prepare(`INSERT INTO actas_reunion (proyectoId, entidad, fecha, lugar, horaInicio, horaTermino, objetivoReunion, temasTratados, acuerdos, asistencia, creadoPor) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
-    return stmt.run(data.proyectoId, data.entidad, data.fecha, data.lugar, data.horaInicio, data.horaTermino, data.objetivoReunion, data.temasTratados, data.acuerdos, JSON.stringify(data.asistencia || []), data.creadoPor);
+  findAll: async () => {
+    const res = await pool.query('SELECT * FROM actas_reunion');
+    return res.rows.map(a => ({ ...a, asistencia: JSON.parse(a.asistencia || '[]') }));
   },
-  findAll: () => {
-    const stmt = db.prepare(`SELECT * FROM actas_reunion`);
-    return stmt.all().map(a => ({ ...a, asistencia: JSON.parse(a.asistencia || '[]') }));
-  },
-  findById: (id) => {
-    const stmt = db.prepare(`SELECT * FROM actas_reunion WHERE id = ?`);
-    const a = stmt.get(id);
-    if (!a) return null;
-    a.asistencia = JSON.parse(a.asistencia || '[]');
+  findById: async (id) => {
+    const res = await pool.query('SELECT * FROM actas_reunion WHERE id = $1', [id]);
+    const a = res.rows[0] || null;
+    if (a) {
+      a.asistencia = JSON.parse(a.asistencia || '[]');
+    }
     return a;
   },
-  findByProject: (proyectoId) => {
-    const stmt = db.prepare(`SELECT * FROM actas_reunion WHERE proyectoId = ?`);
-    return stmt.all(proyectoId).map(a => ({ ...a, asistencia: JSON.parse(a.asistencia || '[]') }));
+  findByProject: async (proyectoId) => {
+    const res = await pool.query('SELECT * FROM actas_reunion WHERE proyectoId = $1', [proyectoId]);
+    return res.rows.map(a => ({ ...a, asistencia: JSON.parse(a.asistencia || '[]') }));
   },
-  update: (id, data) => {
-    const stmt = db.prepare(`UPDATE actas_reunion SET entidad = ?, fecha = ?, lugar = ?, horaInicio = ?, horaTermino = ?, objetivoReunion = ?, temasTratados = ?, acuerdos = ?, asistencia = ?, creadoPor = ? WHERE id = ?`);
-    stmt.run(data.entidad, data.fecha, data.lugar, data.horaInicio, data.horaTermino, data.objetivoReunion, data.temasTratados, data.acuerdos, JSON.stringify(data.asistencia || []), data.creadoPor, id);
-    return module.exports.findById(id);
+  update: async (id, data) => {
+    await pool.query(
+      `UPDATE actas_reunion SET 
+        entidad = $1, fecha = $2, lugar = $3, horaInicio = $4, horaTermino = $5, objetivoReunion = $6, temasTratados = $7, acuerdos = $8, asistencia = $9, creadoPor = $10,
+        titulo = $11, info_breve = $12, proposito = $13, descripcion = $14, asistentes = $15
+        WHERE id = $16`,
+      [
+        data.entidad, data.fecha, data.lugar, data.horaInicio, data.horaTermino, data.objetivoReunion, data.temasTratados, data.acuerdos, JSON.stringify(data.asistencia || []), data.creadoPor,
+        data.titulo, data.info_breve, data.proposito, data.descripcion, JSON.stringify(data.asistentes || []), id
+      ]
+    );
+    return await module.exports.findById(id);
   },
-  delete: (id) => {
-    const stmt = db.prepare(`DELETE FROM actas_reunion WHERE id = ?`);
-    stmt.run(id);
-  }
+  delete: async (id) => {
+    await pool.query('DELETE FROM actas_reunion WHERE id = $1', [id]);
+  },
 };

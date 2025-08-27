@@ -3,9 +3,9 @@ const Cotizacion = require('../models/Cotizacion');
 const OrdenCompra = require('../models/OrdenCompra');
 
 // Obtener todos los proyectos
-exports.getProjects = (req, res) => {
+exports.getProjects = async (req, res) => {
   try {
-    const projects = Project.findAll();
+    const projects = await Project.findAll();
     res.json(projects);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -29,19 +29,19 @@ exports.searchProjects = (req, res) => {
 };
 
 // Crear nuevo proyecto
-exports.createProject = (req, res) => {
+exports.createProject = async (req, res) => {
   try {
-    const result = Project.create(req.body);
-    res.status(201).json({ id: result.lastInsertRowid, ...req.body });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    const result = await Project.create(req.body);
+    res.status(201).json(result);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
   }
 };
 
 // Obtener un proyecto por ID
-exports.getProjectById = (req, res) => {
+exports.getProjectById = async (req, res) => {
   try {
-    const project = Project.findById(req.params.id);
+    const project = await Project.findById(req.params.id);
     if (!project) return res.status(404).json({ error: 'Proyecto no encontrado' });
     res.json(project);
   } catch (err) {
@@ -146,24 +146,47 @@ exports.getProjectMaterialSummary = async (req, res) => {
 };
 
 // Actualizar proyecto
-exports.updateProject = (req, res) => {
+exports.updateProject = async (req, res) => {
   try {
-    const stmt = Project.db.prepare(`UPDATE projects SET nombre = ?, codigo = ?, estado = ?, fechaInicio = ?, fechaTermino = ?, subencargado = ?, equipo = ?, ubicacion = ?, descripcion = ?, archivoCotizacion = ? WHERE id = ?`);
-    stmt.run(req.body.nombre, req.body.codigo, req.body.estado, req.body.fechaInicio, req.body.fechaTermino, req.body.subencargado, JSON.stringify(req.body.equipo || []), req.body.ubicacion, req.body.descripcion, req.body.archivoCotizacion, req.params.id);
-    const actualizado = Project.findById(req.params.id);
-    res.json(actualizado);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    const updated = await Project.update(req.params.id, req.body);
+    res.json(updated);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
   }
 };
 
 // Eliminar proyecto
-exports.deleteProject = (req, res) => {
+exports.deleteProject = async (req, res) => {
   try {
-    const stmt = Project.db.prepare(`DELETE FROM projects WHERE id = ?`);
-    stmt.run(req.params.id);
-    res.json({ mensaje: 'Proyecto eliminado correctamente' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    await Project.delete(req.params.id);
+    res.json({ message: 'Proyecto eliminado' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Vincular proveedor a proyecto
+exports.linkProviderToProject = (req, res) => {
+  try {
+    const { id } = req.params;
+    const { providerId } = req.body;
+    // Buscar proyecto
+    const project = require('../models/Project').findById(id);
+    if (!project) return res.status(404).json({ error: 'Proyecto no encontrado' });
+    // Buscar proveedor
+    const provider = require('../models/Provider').findById(providerId);
+    if (!provider) return res.status(404).json({ error: 'Proveedor no encontrado' });
+    // Relación: agregamos el proveedor al array equipo del proyecto
+    const equipo = Array.isArray(project.equipo) ? project.equipo : [];
+    // Evitar duplicados
+    if (equipo.find(p => p.id === provider.id)) {
+      return res.status(400).json({ error: 'Proveedor ya vinculado a este proyecto' });
+    }
+    equipo.push({ id: provider.id, nombre: provider.nombre, email: provider.email });
+    // Actualizar proyecto
+    require('../models/Project').update(id, { ...project, equipo });
+    res.json({ message: 'Proveedor vinculado correctamente', equipo });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };

@@ -2,9 +2,9 @@ const Cotizacion = require('../models/Cotizacion');
 const Project = require('../models/Project');
 
 // Obtener todas las cotizaciones
-exports.getCotizaciones = (req, res) => {
+exports.getCotizaciones = async (req, res) => {
   try {
-    const cotizaciones = Cotizacion.findAll();
+    const cotizaciones = await Cotizacion.findAll();
     res.json(cotizaciones);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -30,18 +30,18 @@ exports.getCotizacionesByProject = (req, res) => {
 };
 
 // Crear nueva cotización
-exports.createCotizacion = (req, res) => {
+exports.createCotizacion = async (req, res) => {
   try {
-    const result = Cotizacion.create(req.body);
-    res.status(201).json({ id: result.lastInsertRowid, ...req.body });
+    const result = await Cotizacion.create(req.body);
+    res.status(201).json(result);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 };
 
-exports.getCotizacionById = (req, res) => {
+exports.getCotizacionById = async (req, res) => {
   try {
-    const cotizacion = Cotizacion.findById(req.params.id);
+    const cotizacion = await Cotizacion.findById(req.params.id);
     if (!cotizacion) return res.status(404).json({ error: 'Cotización no encontrada' });
     res.json(cotizacion);
   } catch (err) {
@@ -49,14 +49,9 @@ exports.getCotizacionById = (req, res) => {
   }
 };
 
-exports.updateCotizacion = (req, res) => {
+exports.updateCotizacion = async (req, res) => {
   try {
-    const stmt = Cotizacion.db.prepare(`UPDATE cotizaciones SET proyectoId = ?, insumoId = ?, partidaId = ?, proveedorId = ?, nombreMaterial = ?, unidad = ?, cantidad = ?, precioUnitario = ?, validezOferta = ?, estado = ?, detalles = ?, observaciones = ?, creadoPor = ?, actualizadoEn = datetime('now') WHERE id = ?`);
-    stmt.run(req.body.proyectoId, req.body.insumoId, req.body.partidaId, req.body.proveedorId, req.body.nombreMaterial, req.body.unidad, req.body.cantidad, req.body.precioUnitario, req.body.validezOferta, req.body.estado, req.body.detalles, req.body.observaciones, req.body.creadoPor, req.params.id);
-    const updated = Cotizacion.findById(req.params.id);
-    if (!updated) {
-      return res.status(404).json({ error: 'Cotización no encontrada' });
-    }
+    const updated = await Cotizacion.update(req.params.id, req.body);
     res.json(updated);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -94,11 +89,10 @@ exports.rechazarCotizacion = (req, res) => {
   }
 };
 
-exports.deleteCotizacion = (req, res) => {
+exports.deleteCotizacion = async (req, res) => {
   try {
-    const stmt = Cotizacion.db.prepare(`DELETE FROM cotizaciones WHERE id = ?`);
-    stmt.run(req.params.id);
-    res.json({ message: 'Cotización eliminada exitosamente' });
+    await Cotizacion.delete(req.params.id);
+    res.json({ message: 'Cotización eliminada' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

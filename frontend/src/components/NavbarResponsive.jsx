@@ -135,7 +135,7 @@ export default function NavbarResponsive() {
               <span className="text-blue-200 text-sm font-medium"> 🛠️Construcción</span>
               <NavLink to="/buscador">Buscador de Materiales</NavLink>
               <NavLink to="/presupuestos">Presupuestos</NavLink>
-              <NavLink to="/excel">📊Plantillas de recursos</NavLink>
+              <NavLink to="/excel-online">📊Excel Online</NavLink>
             </div>
 
             <Separator />
@@ -236,7 +236,7 @@ export default function NavbarResponsive() {
               <DropdownGroup title=" 🔧Herramientas" groupKey="tools">
                 <NavLink to="/buscador" onClick={closeMenu}>Buscador de Materiales</NavLink>
                 <NavLink to="/presupuestos" onClick={closeMenu}>Gestión de Materiales</NavLink>
-                <NavLink to="/excel" onClick={closeMenu}>Cotización de Materiales</NavLink>
+                <NavLink to="/excel-online" onClick={closeMenu}>Cotización de Materiales</NavLink>
               </DropdownGroup>
             </div>
           </div>

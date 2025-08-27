@@ -1,37 +1,35 @@
 // models/Provider.js
 
-// Modelo Provider usando better-sqlite3
-const Database = require('better-sqlite3');
-const db = new Database('data.db');
-
-// Crear tabla si no existe
-db.exec(`CREATE TABLE IF NOT EXISTS providers (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  nombre TEXT NOT NULL,
-  rut TEXT,
-  direccion TEXT,
-  telefono TEXT,
-  email TEXT,
-  sitioWeb TEXT,
-  rubros TEXT,
-  fechaRegistro TEXT DEFAULT (datetime('now'))
-)`);
+// Modelo Provider usando PostgreSQL
+const pool = require('../db');
 
 module.exports = {
-  create: (data) => {
-    const stmt = db.prepare(`INSERT INTO providers (nombre, rut, direccion, telefono, email, sitioWeb, rubros) VALUES (?, ?, ?, ?, ?, ?, ?)`);
-    return stmt.run(data.nombre, data.rut, data.direccion, data.telefono, data.email, data.sitioWeb, JSON.stringify(data.rubros || []));
+  create: async (data) => {
+    const res = await pool.query(
+      'INSERT INTO providers (nombre, rut, direccion, telefono, email, sitioWeb, rubros) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+      [data.nombre, data.rut, data.direccion, data.telefono, data.email, data.sitioWeb, JSON.stringify(data.rubros || [])]
+    );
+    return res.rows[0];
   },
-  findAll: () => {
-    const stmt = db.prepare(`SELECT * FROM providers`);
-    return stmt.all().map(p => ({ ...p, rubros: JSON.parse(p.rubros || '[]') }));
+  findAll: async () => {
+    const res = await pool.query('SELECT * FROM providers');
+    return res.rows.map(p => ({ ...p, rubros: JSON.parse(p.rubros || '[]') }));
   },
-  findById: (id) => {
-    const stmt = db.prepare(`SELECT * FROM providers WHERE id = ?`);
-    const p = stmt.get(id);
+  findById: async (id) => {
+    const res = await pool.query('SELECT * FROM providers WHERE id = $1', [id]);
+    const p = res.rows[0];
     if (!p) return null;
     p.rubros = JSON.parse(p.rubros || '[]');
     return p;
   },
-  // Agrega más métodos según necesidad
+  update: async (id, data) => {
+    await pool.query(
+      'UPDATE providers SET nombre = $1, rut = $2, direccion = $3, telefono = $4, email = $5, sitioWeb = $6, rubros = $7 WHERE id = $8',
+      [data.nombre, data.rut, data.direccion, data.telefono, data.email, data.sitioWeb, JSON.stringify(data.rubros || []), id]
+    );
+    return await module.exports.findById(id);
+  },
+  delete: async (id) => {
+    await pool.query('DELETE FROM providers WHERE id = $1', [id]);
+  },
 };

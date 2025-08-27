@@ -65,6 +65,11 @@ const Projects = () => {
       if (data && data.length > 0) {
         console.log('📋 Primer proyecto como ejemplo:', data[0]);
         console.log('📋 Subencargado del primer proyecto:', data[0].subencargado);
+        console.log('📋 IDs de todos los proyectos:', data.map(p => p.id));
+        const sinId = data.filter(p => !p.id);
+        if (sinId.length > 0) {
+          console.warn('⚠️ Proyectos sin id:', sinId);
+        }
       }
       
       // El backend devuelve directamente el array de proyectos
@@ -185,7 +190,7 @@ const Projects = () => {
 
       console.log('💾 Datos finales a enviar:', projectData);
 
-      const response = await fetch(`${API_BASE_URL}/projects/${projectToEdit._id}`, {
+  const response = await fetch(`${API_BASE_URL}/projects/${projectToEdit.id || projectToEdit._id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -1182,16 +1187,6 @@ const Projects = () => {
                     ✏️ Editar
                   </button>
                 )}
-                <button 
-                  onClick={() => {
-                    setShowDetailsModal(false);
-                    setIsEditingInDetails(false);
-                    setDetailsProjectEdit(null);
-                  }}
-                  className="text-gray-500 hover:text-gray-700 text-2xl"
-                >
-                  ×
-                </button>
               </div>
             </div>
             

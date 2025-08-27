@@ -1,21 +1,39 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
-const bcrypt = require('bcrypt');
+// const bcrypt = require('bcrypt'); // Si usas bcrypt para contraseñas
 
-//login de usuario
+// Verificar token JWT
+exports.verifyToken = (req, res) => {
+  const token = req.headers['authorization']?.split(' ')[1] || req.query.token;
+  if (!token) {
+    return res.status(401).json({ error: 'Token no proporcionado' });
+  }
+  try {
+    const decoded = jwt.verify(token, 'secreto_super_seguro');
+    res.json({ valid: true, decoded });
+  } catch (err) {
+    res.status(401).json({ valid: false, error: 'Token inválido o expirado' });
+  }
+};
+
+// login de usuario
 exports.loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
-    const user = User.findAll().find(u => u.email === email);
+    const users = await User.findAll();
+    const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
     if (!user) return res.status(401).json({ error: 'Usuario no encontrado' });
-    const passwordMatch = await bcrypt.compare(password, user.passwordHash);
-    if (!passwordMatch) return res.status(401).json({ error: 'Contraseña incorrecta' });
+    // Si usas bcrypt:
+    // const validPassword = await bcrypt.compare(password, user.password);
+    // if (!validPassword) return res.status(401).json({ error: 'Contraseña incorrecta' });
+    // Si usas texto plano:
+    if (password !== user.password) return res.status(401).json({ error: 'Contraseña incorrecta' });
     const token = jwt.sign(
       { userId: user.id, rol: user.rol },
       'secreto_super_seguro',
       { expiresIn: '1h' }
     );
-    res.json({ token, usuario: { nombre: user.nombre, email: user.email, rol: user.rol } });
+    res.json({ token, usuario: { id: user.id, nombre: user.nombre, email: user.email, rol: user.rol } });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
@@ -23,9 +41,9 @@ exports.loginUser = async (req, res) => {
 };
 
 // Obtener todos los usuarios
-exports.getUsers = (req, res) => {
+exports.getUsers = async (req, res) => {
   try {
-    const users = User.findAll();
+    const users = await User.findAll();
     res.json(users);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -33,26 +51,30 @@ exports.getUsers = (req, res) => {
 };
 
 // Crear usuario nuevo
-
 exports.createUser = async (req, res) => {
   try {
     const { nombre, email, rol, password } = req.body;
     if (!password) {
       return res.status(400).json({ error: 'La contraseña es obligatoria' });
     }
-    const salt = await bcrypt.genSalt(10);
-    const passwordHash = await bcrypt.hash(password, salt);
-    const result = User.create({ nombre, email, rol, passwordHash });
-    res.status(201).json({ id: result.lastInsertRowid, nombre, email, rol });
+    // Validar email único
+    const users = await User.findAll();
+    const existingUser = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+    if (existingUser) {
+      return res.status(409).json({ error: 'El correo ya está registrado' });
+    }
+    const result = await User.create({ nombre, email, rol, password });
+    res.status(201).json({ id: result.id, nombre, email, rol });
   } catch (err) {
     console.error(err);
     res.status(400).json({ error: err.message });
   }
 };
+
 // Obtener un usuario por ID
-exports.getUserById = (req, res) => {
+exports.getUserById = async (req, res) => {
   try {
-    const user = User.findById(req.params.id);
+    const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
     res.json(user);
   } catch (err) {
@@ -61,11 +83,9 @@ exports.getUserById = (req, res) => {
 };
 
 // Actualizar usuario
-exports.updateUser = (req, res) => {
+exports.updateUser = async (req, res) => {
   try {
-    const stmt = User.db.prepare(`UPDATE users SET nombre = ?, email = ?, rol = ?, passwordHash = ?, proyectos = ? WHERE id = ?`);
-    stmt.run(req.body.nombre, req.body.email, req.body.rol, req.body.passwordHash, JSON.stringify(req.body.proyectos || []), req.params.id);
-    const updated = User.findById(req.params.id);
+    const updated = await User.update(req.params.id, req.body);
     res.json(updated);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -73,10 +93,9 @@ exports.updateUser = (req, res) => {
 };
 
 // Eliminar usuario
-exports.deleteUser = (req, res) => {
+exports.deleteUser = async (req, res) => {
   try {
-    const stmt = User.db.prepare(`DELETE FROM users WHERE id = ?`);
-    stmt.run(req.params.id);
+    await User.delete(req.params.id);
     res.json({ message: 'Usuario eliminado' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -84,9 +103,10 @@ exports.deleteUser = (req, res) => {
 };
 
 // Obtener supervisores y administradores para proyectos
-exports.getSupervisores = (req, res) => {
+exports.getSupervisores = async (req, res) => {
   try {
-    const supervisores = User.findAll().filter(u => ['supervisor', 'administrador', 'coordinador', 'coordinador de especialidades'].includes(u.rol));
+    const users = await User.findAll();
+    const supervisores = users.filter(u => ['supervisor', 'administrador', 'coordinador', 'coordinador de especialidades'].includes(u.rol));
     res.json(supervisores);
   } catch (err) {
     console.error('Error al obtener supervisores:', err);

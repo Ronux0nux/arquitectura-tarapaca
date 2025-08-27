@@ -1,54 +1,33 @@
-// Modelo Project usando better-sqlite3
-const Database = require('better-sqlite3');
-const db = new Database('data.db');
-
-// Crear tabla si no existe
-db.exec(`CREATE TABLE IF NOT EXISTS projects (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  nombre TEXT NOT NULL,
-  codigo TEXT NOT NULL UNIQUE,
-  estado TEXT DEFAULT 'Planificación',
-  fechaInicio TEXT NOT NULL,
-  fechaTermino TEXT NOT NULL,
-  subencargado INTEGER,
-  equipo TEXT,
-  ubicacion TEXT,
-  descripcion TEXT,
-  archivoCotizacion TEXT,
-  creadoEn TEXT DEFAULT (datetime('now'))
-)`);
+// Modelo Project usando PostgreSQL
+const pool = require('../db');
 
 module.exports = {
-  update: (id, data) => {
-    const stmt = db.prepare(`UPDATE projects SET nombre = ?, codigo = ?, estado = ?, fechaInicio = ?, fechaTermino = ?, subencargado = ?, equipo = ?, ubicacion = ?, descripcion = ?, archivoCotizacion = ? WHERE id = ?`);
-    return stmt.run(
-      data.nombre,
-      data.codigo,
-      data.estado || 'Planificación',
-      data.fechaInicio,
-      data.fechaTermino,
-      data.subencargado,
-      JSON.stringify(data.equipo || []),
-      data.ubicacion,
-      data.descripcion,
-      data.archivoCotizacion,
-      id
+  create: async (data) => {
+    const res = await pool.query(
+      'INSERT INTO projects (nombre, codigo, estado, fechaInicio, fechaTermino, subencargado, equipo, ubicacion, descripcion, archivoCotizacion) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *',
+      [data.nombre, data.codigo, data.estado || 'Planificación', data.fechaInicio, data.fechaTermino, data.subencargado, JSON.stringify(data.equipo || []), data.ubicacion, data.descripcion, data.archivoCotizacion]
     );
+    return res.rows[0];
   },
-  create: (data) => {
-    const stmt = db.prepare(`INSERT INTO projects (nombre, codigo, estado, fechaInicio, fechaTermino, subencargado, equipo, ubicacion, descripcion, archivoCotizacion) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
-    return stmt.run(data.nombre, data.codigo, data.estado || 'Planificación', data.fechaInicio, data.fechaTermino, data.subencargado, JSON.stringify(data.equipo || []), data.ubicacion, data.descripcion, data.archivoCotizacion);
+  findAll: async () => {
+    const res = await pool.query('SELECT * FROM projects');
+    return res.rows.map(p => ({ ...p, equipo: JSON.parse(p.equipo || '[]') }));
   },
-  findAll: () => {
-    const stmt = db.prepare(`SELECT * FROM projects`);
-    return stmt.all().map(p => ({ ...p, equipo: JSON.parse(p.equipo || '[]') }));
-  },
-  findById: (id) => {
-    const stmt = db.prepare(`SELECT * FROM projects WHERE id = ?`);
-    const p = stmt.get(id);
+  findById: async (id) => {
+    const res = await pool.query('SELECT * FROM projects WHERE id = $1', [id]);
+    const p = res.rows[0];
     if (!p) return null;
     p.equipo = JSON.parse(p.equipo || '[]');
     return p;
   },
-  // Agrega más métodos según necesidad
+  update: async (id, data) => {
+    await pool.query(
+      'UPDATE projects SET nombre = $1, codigo = $2, estado = $3, fechaInicio = $4, fechaTermino = $5, subencargado = $6, equipo = $7, ubicacion = $8, descripcion = $9, archivoCotizacion = $10 WHERE id = $11',
+      [data.nombre, data.codigo, data.estado || 'Planificación', data.fechaInicio, data.fechaTermino, data.subencargado, JSON.stringify(data.equipo || []), data.ubicacion, data.descripcion, data.archivoCotizacion, id]
+    );
+    return await module.exports.findById(id);
+  },
+  delete: async (id) => {
+    await pool.query('DELETE FROM projects WHERE id = $1', [id]);
+  },
 };

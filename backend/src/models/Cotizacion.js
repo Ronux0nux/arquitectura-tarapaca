@@ -1,40 +1,32 @@
-// Modelo Cotizacion usando better-sqlite3
-const Database = require('better-sqlite3');
-const db = new Database('data.db');
-
-// Crear tabla si no existe
-db.exec(`CREATE TABLE IF NOT EXISTS cotizaciones (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  proyectoId INTEGER,
-  insumoId INTEGER,
-  partidaId TEXT,
-  proveedorId INTEGER,
-  nombreMaterial TEXT NOT NULL,
-  unidad TEXT NOT NULL,
-  cantidad REAL NOT NULL,
-  precioUnitario REAL NOT NULL,
-  fechaCotizacion TEXT DEFAULT (datetime('now')),
-  validezOferta TEXT,
-  estado TEXT DEFAULT 'Pendiente',
-  detalles TEXT,
-  observaciones TEXT,
-  creadoPor INTEGER,
-  creadoEn TEXT DEFAULT (datetime('now')),
-  actualizadoEn TEXT DEFAULT (datetime('now'))
-)`);
+// Modelo Cotizacion usando PostgreSQL
+const pool = require('../db');
 
 module.exports = {
-  create: (data) => {
-    const stmt = db.prepare(`INSERT INTO cotizaciones (proyectoId, insumoId, partidaId, proveedorId, nombreMaterial, unidad, cantidad, precioUnitario, validezOferta, estado, detalles, observaciones, creadoPor) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
-    return stmt.run(data.proyectoId, data.insumoId, data.partidaId, data.proveedorId, data.nombreMaterial, data.unidad, data.cantidad, data.precioUnitario, data.validezOferta, data.estado || 'Pendiente', data.detalles, data.observaciones, data.creadoPor);
+  create: async (data) => {
+    const res = await pool.query(
+      `INSERT INTO cotizaciones (proyectoId, insumoId, partidaId, proveedorId, nombreMaterial, unidad, cantidad, precioUnitario, validezOferta, estado, detalles, observaciones, creadoPor) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
+      [data.proyectoId, data.insumoId, data.partidaId, data.proveedorId, data.nombreMaterial, data.unidad, data.cantidad, data.precioUnitario, data.validezOferta, data.estado || 'Pendiente', data.detalles, data.observaciones, data.creadoPor]
+    );
+    return res.rows[0];
   },
-  findAll: () => {
-    const stmt = db.prepare(`SELECT *, cantidad * precioUnitario AS precioTotal FROM cotizaciones`);
-    return stmt.all();
+  findAll: async () => {
+    const res = await pool.query('SELECT *, cantidad * precioUnitario AS precioTotal FROM cotizaciones');
+    return res.rows;
   },
-  findById: (id) => {
-    const stmt = db.prepare(`SELECT *, cantidad * precioUnitario AS precioTotal FROM cotizaciones WHERE id = ?`);
-    return stmt.get(id);
+  findById: async (id) => {
+    const res = await pool.query('SELECT *, cantidad * precioUnitario AS precioTotal FROM cotizaciones WHERE id = $1', [id]);
+    return res.rows[0] || null;
   },
-  // Agrega más métodos según necesidad
+  update: async (id, data) => {
+    await pool.query(
+      `UPDATE cotizaciones SET proyectoId = $1, insumoId = $2, partidaId = $3, proveedorId = $4, nombreMaterial = $5, unidad = $6, cantidad = $7, precioUnitario = $8, validezOferta = $9, estado = $10, detalles = $11, observaciones = $12, creadoPor = $13, actualizadoEn = (datetime('now'))
+      WHERE id = $14`,
+      [data.proyectoId, data.insumoId, data.partidaId, data.proveedorId, data.nombreMaterial, data.unidad, data.cantidad, data.precioUnitario, data.validezOferta, data.estado, data.detalles, data.observaciones, data.creadoPor, id]
+    );
+    return await module.exports.findById(id);
+  },
+  delete: async (id) => {
+    await pool.query('DELETE FROM cotizaciones WHERE id = $1', [id]);
+  },
 };

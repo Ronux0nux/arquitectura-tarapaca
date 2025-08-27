@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
+import { useNavigate } from 'react-router-dom';
 
 export default function Login() {
   const [formData, setFormData] = useState({
@@ -10,8 +11,10 @@ export default function Login() {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showRecovery, setShowRecovery] = useState(false);
-  const { login, isLoading } = useAuth();
+  const {loginOffline, login, isLoading } = useAuth();
+  // const [useOffline, setUseOffline] = useState(false); // Modo offline comentado
   const { notifySuccess, notifyError, notifyInfo } = useNotifications();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -19,9 +22,12 @@ export default function Login() {
       notifyError('Por favor completa todos los campos', 'Error de Login');
       return;
     }
-    const result = await login(formData.email, formData.password, formData.rememberMe);
+    // Modo offline comentado, solo login real
+    let result = await login(formData.email, formData.password, formData.rememberMe);
     if (result.success) {
       notifySuccess(`¡Bienvenido ${result.user.name}!`, 'Login Exitoso');
+      // Redirigir a Home
+      navigate('/');
     } else {
       notifyError(result.error, 'Error de Autenticación');
     }
@@ -59,10 +65,10 @@ export default function Login() {
           <h1 className="text-5xl font-bold mb-4">Bienvenido<br />De Nuevo</h1>
           <p className="mb-6 text-lg max-w-md">Al Sistema Web de gestión de procesos de la construcción de proyectos TaraPaka</p>
           <div className="flex gap-4 mb-8">
-            <a href="#" aria-label="Facebook" className="hover:text-blue-400 text-2xl"><i className="fab fa-facebook-f"></i></a>
-            <a href="#" aria-label="Twitter" className="hover:text-blue-400 text-2xl"><i className="fab fa-twitter"></i></a>
-            <a href="#" aria-label="Instagram" className="hover:text-pink-400 text-2xl"><i className="fab fa-instagram"></i></a>
-            <a href="#" aria-label="YouTube" className="hover:text-red-500 text-2xl"><i className="fab fa-youtube"></i></a>
+            <button type="button" aria-label="Facebook" className="hover:text-blue-400 text-2xl"><i className="fab fa-facebook-f"></i></button>
+            <button type="button" aria-label="Twitter" className="hover:text-blue-400 text-2xl"><i className="fab fa-twitter"></i></button>
+            <button type="button" aria-label="Instagram" className="hover:text-pink-400 text-2xl"><i className="fab fa-instagram"></i></button>
+            <button type="button" aria-label="YouTube" className="hover:text-red-500 text-2xl"><i className="fab fa-youtube"></i></button>
           </div>
         </div>
         {/* Columna derecha: Formulario */}
@@ -73,6 +79,18 @@ export default function Login() {
             </div>
             <h2 className="text-3xl font-bold text-gray-900 mb-6 text-center">Iniciar Sesión</h2>
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/*
+              <div className="mb-4 flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="offlineMode"
+                  checked={useOffline}
+                  onChange={e => setUseOffline(e.target.checked)}
+                  className="w-4 h-4 text-orange-500 bg-gray-100 border-gray-300 rounded focus:ring-orange-500"
+                />
+                <label htmlFor="offlineMode" className="text-sm text-gray-700">Usar modo offline (demo)</label>
+              </div>
+              */}
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">Correo Corporativo</label>
                 <input
@@ -88,16 +106,25 @@ export default function Login() {
               </div>
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">Contraseña</label>
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  id="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-colors"
-                  placeholder="••••••••"
-                  required
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    id="password"
+                    name="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-colors"
+                    placeholder="••••••••"
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-orange-500 focus:outline-none"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                  >
+                    {showPassword ? 'Ocultar' : 'Ver'}
+                  </button>
+                </div>
               </div>
               <div className="flex items-center justify-between">
                 <label className="flex items-center">
@@ -134,7 +161,7 @@ export default function Login() {
               </button>
             </form>
             <div className="mt-4 text-center">
-              <span className="text-sm text-gray-600">Al hacer clic en "Iniciar Sesión" aceptas los <a href="#" className="text-orange-600 underline">Términos de Servicio</a> | <a href="#" className="text-orange-600 underline">Política de Privacidad</a></span>
+              <span className="text-sm text-gray-600">Al hacer clic en "Iniciar Sesión" aceptas los <button type="button" className="text-orange-600 underline">Términos de Servicio</button> | <button type="button" className="text-orange-600 underline">Política de Privacidad</button></span>
             </div>
             {/* Demo Users opcional */}
             <div className="mt-8 pt-6 border-t border-gray-200">

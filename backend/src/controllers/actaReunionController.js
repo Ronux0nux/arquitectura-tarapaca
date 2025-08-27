@@ -1,5 +1,4 @@
 const ActaReunion = require('../models/ActaReunion');
-const Project = require('../models/Project');
 
 // Obtener todas las actas de reunión
 exports.getActas = async (req, res) => {
@@ -26,9 +25,9 @@ exports.getActasByProject = async (req, res) => {
 exports.createActa = async (req, res) => {
   try {
     const result = await ActaReunion.create(req.body);
-    res.status(201).json({ id: result.lastInsertRowid, ...req.body });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(201).json(result);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
   }
 };
 
@@ -36,7 +35,7 @@ exports.createActa = async (req, res) => {
 exports.getActaById = async (req, res) => {
   try {
     const acta = await ActaReunion.findById(req.params.id);
-    if (!acta) return res.status(404).json({ error: 'Acta no encontrada' });
+    if (!acta) return res.status(404).json({ error: 'Acta de reunión no encontrada' });
     res.json(acta);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -46,15 +45,10 @@ exports.getActaById = async (req, res) => {
 // Actualizar acta
 exports.updateActa = async (req, res) => {
   try {
-    const acta = await ActaReunion.findById(req.params.id);
-    if (!acta) return res.status(404).json({ error: 'Acta no encontrada' });
-    if (String(acta.proyectoId) !== String(req.params.proyectoId)) {
-      return res.status(403).json({ error: 'No se puede editar el acta fuera del proyecto correspondiente' });
-    }
-    const actualizada = await ActaReunion.update(req.params.id, req.body);
-    res.json(actualizada);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    const updated = await ActaReunion.update(req.params.id, req.body);
+    res.json(updated);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
   }
 };
 
@@ -62,9 +56,9 @@ exports.updateActa = async (req, res) => {
 exports.deleteActa = async (req, res) => {
   try {
     await ActaReunion.delete(req.params.id);
-    res.json({ mensaje: 'Acta eliminada correctamente' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.json({ message: 'Acta de reunión eliminada' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };
 
