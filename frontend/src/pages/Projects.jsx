@@ -190,7 +190,11 @@ const Projects = () => {
 
       console.log('💾 Datos finales a enviar:', projectData);
 
-  const response = await fetch(`${API_BASE_URL}/projects/${projectToEdit.id || projectToEdit._id}`, {
+  if (!projectToEdit || !projectToEdit.id) {
+    alert('No se puede editar: el proyecto no tiene un ID válido.');
+    return;
+  }
+  const response = await fetch(`${API_BASE_URL}/projects/${projectToEdit.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -482,7 +486,7 @@ const Projects = () => {
 
       console.log('💾 Datos finales a enviar:', projectData);
 
-      const response = await fetch(`${API_BASE_URL}/projects/${detailsProjectEdit._id}`, {
+  const response = await fetch(`${API_BASE_URL}/projects/${detailsProjectEdit.id || detailsProjectEdit._id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -1200,153 +1204,62 @@ const Projects = () => {
               </div>
             
             {isEditingInDetails && detailsProjectEdit ? (
-              // Modo edición
-              <div className="space-y-4">
+              <form className="space-y-4" onSubmit={e => { e.preventDefault(); handleSaveFromDetails(); }}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Nombre del Proyecto *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={detailsProjectEdit.nombre}
-                      onChange={(e) => setDetailsProjectEdit({...detailsProjectEdit, nombre: e.target.value})}
-                      className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Ingrese el nombre del proyecto"
-                    />
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nombre del Proyecto *</label>
+                    <input type="text" required value={detailsProjectEdit.nombre || ''} onChange={e => setDetailsProjectEdit({...detailsProjectEdit, nombre: e.target.value})} className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" placeholder="Ingrese el nombre del proyecto" />
                   </div>
-
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Código del Proyecto *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={detailsProjectEdit.codigo}
-                      onChange={(e) => setDetailsProjectEdit({...detailsProjectEdit, codigo: e.target.value})}
-                      className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Código único del proyecto"
-                    />
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Código del Proyecto *</label>
+                    <input type="text" required value={detailsProjectEdit.codigo || ''} onChange={e => setDetailsProjectEdit({...detailsProjectEdit, codigo: e.target.value})} className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" placeholder="Código único del proyecto" />
                   </div>
                 </div>
-
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Descripción
-                  </label>
-                  <textarea
-                    value={detailsProjectEdit.descripcion}
-                    onChange={(e) => setDetailsProjectEdit({...detailsProjectEdit, descripcion: e.target.value})}
-                    rows={3}
-                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Descripción del proyecto"
-                  />
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
+                  <textarea value={detailsProjectEdit.descripcion || ''} onChange={e => setDetailsProjectEdit({...detailsProjectEdit, descripcion: e.target.value})} rows={3} className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" placeholder="Descripción del proyecto" />
                 </div>
-
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Ubicación
-                  </label>
-                  <input
-                    type="text"
-                    value={detailsProjectEdit.ubicacion}
-                    onChange={(e) => setDetailsProjectEdit({...detailsProjectEdit, ubicacion: e.target.value})}
-                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Ubicación del proyecto"
-                  />
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Ubicación</label>
+                  <input type="text" value={detailsProjectEdit.ubicacion || ''} onChange={e => setDetailsProjectEdit({...detailsProjectEdit, ubicacion: e.target.value})} className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" placeholder="Ubicación del proyecto" />
                 </div>
-
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Fecha de Inicio *
-                    </label>
-                    <input
-                      type="date"
-                      required
-                      value={detailsProjectEdit.fechaInicio}
-                      onChange={(e) => setDetailsProjectEdit({...detailsProjectEdit, fechaInicio: e.target.value})}
-                      className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                    />
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de Inicio *</label>
+                    <input type="date" required value={detailsProjectEdit.fechaInicio || ''} onChange={e => setDetailsProjectEdit({...detailsProjectEdit, fechaInicio: e.target.value})} className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" />
                   </div>
-
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Fecha de Término *
-                    </label>
-                    <input
-                      type="date"
-                      required
-                      value={detailsProjectEdit.fechaTermino}
-                      onChange={(e) => setDetailsProjectEdit({...detailsProjectEdit, fechaTermino: e.target.value})}
-                      className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                    />
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de Término *</label>
+                    <input type="date" required value={detailsProjectEdit.fechaTermino || ''} onChange={e => setDetailsProjectEdit({...detailsProjectEdit, fechaTermino: e.target.value})} className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" />
                   </div>
                 </div>
-
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Estado *
-                  </label>
-                  <select
-                    required
-                    value={detailsProjectEdit.estado}
-                    onChange={(e) => setDetailsProjectEdit({...detailsProjectEdit, estado: e.target.value})}
-                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                  >
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Estado *</label>
+                  <select required value={detailsProjectEdit.estado || ''} onChange={e => setDetailsProjectEdit({...detailsProjectEdit, estado: e.target.value})} className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
                     {estados.map(estado => (
                       <option key={estado} value={estado}>{estado}</option>
                     ))}
                   </select>
                 </div>
-
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Coordinador Encargado *
-                  </label>
-                  <select
-                    value={detailsProjectEdit.subencargado}
-                    onChange={(e) => setDetailsProjectEdit({...detailsProjectEdit, subencargado: e.target.value})}
-                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                    required
-                  >
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Coordinador Encargado *</label>
+                  <select value={detailsProjectEdit.subencargado || ''} onChange={e => setDetailsProjectEdit({...detailsProjectEdit, subencargado: e.target.value})} className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" required>
                     <option value="">Seleccionar coordinador...</option>
-                    {supervisores.map(supervisor => (
-                      <option key={supervisor._id} value={supervisor._id}>
-                        {supervisor.nombre} - {supervisor.rol}
-                      </option>
+                    {supervisores.map((supervisor, idx) => (
+                      <option key={supervisor._id || idx} value={supervisor._id}>{supervisor.nombre} - {supervisor.rol}</option>
                     ))}
                   </select>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Seleccione un supervisor o administrador del sistema
-                  </p>
+                  <p className="text-xs text-gray-500 mt-1">Seleccione un supervisor o administrador del sistema</p>
                 </div>
-
                 <div className="bg-blue-50 p-4 rounded-lg">
                   <h4 className="text-sm font-semibold text-blue-800 mb-2">⚠️ Modo Edición Activo</h4>
-                  <p className="text-xs text-blue-700">
-                    Como <strong>{userRole}</strong>, estás editando los detalles del proyecto. 
-                    Los cambios se aplicarán inmediatamente al guardar.
-                  </p>
+                  <p className="text-xs text-blue-700">Como <strong>{userRole}</strong>, estás editando los detalles del proyecto. Los cambios se aplicarán inmediatamente al guardar.</p>
                 </div>
-
                 <div className="flex justify-end space-x-4 pt-4 border-t">
-                  <button
-                    onClick={handleCancelEditingInDetails}
-                    className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    onClick={handleSaveFromDetails}
-                    className="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600"
-                  >
-                    💾 Guardar Cambios
-                  </button>
+                  <button type="button" onClick={handleCancelEditingInDetails} className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50">Cancelar</button>
+                  <button type="submit" className="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600">💾 Guardar Cambios</button>
                 </div>
-              </div>
+              </form>
             ) : (
               // Modo visualización
               <>
@@ -1423,7 +1336,14 @@ const Projects = () => {
                 ×
               </button>
             </div>
-            
+            <div className="flex justify-end mb-4">
+              <button
+                onClick={handleCreateActa}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2"
+              >
+                <span>+</span> Crear nueva acta
+              </button>
+            </div>
             {loadingActas ? (
               <div className="text-center py-8">
                 <div className="spinner-border animate-spin inline-block w-8 h-8 border-4 rounded-full" role="status"></div>

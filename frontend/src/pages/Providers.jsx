@@ -80,12 +80,16 @@ export default function Providers() {
 
       {/* Formulario para agregar proveedor */}
       <form onSubmit={handleSubmit} className="mb-8 bg-white p-6 rounded-lg shadow flex flex-wrap gap-4 items-end">
-        <input name="nombre" value={form.nombre} onChange={handleChange} required placeholder="Nombre" className="border p-2 rounded w-40" />
-        <input name="rut" value={form.rut} onChange={handleChange} placeholder="RUT" className="border p-2 rounded w-32" />
-        <input name="direccion" value={form.direccion} onChange={handleChange} placeholder="Dirección" className="border p-2 rounded w-48" />
+  <input name="nombre" value={form.nombre} onChange={handleChange} required placeholder="Nombre (texto)" className="border p-2 rounded w-40" maxLength={100} />
+        <input name="rut" value={form.rut} onChange={e => {
+          // Solo permitir números, guion y puntos
+          const value = e.target.value.replace(/[^0-9\-\.]/g, '');
+          handleChange({ target: { name: 'rut', value } });
+        }} placeholder="RUT (ej: 12.345.678-9)" className="border p-2 rounded w-32" maxLength={15} />
+  <input name="direccion" value={form.direccion} onChange={handleChange} placeholder="Dirección (texto)" className="border p-2 rounded w-48" maxLength={255} />
         <input name="telefono" value={form.telefono} onChange={handleChange} placeholder="Teléfono" className="border p-2 rounded w-32" />
         <input name="email" value={form.email} onChange={handleChange} placeholder="Email" className="border p-2 rounded w-40" />
-        <input name="sitioWeb" value={form.sitioWeb} onChange={handleChange} placeholder="Sitio Web" className="border p-2 rounded w-40" />
+  <input name="sitioWeb" value={form.sitioWeb} onChange={handleChange} placeholder="Sitio Web (opcional)" className="border p-2 rounded w-40" />
         <button type="submit" disabled={loading} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">{loading ? 'Agregando...' : 'Agregar Proveedor'}</button>
         {error && <span className="text-red-600 ml-4">{error}</span>}
         {success && <span className="text-green-600 ml-4">{success}</span>}

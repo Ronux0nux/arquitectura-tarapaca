@@ -56,9 +56,8 @@ class AuthService {
         
         // ALMACENAMIENTO DEL TOKEN Y USUARIO
         // Para cambiar a cookies: usar document.cookie en lugar de localStorage
-        const storage = rememberMe ? localStorage : sessionStorage;
-        storage.setItem('tarapaca_token', token);
-        storage.setItem('tarapaca_user', JSON.stringify(user));
+  localStorage.setItem('tarapaca_token', token);
+    localStorage.setItem('tarapaca_user', JSON.stringify(user));
         
         console.log('✅ Login exitoso desde BD:', user.name);
         
@@ -134,7 +133,7 @@ class AuthService {
     
     // Almacenar en el storage apropiado
     const storage = rememberMe ? localStorage : sessionStorage;
-    storage.setItem('tarapaca_token', token);
+    localStorage.setItem('tarapaca_token', token);
     storage.setItem('tarapaca_user', JSON.stringify(userWithoutPassword));
     
     return {

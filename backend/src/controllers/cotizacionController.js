@@ -60,33 +60,12 @@ exports.updateCotizacion = async (req, res) => {
 
 // Aprobar cotización
 exports.aprobarCotizacion = (req, res) => {
-  try {
-    const stmt = Cotizacion.db.prepare(`UPDATE cotizaciones SET estado = 'Aprobada', actualizadoEn = datetime('now') WHERE id = ?`);
-    stmt.run(req.params.id);
-    const cotizacion = Cotizacion.findById(req.params.id);
-    if (!cotizacion) {
-      return res.status(404).json({ error: 'Cotización no encontrada' });
-    }
-    res.json({ message: 'Cotización aprobada exitosamente', cotizacion });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  res.status(501).json({ error: 'Función no implementada para PostgreSQL. Actualizar lógica.' });
 };
 
 // Rechazar cotización
 exports.rechazarCotizacion = (req, res) => {
-  try {
-    const { observaciones } = req.body;
-    const stmt = Cotizacion.db.prepare(`UPDATE cotizaciones SET estado = 'Rechazada', observaciones = ?, actualizadoEn = datetime('now') WHERE id = ?`);
-    stmt.run(observaciones, req.params.id);
-    const cotizacion = Cotizacion.findById(req.params.id);
-    if (!cotizacion) {
-      return res.status(404).json({ error: 'Cotización no encontrada' });
-    }
-    res.json({ message: 'Cotización rechazada', cotizacion });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  res.status(501).json({ error: 'Función no implementada para PostgreSQL. Actualizar lógica.' });
 };
 
 exports.deleteCotizacion = async (req, res) => {

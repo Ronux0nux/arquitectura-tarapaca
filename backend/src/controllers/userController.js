@@ -1,3 +1,8 @@
+// Logout (dummy endpoint)
+exports.logoutUser = (req, res) => {
+  // Solo responde OK, el frontend borra el token
+  res.status(200).json({ success: true, message: 'Logout exitoso' });
+};
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 // const bcrypt = require('bcrypt'); // Si usas bcrypt para contraseñas
