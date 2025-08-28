@@ -33,7 +33,16 @@ exports.loginUser = async (req, res) => {
       'secreto_super_seguro',
       { expiresIn: '1h' }
     );
-    res.json({ token, usuario: { id: user.id, nombre: user.nombre, email: user.email, rol: user.rol } });
+    res.json({
+      success: true,
+      token,
+      user: {
+        id: user.id,
+        name: user.nombre,
+        email: user.email,
+        role: user.rol
+      }
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });

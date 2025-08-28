@@ -116,11 +116,11 @@ export const AuthProvider = ({ children }) => {
         setIsAuthenticated(true);
         
         // Determinar estado de conexión basado en el tipo de login
-        if (result.user.id?.startsWith('offline_')) {
-          setConnectionStatus('offline');
-        } else {
-          setConnectionStatus('online');
-        }
+          if (typeof result.user.id === 'string' && result.user.id.startsWith('offline_')) {
+            setConnectionStatus('offline');
+          } else {
+            setConnectionStatus('online');
+          }
         
         console.log('✅ Login exitoso:', result.user.name);
         return { success: true, user: result.user };
