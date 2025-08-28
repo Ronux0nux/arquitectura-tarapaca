@@ -1172,23 +1172,32 @@ const Projects = () => {
       {/* Modal para detalles del proyecto */}
       {showDetailsModal && selectedProject && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-bold">
-                {isEditingInDetails ? 'Editar Proyecto' : 'Detalles del Proyecto'}
-              </h2>
-              <div className="flex items-center gap-2">
-                {!isEditingInDetails && canEditProjects() && (
+            <div className="bg-white p-6 rounded-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto relative">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-2xl font-bold">
+                  {isEditingInDetails ? 'Editar Proyecto' : 'Detalles del Proyecto'}
+                </h2>
+                <div className="flex items-center gap-2">
+                  {/* Botón de cierre (X) */}
                   <button
-                    onClick={handleStartEditingInDetails}
-                    className="px-3 py-1 bg-orange-500 text-white rounded hover:bg-orange-600 transition-colors text-sm"
-                    title="Editar proyecto"
+                    onClick={() => setShowDetailsModal(false)}
+                    className="text-gray-400 hover:text-gray-700 text-2xl font-bold focus:outline-none absolute top-4 right-4"
+                    title="Cerrar"
                   >
-                    ✏️ Editar
+                    &times;
                   </button>
-                )}
+                  {/* Botón editar, más a la izquierda */}
+                  {!isEditingInDetails && canEditProjects() && (
+                    <button
+                      onClick={handleStartEditingInDetails}
+                      className="px-3 py-1 bg-orange-500 text-white rounded hover:bg-orange-600 transition-colors text-sm absolute top-4 right-16"
+                      title="Editar proyecto"
+                    >
+                      ✏️ Editar
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
             
             {isEditingInDetails && detailsProjectEdit ? (
               // Modo edición

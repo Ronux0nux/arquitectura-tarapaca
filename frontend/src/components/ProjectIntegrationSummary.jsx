@@ -227,6 +227,13 @@ export default function ProjectIntegrationSummary() {
             >
               ⬇️ Exportar Excel
             </button>
+                <button
+      onClick={() => { setProjectData(null); setSelectedProject(null); }}
+      className="px-2 py-1 bg-red-500 text-white rounded-full hover:bg-red-600 text-lg font-bold"
+      title="Cerrar"
+    >
+      ×
+    </button>
           </div>
 
           {/* Hojas disponibles */}
