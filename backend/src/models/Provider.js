@@ -6,8 +6,8 @@ const pool = require('../db');
 module.exports = {
   create: async (data) => {
     const res = await pool.query(
-      'INSERT INTO providers (nombre, rut, direccion, telefono, email, sitioWeb, rubros) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-      [data.nombre, data.rut, data.direccion, data.telefono, data.email, data.sitioWeb, JSON.stringify(data.rubros || [])]
+      'INSERT INTO providers (nombre, rut, direccion, telefono, email, sitioweb, rubros) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+      [data.nombre, data.rut, data.direccion, data.telefono, data.email, data.sitioweb || data.sitioWeb, JSON.stringify(data.rubros || [])]
     );
     return res.rows[0];
   },
@@ -24,8 +24,8 @@ module.exports = {
   },
   update: async (id, data) => {
     await pool.query(
-      'UPDATE providers SET nombre = $1, rut = $2, direccion = $3, telefono = $4, email = $5, sitioWeb = $6, rubros = $7 WHERE id = $8',
-      [data.nombre, data.rut, data.direccion, data.telefono, data.email, data.sitioWeb, JSON.stringify(data.rubros || []), id]
+      'UPDATE providers SET nombre = $1, rut = $2, direccion = $3, telefono = $4, email = $5, sitioweb = $6, rubros = $7 WHERE id = $8',
+      [data.nombre, data.rut, data.direccion, data.telefono, data.email, data.sitioweb || data.sitioWeb, JSON.stringify(data.rubros || []), id]
     );
     return await module.exports.findById(id);
   },

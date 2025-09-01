@@ -15,7 +15,25 @@ exports.verifyToken = (req, res) => {
   }
   try {
     const decoded = jwt.verify(token, 'secreto_super_seguro');
-    res.json({ valid: true, decoded });
+    // Buscar el usuario en la base de datos
+    User.findById(decoded.userId)
+      .then(user => {
+        if (!user) {
+          return res.status(404).json({ valid: false, error: 'Usuario no encontrado' });
+        }
+        res.json({
+          valid: true,
+          user: {
+            id: user.id,
+            name: user.nombre,
+            email: user.email,
+            role: user.rol
+          }
+        });
+      })
+      .catch(err => {
+        res.status(500).json({ valid: false, error: err.message });
+      });
   } catch (err) {
     res.status(401).json({ valid: false, error: 'Token inválido o expirado' });
   }
