@@ -1,0 +1,239 @@
+@startuml
+title Diagrama de Arquitectura del Sistema - Arquitectura Tarapacá
+
+' ==================== ESTILOS ====================
+skinparam rectangle {
+  BackgroundColor<<frontend>> LightBlue
+  BackgroundColor<<backend>> LightGreen
+  BackgroundColor<<database>> LightYellow
+  BackgroundColor<<cache>> Orange
+  BackgroundColor<<queue>> LightCoral
+  BackgroundColor<<external>> LightGray
+  BackgroundColor<<new>> Yellow
+}
+
+' ==================== CAPA 1: CLIENTE ====================
+rectangle "CAPA DE PRESENTACIÓN" <<frontend>> {
+  rectangle "React 18.3" as React {
+    rectangle "Componentes UI" as UI {
+      [Navbar]
+      [Pages]
+      [Forms]
+      [Tables]
+    }
+    
+    rectangle "Gestión Estado" as State {
+      [Context API]
+      [Local State]
+    }
+    
+    rectangle "Servicios" as Services {
+      [API Service]
+      [Auth Service]
+      [Cache Service]
+    }
+  }
+  
+  rectangle "Routing" as Router {
+    [React Router 7.6]
+  }
+  
+  rectangle "Estilos" as Styles {
+    [Tailwind CSS 4.1]
+  }
+}
+
+' ==================== CAPA 2: SERVIDOR ====================
+rectangle "CAPA DE APLICACIÓN" <<backend>> {
+  rectangle "Node.js + Express 4.18" as NodeJS {
+    
+    rectangle "Middleware Stack" as Middleware {
+      [CORS]
+      [JSON Parser]
+      [Morgan Logger] <<new>>
+      [Error Handler] <<new>>
+    }
+    
+    rectangle "Rutas API (13 módulos)" as Routes {
+      [/api/users]
+      [/api/projects]
+      [/api/providers]
+      [/api/cotizaciones]
+      [/api/insumos]
+      [/api/search]
+      [/api/excel]
+      [/api/parser] <<new>>
+      [/api/health] <<new>>
+      [...]
+    }
+    
+    rectangle "Controladores" as Controllers {
+      [User Controller]
+      [Project Controller]
+      [Provider Controller]
+      [Parser Controller] <<new>>
+      [Search Controller]
+      [Excel Controller]
+      [...]
+    }
+    
+    rectangle "Modelos" as Models {
+      [User Model]
+      [Project Model]
+      [Provider Model]
+      [Cotizacion Model]
+      [Insumo Model]
+      [...]
+    }
+  }
+  
+  rectangle "Sistema de Logs" <<new>> {
+    [Winston Logger]
+    [Log Rotation]
+    [Log Levels]
+  }
+  
+  rectangle "Sistema de Caché" <<cache>> <<new>> {
+    [Redis Client]
+    [Cache Helper]
+    [TTL Manager]
+  }
+  
+  rectangle "Sistema de Colas" <<queue>> <<new>> {
+    [BullMQ Manager]
+    rectangle "Workers" as Workers {
+      [PDF Worker]
+      [Excel Worker]
+      [Import Worker]
+      [Search Worker]
+    }
+  }
+}
+
+' ==================== CAPA 3: PERSISTENCIA ====================
+rectangle "CAPA DE DATOS" <<database>> {
+  database "PostgreSQL 8.16" as DB {
+    [users]
+    [projects]
+    [providers]
+    [cotizaciones]
+    [insumos]
+    [ordenes_compra]
+    [actas_reunion]
+  }
+  
+  database "Redis 7.x" <<cache>> <<new>> {
+    [Cache Data]
+    [Session Data]
+    [Queue Data]
+  }
+  
+  folder "Sistema de Archivos" as FS {
+    [Uploads/]
+    [Logs/] <<new>>
+    [Backups/]
+  }
+}
+
+' ==================== SERVICIOS EXTERNOS ====================
+rectangle "SERVICIOS EXTERNOS" <<external>> {
+  cloud "APIs de Construcción" as APIs {
+    [SerpAPI]
+    [Sodimac API]
+    [Easy API]
+    [Construmart API]
+  }
+  
+  cloud "Documentos" as Docs {
+    [PDF Files]
+    [Excel/CSV Files]
+  }
+}
+
+' ==================== CONEXIONES ====================
+
+' Cliente → Servidor
+React --> Middleware : HTTP/HTTPS
+Router --> Routes
+Services --> Routes
+
+' Middleware → Controladores
+Middleware --> Routes
+Routes --> Controllers
+Controllers --> Models
+
+' Logs
+Middleware --> Winston
+Controllers --> Winston
+Winston --> FS
+
+' Caché
+Controllers --> Redis
+Cache Helper --> Redis
+
+' Colas
+Controllers --> BullMQ
+Workers --> BullMQ
+BullMQ --> Redis
+
+' Base de Datos
+Models --> DB
+
+' Archivos
+Controllers --> FS
+
+' APIs Externas
+Controllers --> APIs
+Controllers --> Docs
+
+' ==================== FLUJOS PRINCIPALES ====================
+note right of React
+  **Puerto: 3000**
+  - Interfaz de usuario
+  - Experiencia interactiva
+  - Client-side rendering
+end note
+
+note right of NodeJS
+  **Puerto: 5000**
+  - API REST
+  - Lógica de negocio
+  - Validaciones
+  - Autenticación JWT
+end note
+
+note right of Redis
+  **Puerto: 6379**
+  🆕 Funciones:
+  - Caché de datos (TTL: 1h)
+  - Backend de colas
+  - Sesiones (futuro)
+end note
+
+note right of DB
+  **Puerto: 5432**
+  - Datos persistentes
+  - Relaciones
+  - Transacciones ACID
+end note
+
+note bottom of Sistema de Logs
+  🆕 **Archivos generados:**
+  - error.log (errores)
+  - combined.log (todos)
+  - http.log (peticiones)
+  
+  **Rotación:** 5MB máx
+end note
+
+note bottom of Sistema de Colas
+  🆕 **Colas disponibles:**
+  - pdf-processing
+  - excel-processing
+  - provider-import
+  - search-processing
+  
+  **Reintentos:** 3 intentos
+end note
+
+@enduml

@@ -1,0 +1,198 @@
+@startuml
+title Diagrama de Componentes - Sistema Tarapacá (Actualizado)
+skinparam componentStyle rectangle
+
+' ==================== CAPA DE PRESENTACIÓN ====================
+package "Capa de Presentación" #LightBlue {
+  [React SPA] as React
+  
+  package "Páginas React" {
+    [Projects] as PageProjects
+    [Providers] as PageProviders
+    [Cotizaciones] as PageCotizaciones
+    [Presupuestos] as PagePresupuestos
+    [Búsqueda] as PageBusqueda
+    [Excel Online] as PageExcel
+  }
+  
+  package "Servicios Frontend" {
+    [ApiService] as FrontAPI
+    [ProjectService] as FrontProject
+    [ProviderService] as FrontProvider
+    [CotizacionService] as FrontCotizacion
+    [BackupService] as FrontBackup
+  }
+}
+
+' ==================== CAPA DE APLICACIÓN ====================
+package "Capa de Aplicación (Node.js + Express)" #LightGreen {
+  [API REST Express] as API
+  [Morgan HTTP Logger] as Morgan
+  [Error Handler] as ErrorHandler
+  
+  package "Módulos de Negocio" {
+    [Módulo Auth] as ModAuth
+    [Módulo Gestión Proyectos] as ModProjects
+    [Módulo Gestión Proveedores] as ModProviders
+    [Módulo Búsqueda Materiales] as ModSearch
+    [Módulo Resumen Presupuesto] as ModBudget
+    [Módulo Plantilla Excel] as ModExcel
+    [Módulo Parser] as ModParser #Yellow
+    [Módulo Cotizaciones] as ModCotizacion
+    [Módulo Insumos] as ModInsumo
+  }
+  
+  package "Sistema de Logs" #Yellow {
+    [Winston Logger] as Logger
+    [Log Files] as LogFiles
+  }
+  
+  package "Sistema de Caché" #Yellow {
+    [Redis Client] as RedisClient
+    [Cache Helper] as CacheHelper
+  }
+  
+  package "Sistema de Colas" #Yellow {
+    [BullMQ Manager] as QueueManager
+    [PDF Worker] as PDFWorker
+    [Excel Worker] as ExcelWorker
+    [Provider Import Worker] as ProviderWorker
+    [Search Worker] as SearchWorker
+  }
+}
+
+' ==================== CAPA DE DATOS ====================
+package "Capa de Datos" #LightYellow {
+  database "PostgreSQL" as PG {
+    [Users] as TUsers
+    [Projects] as TProjects
+    [Providers] as TProviders
+    [Cotizaciones] as TCotizaciones
+    [Insumos] as TInsumos
+    [Ordenes Compra] as TOrdenesCompra
+    [Actas Reunión] as TActas
+  }
+}
+
+' ==================== SERVICIOS COMPLEMENTARIOS ====================
+package "Servicios Complementarios" #LightCoral {
+  [BullMQ Queues] as BullMQ
+  database "Redis Cache" as Redis
+}
+
+' ==================== FUENTES EXTERNAS ====================
+package "Fuentes Externas" #LightGray {
+  [SerpAPI] as SerpAPI
+  [Sodimac API] as Sodimac
+  [Easy API] as Easy
+  [Construmart API] as Construmart
+  [Archivos PDF] as PDF
+  [Archivos Excel/CSV] as Excel
+}
+
+' ==================== CONEXIONES FRONTEND → BACKEND ====================
+React --> API : HTTP/JSON
+PageProjects --> FrontProject
+PageProviders --> FrontProvider
+PageCotizaciones --> FrontCotizacion
+PagePresupuestos --> FrontAPI
+PageBusqueda --> FrontAPI
+PageExcel --> FrontAPI
+
+FrontAPI --> API
+FrontProject --> API
+FrontProvider --> API
+FrontCotizacion --> API
+FrontBackup --> API
+
+' ==================== CONEXIONES API → MIDDLEWARE ====================
+API --> Morgan : HTTP Logging
+API --> Logger : Application Logging
+API --> ErrorHandler : Error Handling
+API --> RedisClient : Cache Access
+
+' ==================== CONEXIONES MÓDULOS → BASE DE DATOS ====================
+ModAuth --> TUsers
+ModProjects --> TProjects
+ModProviders --> TProviders
+ModSearch --> PG
+ModBudget --> TCotizaciones
+ModBudget --> TInsumos
+ModExcel --> PG
+ModParser --> PG
+ModCotizacion --> TCotizaciones
+ModInsumo --> TInsumos
+
+' ==================== CONEXIONES MÓDULOS → CACHÉ ====================
+ModProviders ..> CacheHelper : usa caché
+ModSearch ..> CacheHelper : usa caché
+ModBudget ..> CacheHelper : usa caché
+CacheHelper --> Redis
+
+' ==================== CONEXIONES MÓDULOS → COLAS ====================
+ModParser --> QueueManager : encola jobs
+QueueManager --> BullMQ
+BullMQ --> Redis : backend
+
+PDFWorker --> BullMQ : procesa jobs
+ExcelWorker --> BullMQ : procesa jobs
+ProviderWorker --> BullMQ : procesa jobs
+SearchWorker --> BullMQ : procesa jobs
+
+' ==================== CONEXIONES LOGS ====================
+Logger --> LogFiles : escribe
+Morgan --> Logger : envía logs HTTP
+ModAuth ..> Logger
+ModProjects ..> Logger
+ModProviders ..> Logger
+ModSearch ..> Logger
+ModBudget ..> Logger
+ModExcel ..> Logger
+ModParser ..> Logger
+ModCotizacion ..> Logger
+
+' ==================== CONEXIONES EXTERNAS ====================
+ModSearch --> SerpAPI : búsquedas
+ModProviders --> Sodimac : precios
+ModProviders --> Easy : precios
+ModProviders --> Construmart : precios
+ModParser --> PDF : lee archivos
+ModParser --> Excel : lee archivos
+ModProviders --> Excel : importa CSV
+
+' ==================== RELACIONES ENTRE MÓDULOS ====================
+ModProjects -- ModProviders : opcional
+ModProjects -- ModExcel : genera plantillas
+ModBudget -- ModCotizacion : calcula
+ModBudget -- ModInsumo : incluye
+
+' ==================== NOTAS ====================
+note right of ModParser
+  🆕 Nuevo módulo
+  Procesamiento asíncrono
+  de archivos grandes
+end note
+
+note right of Logger
+  🆕 Sistema profesional
+  - error.log
+  - combined.log
+  - http.log
+end note
+
+note right of Redis
+  🆕 Caché en memoria
+  - 10x más rápido
+  - TTL configurable
+  - Backend de BullMQ
+end note
+
+note right of BullMQ
+  🆕 Sistema de colas
+  - PDF processing
+  - Excel processing
+  - Provider import
+  - Search processing
+end note
+
+@enduml

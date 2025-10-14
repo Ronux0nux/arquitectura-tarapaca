@@ -1,0 +1,174 @@
+@startuml
+title Diagrama de Despliegue - Infraestructura del Sistema
+
+' ==================== CLIENTE ====================
+node "Cliente (Navegador)" as Client {
+  artifact "React App" as ReactApp {
+    component "Build Optimizado" as Build
+    component "Service Worker" as SW
+  }
+}
+
+' ==================== SERVIDOR ====================
+node "Servidor de Aplicación" as AppServer {
+  artifact "Node.js Runtime" as NodeRuntime {
+    component "Express Server\n(Puerto 5000)" as Express
+    component "13 Módulos API" as Modules
+    component "Winston Logger" as Winston
+  }
+  
+  folder "Sistema de Archivos" as FileSystem {
+    artifact "logs/\n- error.log\n- combined.log\n- http.log" as Logs
+    artifact "uploads/" as Uploads
+    artifact "backups/" as Backups
+  }
+}
+
+' ==================== REDIS ====================
+node "Servidor Redis" as RedisServer {
+  database "Redis 7.x\n(Puerto 6379)" as Redis {
+    component "Cache Storage" as CacheStore
+    component "Queue Backend" as QueueBackend
+    component "Pub/Sub" as PubSub
+  }
+}
+
+' ==================== BASE DE DATOS ====================
+node "Servidor de Base de Datos" as DBServer {
+  database "PostgreSQL 8.16\n(Puerto 5432)" as PostgreSQL {
+    component "users" as DBUsers
+    component "projects" as DBProjects
+    component "providers" as DBProviders
+    component "cotizaciones" as DBCotizaciones
+    component "insumos" as DBInsumos
+    component "ordenes_compra" as DBOrdenes
+    component "actas_reunion" as DBActas
+  }
+}
+
+' ==================== WORKERS ====================
+node "Procesadores en Background" as WorkerNode {
+  component "PDF Worker" as PDFWorker
+  component "Excel Worker" as ExcelWorker
+  component "Import Worker" as ImportWorker
+  component "Search Worker" as SearchWorker
+}
+
+' ==================== SERVICIOS EXTERNOS ====================
+cloud "Servicios Externos" as External {
+  component "SerpAPI" as SerpAPI
+  component "Sodimac API" as Sodimac
+  component "Easy API" as Easy
+  component "Construmart API" as Construmart
+}
+
+' ==================== DOCKER (OPCIONAL) ====================
+node "Docker Desktop (Desarrollo)" as Docker #LightBlue {
+  component "redis-tarapaca\nContainer" as RedisContainer
+  note right of RedisContainer
+    Desarrollo local
+    --restart unless-stopped
+  end note
+}
+
+' ==================== CONEXIONES ====================
+
+' Cliente ↔ Servidor
+Client -down-> Express : HTTPS/HTTP\n(REST API)
+Express -up-> ReactApp : Sirve build\nen producción
+
+' Servidor ↔ Redis
+Express -right-> Redis : Caché\nTCP 6379
+Modules --> CacheStore : get/set/del
+Modules --> QueueBackend : encola jobs
+
+' Workers ↔ Redis
+WorkerNode -up-> QueueBackend : procesa jobs
+WorkerNode --> CacheStore : actualiza caché
+
+' Servidor ↔ PostgreSQL
+Express -down-> PostgreSQL : Queries SQL\nTCP 5432
+Modules --> DBUsers
+Modules --> DBProjects
+Modules --> DBProviders
+Modules --> DBCotizaciones
+
+' Logs
+Winston --> Logs : escribe archivos
+
+' Archivos
+Modules --> Uploads : lee/escribe
+Modules --> Backups : exporta
+
+' Servicios Externos
+Modules -right-> External : HTTP/HTTPS
+
+' Docker
+Docker .down.> RedisServer : contiene
+
+' ==================== NOTAS DE DESPLIEGUE ====================
+
+note top of Client
+  **Producción:**
+  - Servido desde /backend/build
+  - CDN (opcional)
+  
+  **Desarrollo:**
+  - npm start (puerto 3000)
+  - Hot reload
+end note
+
+note top of AppServer
+  **Producción:**
+  - PM2 o systemd
+  - Variables .env
+  - HTTPS con Let's Encrypt
+  
+  **Desarrollo:**
+  - npm start
+  - nodemon (opcional)
+end note
+
+note top of RedisServer
+  **Producción:**
+  - Redis Cloud / Upstash
+  - Backups automáticos
+  - Alta disponibilidad
+  
+  **Desarrollo:**
+  - Docker local
+  - Sin persistencia
+end note
+
+note top of DBServer
+  **Actual:**
+  - magallanes.icci-unap.cl
+  - Puerto 5432
+  - SSL connection
+end note
+
+note bottom of WorkerNode
+  **Ejecución:**
+  - Mismo proceso que Express
+  - Escalable horizontalmente
+  - Reintentos automáticos (3x)
+end note
+
+' ==================== FLUJOS DE DATOS ====================
+
+note left of Express
+  **Flujos principales:**
+  1. HTTP Request → Middleware
+  2. Middleware → Controller
+  3. Controller → Cache (check)
+  4. Cache miss → Database
+  5. Response → Client
+  
+  **Procesamiento asíncrono:**
+  1. Upload → Controller
+  2. Controller → Queue
+  3. Queue → Worker
+  4. Worker → Database
+end note
+
+@enduml

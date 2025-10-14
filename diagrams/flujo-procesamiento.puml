@@ -1,0 +1,101 @@
+@startuml
+title Diagrama de Flujo - Procesamiento con Caché y Colas
+
+actor Usuario
+participant "React\nFrontend" as FE
+participant "Express\nAPI" as API
+participant "Redis\nCache" as Cache
+participant "Controller" as Ctrl
+participant "BullMQ\nQueue" as Queue
+participant "Worker" as Work
+participant "PostgreSQL" as DB
+participant "Log\nSystem" as Log
+
+' ==================== FLUJO 1: CONSULTA CON CACHÉ ====================
+group Flujo 1: Consulta con Caché (ej: obtener proveedores)
+  Usuario -> FE: Click en "Proveedores"
+  FE -> API: GET /api/providers
+  API -> Log: [INFO] GET /api/providers
+  API -> Ctrl: getAllProviders()
+  
+  Ctrl -> Cache: get('providers:all')
+  alt Cache Hit (datos en Redis)
+    Cache --> Ctrl: datos encontrados ✅
+    Ctrl -> Log: [INFO] Cache HIT
+    Ctrl --> API: return providers
+    API --> FE: 200 OK + data
+    FE -> Usuario: Muestra proveedores\n(⚡ ultra rápido)
+  else Cache Miss (no hay datos)
+    Cache --> Ctrl: null
+    Ctrl -> Log: [INFO] Cache MISS
+    Ctrl -> DB: SELECT * FROM providers
+    DB --> Ctrl: lista de proveedores
+    Ctrl -> Cache: set('providers:all', data, 3600)
+    Cache --> Ctrl: OK
+    Ctrl -> Log: [INFO] Data cached
+    Ctrl --> API: return providers
+    API --> FE: 200 OK + data
+    FE -> Usuario: Muestra proveedores
+  end
+end
+
+' ==================== FLUJO 2: PROCESAMIENTO ASÍNCRONO ====================
+group Flujo 2: Upload de Archivo Grande (ej: PDF de 9693 páginas)
+  Usuario -> FE: Upload PDF
+  FE -> API: POST /api/parser/pdf\n+ FormData
+  API -> Log: [INFO] PDF upload started
+  API -> Ctrl: parsePDF()
+  
+  Ctrl -> Queue: addPdfJob({\n  filePath,\n  projectId,\n  userId\n})
+  Queue --> Ctrl: jobId: "abc123"
+  
+  Ctrl -> Log: [INFO] Job enqueued: abc123
+  Ctrl --> API: {\n  success: true,\n  jobId: "abc123"\n}
+  API --> FE: 202 Accepted\n+ jobId
+  FE -> Usuario: "Procesando en background...\nJobId: abc123"
+  
+  note over Queue, Work
+    ⏰ Procesamiento en background
+    No bloquea el servidor
+  end note
+  
+  Queue -> Work: process job abc123
+  Work -> Log: [INFO] Processing PDF abc123
+  Work -> DB: save results
+  DB --> Work: OK
+  Work -> Log: [INFO] Job completed abc123
+  Work --> Queue: job completed ✅
+  
+  Usuario -> FE: "Ver estado del job"
+  FE -> API: GET /api/parser/status/pdf/abc123
+  API -> Queue: getJobStatus(abc123)
+  Queue --> API: {\n  state: "completed",\n  result: {...}\n}
+  API --> FE: 200 OK + status
+  FE -> Usuario: "✅ PDF procesado exitosamente"
+end
+
+' ==================== FLUJO 3: ERROR HANDLING ====================
+group Flujo 3: Manejo de Errores
+  Usuario -> FE: Acción con error
+  FE -> API: POST /api/some-endpoint
+  API -> Ctrl: someFunction()
+  
+  Ctrl -> DB: query inválida
+  DB --> Ctrl: ❌ Error
+  
+  Ctrl -> Log: [ERROR] Database error:\n  message
+  Ctrl --> API: throw Error
+  
+  API -> Log: [ERROR] Unhandled error
+  API --> FE: 500 Internal Server Error\n+ error message
+  FE -> Usuario: ❌ "Error: [mensaje]"
+  
+  note right of Log
+    **Logs generados:**
+    - error.log: detalles del error
+    - combined.log: contexto completo
+    - http.log: petición HTTP
+  end note
+end
+
+@enduml

@@ -1,16 +1,31 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const morgan = require('morgan');
 require('dotenv').config();
+
+// Importar configuraciones
+const logger = require('./config/logger');
+const { redisClient, cache } = require('./config/redis');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
+// ==================== MIDDLEWARE ====================
 app.use(cors());
 app.use(express.json());
 
-// Importar rutas
+// Middleware de logging con Morgan
+app.use(morgan('combined', { stream: logger.stream }));
+
+// Middleware para agregar logger y cache a req
+app.use((req, res, next) => {
+  req.logger = logger;
+  req.cache = cache;
+  next();
+});
+
+// ==================== IMPORTAR RUTAS ====================
 const userRoutes = require('./routes/userRoutes');
 const projectRoutes = require('./routes/projectRoutes');
 const providerRoutes = require('./routes/providerRoutes');
@@ -23,8 +38,9 @@ const ordencompraRoutes = require('./routes/ordencompraRoutes');
 const excelRoutes = require('./routes/excelRoutes');
 const csvProviderRoutes = require('./routes/csvProviderRoutes');
 const templateRoutes = require('./routes/templateRoutes');
+const parserRoutes = require('./routes/parserRoutes'); // 🆕 Nuevo módulo Parser
 
-// Usar rutas API
+// ==================== USAR RUTAS API ====================
 app.use('/api/users', userRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/providers', providerRoutes);
@@ -37,12 +53,24 @@ app.use('/api/search', searchRoutes);
 app.use('/api/excel', excelRoutes);
 app.use('/api', csvProviderRoutes);
 app.use('/api/templates', templateRoutes);
+app.use('/api/parser', parserRoutes); // 🆕 Nuevo módulo Parser
+
+// ==================== RUTAS BASE ====================
+// Ruta de salud del servidor
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    redis: redisClient.status,
+  });
+});
 
 // Ruta base de prueba (API)
 app.get('/api', (req, res) => {
   res.send('API funcionando 🚀');
 });
 
+// ==================== SERVIR FRONTEND ====================
 // 👉 Servir frontend (React build)
 app.use(express.static(path.join(__dirname, '../../frontend/build')));
 
@@ -51,7 +79,32 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../../frontend/build/index.html'));
 });
 
-// Iniciar servidor
+// ==================== MANEJO DE ERRORES ====================
+app.use((err, req, res, next) => {
+  logger.error(`Error no manejado: ${err.message}`);
+  logger.error(err.stack);
+  res.status(500).json({ 
+    error: 'Error interno del servidor',
+    message: process.env.NODE_ENV === 'development' ? err.message : undefined 
+  });
+});
+
+// ==================== INICIAR SERVIDOR ====================
 app.listen(PORT, () => {
-  console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
+  logger.info(`🚀 Servidor corriendo en http://localhost:${PORT}`);
+  logger.info(`📊 Ambiente: ${process.env.NODE_ENV || 'development'}`);
+  logger.info(`🔴 Redis: ${redisClient.status}`);
+});
+
+// ==================== MANEJO DE CIERRE GRACEFUL ====================
+process.on('SIGTERM', async () => {
+  logger.info('⚠️  SIGTERM recibido, cerrando servidor...');
+  await redisClient.quit();
+  process.exit(0);
+});
+
+process.on('SIGINT', async () => {
+  logger.info('⚠️  SIGINT recibido, cerrando servidor...');
+  await redisClient.quit();
+  process.exit(0);
 });
