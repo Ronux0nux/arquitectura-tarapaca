@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  # Redis - Sistema de caché y colas
+  redis:
+    image: redis:latest
+    container_name: redis-tarapaca
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # PostgreSQL - Base de datos (opcional - solo si quieres usar DB local)
+  # Descomenta si prefieres PostgreSQL local en vez del remoto
+  # postgres:
+  #   image: postgres:15-alpine
+  #   container_name: postgres-tarapaca
+  #   environment:
+  #     POSTGRES_USER: rmarcoleta
+  #     POSTGRES_PASSWORD: 96ZC2mMo=s@Q
+  #     POSTGRES_DB: rmarcoleta
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U rmarcoleta"]
+  #     interval: 10s
+  #     timeout: 3s
+  #     retries: 5
+
+volumes:
+  redis_data:
+  # postgres_data:  # Descomentar si usas PostgreSQL local

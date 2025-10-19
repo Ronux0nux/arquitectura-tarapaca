@@ -1,12 +1,13 @@
-// filepath: e:\arquitectura-tarapaca\arquitectura-tarapaca-2\backend\src\db.js
+// filepath: backend/src/db.js
 const { Pool } = require('pg');
+require('dotenv').config();
 
 const pool = new Pool({
-  user: 'rmarcoleta',
-  host: 'magallanes.icci-unap.cl',
-  database: 'rmarcoleta',
-  password: '96ZC2mMo=s@Q',
-  port: 5432,
+  user: process.env.DB_USER || 'rmarcoleta',
+  host: process.env.DB_HOST || 'magallanes.icci-unap.cl',
+  database: process.env.DB_DATABASE || 'rmarcoleta',
+  password: process.env.DB_PASSWORD || '96ZC2mMo=s@Q',
+  port: process.env.DB_PORT || 5432,
 });
 
 module.exports = pool;

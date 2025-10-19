@@ -19,6 +19,7 @@ import ConfiguracionPage from './pages/ConfiguracionPage';
 import ExcelOnline from './pages/ExcelOnline';
 import Presupuestos from './pages/Presupuestos';
 import CotizacionCartV2 from './components/CotizacionCartV2';
+import Chatbot from './components/Chatbot';
 
 import CartButton from './components/CartButton';
 import CorporacionTarapaka from './pages/CorporacionTarapaka';
@@ -45,6 +46,7 @@ export default function App() {
           <CotizacionesProvider>
             <Router>
               <CotizacionCartV2 />
+              <Chatbot />
               <Routes>
                 {/* Login page always accessible */}
                 <Route path="/login" element={<Login />} />

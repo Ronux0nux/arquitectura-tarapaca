@@ -1,0 +1,162 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "🐳 Iniciar Docker Compose (Redis)",
+            "type": "shell",
+            "command": "docker-compose up -d",
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "runOptions": {
+                "runOn": "default"
+            }
+        },
+        {
+            "label": "🛑 Detener Docker Compose",
+            "type": "shell",
+            "command": "docker-compose down",
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            }
+        },
+        {
+            "label": "🔴 Verificar Redis",
+            "type": "shell",
+            "command": "docker exec -it redis-tarapaca redis-cli ping",
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            }
+        },
+        {
+            "label": "⚙️ Iniciar Backend (npm start)",
+            "type": "shell",
+            "command": "npm start",
+            "options": {
+                "cwd": "${workspaceFolder}/backend"
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "focus": false
+            },
+            "isBackground": true,
+            "runOptions": {
+                "runOn": "default"
+            }
+        },
+        {
+            "label": "⚛️ Iniciar Frontend (npm start)",
+            "type": "shell",
+            "command": "npm start",
+            "options": {
+                "cwd": "${workspaceFolder}/frontend"
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "focus": false
+            },
+            "isBackground": true,
+            "runOptions": {
+                "runOn": "default"
+            }
+        },
+        {
+            "label": "🚀 Iniciar TODO (Redis + Backend + Frontend)",
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "🐳 Iniciar Docker Compose (Redis)",
+                "⚙️ Iniciar Backend (npm start)",
+                "⚛️ Iniciar Frontend (npm start)"
+            ],
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always"
+            }
+        },
+        {
+            "label": "📦 Instalar Dependencias (Backend + Frontend)",
+            "dependsOrder": "parallel",
+            "dependsOn": [
+                "📦 npm install - Backend",
+                "📦 npm install - Frontend"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "📦 npm install - Backend",
+            "type": "shell",
+            "command": "npm install",
+            "options": {
+                "cwd": "${workspaceFolder}/backend"
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "📦 npm install - Frontend",
+            "type": "shell",
+            "command": "npm install",
+            "options": {
+                "cwd": "${workspaceFolder}/frontend"
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "🔍 Ver Logs - Backend",
+            "type": "shell",
+            "command": "Get-Content",
+            "args": [
+                "logs/combined.log",
+                "-Tail",
+                "50",
+                "-Wait"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/backend"
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "isBackground": true
+        },
+        {
+            "label": "❌ Ver Errores - Backend",
+            "type": "shell",
+            "command": "Get-Content",
+            "args": [
+                "logs/error.log",
+                "-Tail",
+                "50",
+                "-Wait"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/backend"
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "isBackground": true
+        }
+    ]
+}

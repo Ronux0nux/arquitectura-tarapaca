@@ -39,6 +39,7 @@ const excelRoutes = require('./routes/excelRoutes');
 const csvProviderRoutes = require('./routes/csvProviderRoutes');
 const templateRoutes = require('./routes/templateRoutes');
 const parserRoutes = require('./routes/parserRoutes'); // 🆕 Nuevo módulo Parser
+const chatbotRoutes = require('./routes/chatbotRoutes'); // 🤖 Chatbot con IA
 
 // ==================== USAR RUTAS API ====================
 app.use('/api/users', userRoutes);
@@ -54,6 +55,7 @@ app.use('/api/excel', excelRoutes);
 app.use('/api', csvProviderRoutes);
 app.use('/api/templates', templateRoutes);
 app.use('/api/parser', parserRoutes); // 🆕 Nuevo módulo Parser
+app.use('/api/chatbot', chatbotRoutes); // 🤖 Chatbot con IA
 
 // ==================== RUTAS BASE ====================
 // Ruta de salud del servidor
