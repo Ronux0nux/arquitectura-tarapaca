@@ -88,17 +88,17 @@ const BuscadorMateriales = () => {
       return;
     }
 
-    // Primero buscar en la base de datos local
-    const databaseResults = buscarEnDatabase(searchTerm);
-    
-    if (databaseResults.length > 0) {
-      setShowDatabaseResults(true);
-      setResults(databaseResults);
-      setError('');
-      return;
-    }
+    // SIEMPRE buscar en SerpAPI (ignorar BD local)
+    // const databaseResults = buscarEnDatabase(searchTerm);
+    // 
+    // if (databaseResults.length > 0) {
+    //   setShowDatabaseResults(true);
+    //   setResults(databaseResults);
+    //   setError('');
+    //   return;
+    // }
 
-    // Si no hay resultados en la base de datos, buscar en SerpApi
+    // Buscar en SerpApi
     setShowDatabaseResults(false);
     setLoading(true);
     setError('');
@@ -139,17 +139,34 @@ const BuscadorMateriales = () => {
     }
   };
 
-  const handleLinkClick = (url) => {
-    if (url) {
+  const handleLinkClick = (url, product) => {
+    if (url && url.startsWith('http')) {
       try {
+        console.log('🔗 Abriendo link:', url);
         window.open(url, '_blank', 'noopener,noreferrer');
       } catch (error) {
         console.error('Error al abrir el enlace:', error);
         // Fallback: intentar navegar directamente
-        window.location.href = url;
+        try {
+          window.location.href = url;
+        } catch (e) {
+          console.error('Error incluso con fallback:', e);
+        }
       }
+    } else if (url) {
+      // Si el URL no es válido, intentar crearlo desde el nombre del producto
+      const searchQuery = encodeURIComponent(product?.title || url);
+      const searchUrl = `https://www.google.com/search?q=${searchQuery}`;
+      console.log('🔗 URL inválida, abriendo búsqueda de Google:', searchUrl);
+      window.open(searchUrl, '_blank', 'noopener,noreferrer');
     } else {
-      console.warn('No hay enlace disponible para este resultado');
+      console.warn('⚠️ No hay enlace disponible para este resultado:', product?.title);
+      // Último recurso: búsqueda en Google del producto
+      if (product?.title) {
+        const searchQuery = encodeURIComponent(product.title);
+        const searchUrl = `https://www.google.com/search?q=${searchQuery}`;
+        window.open(searchUrl, '_blank', 'noopener,noreferrer');
+      }
     }
   };
 
@@ -353,7 +370,7 @@ const BuscadorMateriales = () => {
                         onClick={() => copyToClipboard(`${result.title} - ${result.price} - ${result.source}`)}
                         className="bg-gray-600 text-white py-2 px-3 rounded-md hover:bg-gray-700 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-gray-500"
                       >
-                        📋 Copiar
+                        📋 Copiar detalles
                       </button>
                     </div>
                   </div>
@@ -393,18 +410,13 @@ const BuscadorMateriales = () => {
                         onClick={() => copyToClipboard(`${result.title} - ${result.price} - ${result.source}`)}
                         className="bg-gray-600 text-white py-2 px-3 rounded-md hover:bg-gray-700 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-gray-500"
                       >
-                        📋 Copiar
+                        📋 Copiar detalles
                       </button>
                       <button
-                        onClick={() => handleLinkClick(result.link)}
-                        disabled={!result.link}
-                        className={`py-2 px-3 rounded-md transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                          result.link 
-                            ? 'bg-blue-600 text-white hover:bg-blue-700 cursor-pointer' 
-                            : 'bg-gray-400 text-gray-200 cursor-not-allowed'
-                        }`}
+                        onClick={() => handleLinkClick(result.link, result)}
+                        className="bg-blue-600 text-white py-2 px-3 rounded-md hover:bg-blue-700 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
                       >
-                        {result.link ? '🔗 Ver' : 'Sin enlace'}
+                        🔍 Buscar
                       </button>
                     </div>
                   </div>

@@ -77,19 +77,27 @@ exports.saveSearchResults = async (req, res) => {
               searchTerm,
               searchType,
               source: result.source,
-              link: result.link,
+              link: result.link,                           // ✨ Link principal
+              product_link: result.product_link,           // ✨ Link alternativo
               thumbnail: result.thumbnail,
               origenBusqueda: 'SERPAPI',
+              rating: result.rating,                       // ✨ Calificación
+              reviews: result.reviews,                     // ✨ Cantidad de reseñas
               fechaAgregado: new Date()
             }
           });
 
           await nuevoInsumo.save();
           savedCount++;
+          console.log(`✅ Insumo guardado: "${result.title}" con link: ${result.link?.substring(0, 80)}...`);
         } else {
           // Actualizar metadata del insumo existente
           existingInsumo.metadata = {
             ...existingInsumo.metadata,
+            link: result.link,                             // ✨ Actualizar link
+            product_link: result.product_link,             // ✨ Actualizar link alternativo
+            rating: result.rating,                         // ✨ Actualizar rating
+            reviews: result.reviews,                       // ✨ Actualizar reviews
             ultimaActualizacion: new Date(),
             vecesEncontrado: (existingInsumo.metadata.vecesEncontrado || 1) + 1
           };

@@ -66,46 +66,57 @@ exports.deleteActa = async (req, res) => {
 exports.searchActas = async (req, res) => {
   try {
     const { proyectoId, entidad, fecha, fechaInicio, fechaFin } = req.query;
-    let query = {};
+    let query = 'SELECT * FROM actas_reunion WHERE 1=1';
+    let params = [];
+    let paramCount = 1;
 
     // Filtrar por proyecto
     if (proyectoId) {
-      query.proyectoId = proyectoId;
+      query += ` AND projects_id = $${paramCount}`;
+      params.push(proyectoId);
+      paramCount++;
     }
 
     // Filtrar por entidad
     if (entidad) {
-      query.entidad = { $regex: entidad, $options: 'i' };
+      query += ` AND entidad ILIKE $${paramCount}`;
+      params.push(`%${entidad}%`);
+      paramCount++;
     }
 
     // Filtrar por fecha específica
     if (fecha) {
-      const fechaBusqueda = new Date(fecha);
-      const siguienteDia = new Date(fechaBusqueda);
-      siguienteDia.setDate(siguienteDia.getDate() + 1);
-      
-      query.fecha = {
-        $gte: fechaBusqueda,
-        $lt: siguienteDia
-      };
+      query += ` AND fecha = $${paramCount}`;
+      params.push(fecha);
+      paramCount++;
     }
 
     // Filtrar por rango de fechas
     if (fechaInicio && fechaFin) {
-      query.fecha = {
-        $gte: new Date(fechaInicio),
-        $lte: new Date(fechaFin)
-      };
+      query += ` AND fecha BETWEEN $${paramCount} AND $${paramCount + 1}`;
+      params.push(fechaInicio);
+      params.push(fechaFin);
+      paramCount += 2;
     } else if (fechaInicio) {
-      query.fecha = { $gte: new Date(fechaInicio) };
+      query += ` AND fecha >= $${paramCount}`;
+      params.push(fechaInicio);
+      paramCount++;
     } else if (fechaFin) {
-      query.fecha = { $lte: new Date(fechaFin) };
+      query += ` AND fecha <= $${paramCount}`;
+      params.push(fechaFin);
+      paramCount++;
     }
 
-    const actas = await ActaReunion.find(query)
-      .populate('proyectoId', 'nombre codigo')
-      .populate('creadoPor', 'nombre email')
-      .sort({ fecha: -1 });
+    query += ' ORDER BY fecha DESC';
+
+    const ActaReunion = require('../models/ActaReunion');
+    const pool = require('../db');
+    const result = await pool.query(query, params);
+    
+    const actas = result.rows.map(a => ({
+      ...a,
+      asistencia: a.asistencia ? (typeof a.asistencia === 'string' ? JSON.parse(a.asistencia) : a.asistencia) : []
+    }));
     
     res.json(actas);
   } catch (err) {

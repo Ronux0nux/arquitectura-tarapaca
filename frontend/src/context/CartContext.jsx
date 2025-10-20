@@ -40,7 +40,9 @@ export const CartProvider = ({ children }) => {
       dateAdded: new Date().toISOString(),
       quantity: 1,
       notes: '',
-      category: item.category || 'General'
+      category: item.category || 'General',
+      projectId: item.projectId || null, // 🆕 ID del proyecto
+      projectName: item.projectName || '' // 🆕 Nombre del proyecto
     };
 
     setCartItems(prev => [...prev, newItem]);

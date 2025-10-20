@@ -227,8 +227,10 @@ const Projects = () => {
       entidad: '',
       fecha: '',
       lugar: '',
-      horaInicio: '',
-      horaTermino: '',
+      horaInicio: '09:00',
+      horaTermino: '10:00',
+      horaInicio_period: 'a.m.',
+      horaTermino_period: 'a.m.',
       objetivo: '',
       temasTratados: '',
       acuerdos: '',
@@ -250,8 +252,10 @@ const Projects = () => {
         entidad: '',
         fecha: '',
         lugar: '',
-        horaInicio: '',
-        horaTermino: '',
+        horaInicio: '09:00',
+        horaTermino: '10:00',
+        horaInicio_period: 'a.m.',
+        horaTermino_period: 'a.m.',
         objetivo: '',
         temasTratados: '',
         acuerdos: '',
@@ -265,27 +269,57 @@ const Projects = () => {
 
     // Guardar nueva acta
     const saveNewActa = async () => {
-      if (!selectedProject) return;
+      if (!selectedProject) {
+        alert('Por favor selecciona un proyecto');
+        return;
+      }
+      
+      // Validar que objetivo no esté vacío
+      if (!newActa.objetivo || newActa.objetivo.trim() === '') {
+        alert('❌ El objetivo de la reunión es requerido');
+        return;
+      }
+      
       try {
         const payload = {
           ...newActa,
-          proyectoId: selectedProject._id,
+          proyectoId: selectedProject.id || selectedProject._id,
           creadoPor: userRole,
         };
+        
+        console.log('📤 Enviando acta:', payload);
+        
         const response = await fetch(`${API_BASE_URL}/actas-reunion`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
+        
         if (response.ok) {
           setShowCreateActaModal(false);
-          fetchActasForProject(selectedProject._id);
-          alert('Acta creada exitosamente');
+          setNewActa({
+            entidad: '',
+            fecha: '',
+            lugar: '',
+            horaInicio: '09:00',
+            horaTermino: '10:00',
+            horaInicio_period: 'a.m.',
+            horaTermino_period: 'a.m.',
+            objetivo: '',
+            temasTratados: '',
+            acuerdos: '',
+            asistencia: '',
+          });
+          fetchActasForProject(selectedProject._id || selectedProject.id);
+          alert('✅ Acta creada exitosamente');
         } else {
-          alert('Error al crear acta');
+          const errorData = await response.json();
+          console.error('❌ Error response:', errorData);
+          alert('❌ Error al crear acta: ' + (errorData.error || response.statusText));
         }
       } catch (error) {
-        alert('Error al crear acta: ' + error.message);
+        console.error('Error:', error);
+        alert('❌ Error al crear acta: ' + error.message);
       }
     };
 
@@ -325,7 +359,7 @@ const Projects = () => {
       setLoadingActas(true);
       const response = await fetch(`${API_BASE_URL}/actas-reunion/project/${projectId}`);
       const data = await response.json();
-      setActas(data.actas || []);
+      setActas(Array.isArray(data) ? data : (data.actas || []));
     } catch (error) {
       console.error('Error al cargar actas:', error);
       setActas([]);
@@ -1648,6 +1682,249 @@ const Projects = () => {
                 ))}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* 🆕 MODAL PARA CREAR ACTA */}
+      {showCreateActaModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold">Crear Nueva Acta de Reunión</h2>
+              <button 
+                onClick={() => setShowCreateActaModal(false)}
+                className="text-gray-500 hover:text-gray-700 text-2xl"
+              >
+                ×
+              </button>
+            </div>
+            
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              saveNewActa();
+            }} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Entidad / Departamento *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newActa.entidad}
+                  onChange={(e) => setNewActa({...newActa, entidad: e.target.value})}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Ej: Dirección de Proyecto, Supervisión"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Fecha *
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={newActa.fecha}
+                    onChange={(e) => setNewActa({...newActa, fecha: e.target.value})}
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Lugar *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newActa.lugar}
+                    onChange={(e) => setNewActa({...newActa, lugar: e.target.value})}
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Ej: Sitio, Oficina"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Hora *
+                    </label>
+                    <select
+                      value={newActa.horaInicio?.split(':')[0] || '09'}
+                      onChange={(e) => {
+                        const minutos = newActa.horaInicio?.split(':')[1] || '00';
+                        setNewActa({...newActa, horaInicio: `${e.target.value}:${minutos}`});
+                      }}
+                      className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      {[...Array(12)].map((_, i) => (
+                        <option key={i} value={String(i + 1).padStart(2, '0')}>
+                          {String(i + 1).padStart(2, '0')}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Min *
+                    </label>
+                    <select
+                      value={newActa.horaInicio?.split(':')[1] || '00'}
+                      onChange={(e) => {
+                        const hora = newActa.horaInicio?.split(':')[0] || '09';
+                        setNewActa({...newActa, horaInicio: `${hora}:${e.target.value}`});
+                      }}
+                      className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      {[0, 15, 30, 45].map((min) => (
+                        <option key={min} value={String(min).padStart(2, '0')}>
+                          {String(min).padStart(2, '0')}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      AM/PM *
+                    </label>
+                    <select
+                      value={newActa.horaInicio_period || 'a.m.'}
+                      onChange={(e) => setNewActa({...newActa, horaInicio_period: e.target.value})}
+                      className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="a.m.">a.m.</option>
+                      <option value="p.m.">p.m.</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Hora *
+                    </label>
+                    <select
+                      value={newActa.horaTermino?.split(':')[0] || '10'}
+                      onChange={(e) => {
+                        const minutos = newActa.horaTermino?.split(':')[1] || '00';
+                        setNewActa({...newActa, horaTermino: `${e.target.value}:${minutos}`});
+                      }}
+                      className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      {[...Array(12)].map((_, i) => (
+                        <option key={i} value={String(i + 1).padStart(2, '0')}>
+                          {String(i + 1).padStart(2, '0')}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Min *
+                    </label>
+                    <select
+                      value={newActa.horaTermino?.split(':')[1] || '00'}
+                      onChange={(e) => {
+                        const hora = newActa.horaTermino?.split(':')[0] || '10';
+                        setNewActa({...newActa, horaTermino: `${hora}:${e.target.value}`});
+                      }}
+                      className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      {[0, 15, 30, 45].map((min) => (
+                        <option key={min} value={String(min).padStart(2, '0')}>
+                          {String(min).padStart(2, '0')}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      AM/PM *
+                    </label>
+                    <select
+                      value={newActa.horaTermino_period || 'a.m.'}
+                      onChange={(e) => setNewActa({...newActa, horaTermino_period: e.target.value})}
+                      className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="a.m.">a.m.</option>
+                      <option value="p.m.">p.m.</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Objetivo de la Reunión *
+                </label>
+                <textarea
+                  required
+                  value={newActa.objetivo}
+                  onChange={(e) => setNewActa({...newActa, objetivo: e.target.value})}
+                  rows={2}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="¿Cuál es el objetivo de esta reunión?"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Temas Tratados *
+                </label>
+                <textarea
+                  required
+                  value={newActa.temasTratados}
+                  onChange={(e) => setNewActa({...newActa, temasTratados: e.target.value})}
+                  rows={3}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Describe los temas discutidos"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Acuerdos y Compromisos
+                </label>
+                <textarea
+                  value={newActa.acuerdos}
+                  onChange={(e) => setNewActa({...newActa, acuerdos: e.target.value})}
+                  rows={3}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Acuerdos, decisiones y compromisos establecidos"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Asistentes
+                </label>
+                <textarea
+                  value={newActa.asistencia}
+                  onChange={(e) => setNewActa({...newActa, asistencia: e.target.value})}
+                  rows={2}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Nombres de los asistentes"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="submit"
+                  className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
+                >
+                  Guardar Acta
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowCreateActaModal(false)}
+                  className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400 transition-colors"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

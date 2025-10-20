@@ -4,10 +4,10 @@ const actaReunionController = require('../controllers/actaReunionController');
 
 router.get('/', actaReunionController.getActas);
 router.get('/search', actaReunionController.searchActas);
-router.get('/proyecto/:proyectoId', actaReunionController.getActasByProject);
+router.get('/project/:proyectoId', actaReunionController.getActasByProject);  // 🔧 Ruta unificada
 router.post('/', actaReunionController.createActa);
 router.get('/:id', actaReunionController.getActaById);
-router.put('/proyecto/:proyectoId/:id', actaReunionController.updateActa);
+router.put('/:id', actaReunionController.updateActa);  // 🔧 Simplificado
 router.delete('/:id', actaReunionController.deleteActa);
 
 module.exports = router;
