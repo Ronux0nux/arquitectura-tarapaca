@@ -108,11 +108,11 @@ export default function NavbarResponsive() {
           <div className="hidden lg:flex items-center gap-2 flex-1 justify-center">
             
             {/* Administración */}
-            {(canAccess('all') || canAccess('proveedores') || user?.role === 'admin') && (
+            {(canAccess('all') || canAccess('proveedores') || user?.rol === 'admin') && (
               <>
                 <div className="flex items-center gap-2">
                   <span className="text-blue-200 text-sm font-medium">Admin</span>
-                  {user?.role === 'admin' && <NavLink to="/users">Usuarios</NavLink>}
+                  {user?.rol === 'admin' && <NavLink to="/users">Usuarios</NavLink>}
                   {canAccess('proveedores') && <NavLink to="/providers">Proveedores</NavLink>}
                 </div>
                 <Separator />
@@ -218,9 +218,9 @@ export default function NavbarResponsive() {
           <div className="lg:hidden mt-4 border-t border-blue-500 pt-4">
             <div className="space-y-2">
               {/* Administración */}
-              {(canAccess('all') || canAccess('proveedores') || user?.role === 'admin') && (
+              {(canAccess('all') || canAccess('proveedores') || user?.rol === 'admin') && (
                 <DropdownGroup title="Administración" groupKey="admin">
-                  {user?.role === 'admin' && <NavLink to="/users" onClick={closeMenu}>Usuarios</NavLink>}
+                  {user?.rol === 'admin' && <NavLink to="/users" onClick={closeMenu}>Usuarios</NavLink>}
                   {canAccess('proveedores') && <NavLink to="/providers" onClick={closeMenu}>Proveedores</NavLink>}
                 </DropdownGroup>
               )}

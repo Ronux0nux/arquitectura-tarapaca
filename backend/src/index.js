@@ -91,6 +91,18 @@ app.use((err, req, res, next) => {
   });
 });
 
+// Manejo de excepciones no capturadas
+process.on('uncaughtException', (error) => {
+  logger.error('❌ Excepción no capturada:', error);
+  console.error('❌ Excepción no capturada:', error);
+});
+
+// Manejo de promesas rechazadas no capturadas
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('❌ Promesa rechazada no manejada:', reason);
+  console.error('❌ Promesa rechazada no manejada:', reason);
+});
+
 // ==================== INICIAR SERVIDOR ====================
 app.listen(PORT, () => {
   logger.info(`🚀 Servidor corriendo en http://localhost:${PORT}`);

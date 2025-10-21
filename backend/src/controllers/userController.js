@@ -4,37 +4,77 @@ exports.logoutUser = (req, res) => {
   res.status(200).json({ success: true, message: 'Logout exitoso' });
 };
 const User = require('../models/User');
-const jwt = require('jsonwebtoken');
-// const bcrypt = require('bcrypt'); // Si usas bcrypt para contraseñas
+const { generateTokens, verifyAccessToken, extractTokenFromHeader, getCookieOptions } = require('../config/jwt');
+const logger = require('../config/logger');
 
-// Verificar token JWT
-exports.verifyToken = (req, res) => {
-  const token = req.headers['authorization']?.split(' ')[1] || req.query.token;
+// Verificar token JWT - Con caché en Redis y fallback
+exports.verifyToken = async (req, res) => {
+  const authHeader = req.headers['authorization'];
+  const token = extractTokenFromHeader(authHeader) || req.query.token;
+  
   if (!token) {
-    return res.status(401).json({ error: 'Token no proporcionado' });
+    return res.status(401).json({ valid: false, error: 'Token no proporcionado' });
   }
+  
   try {
-    const decoded = jwt.verify(token, 'secreto_super_seguro');
-    // Buscar el usuario en la base de datos
-    User.findById(decoded.userId)
-      .then(user => {
-        if (!user) {
-          return res.status(404).json({ valid: false, error: 'Usuario no encontrado' });
-        }
-        res.json({
+    // Verificar y decodificar token
+    const decoded = verifyAccessToken(token);
+    const cacheKey = `user:${decoded.userId}`;
+    
+    try {
+      // Intentar obtener del caché primero
+      const cachedUser = await req.cache.get(cacheKey);
+      if (cachedUser) {
+        logger.debug(`✅ Usuario desde caché: ${cachedUser.nombre}`);
+        return res.json({
           valid: true,
-          user: {
-            id: user.id,
-            name: user.nombre,
-            email: user.email,
-            role: user.rol
-          }
+          user: cachedUser,
+          fromCache: true
         });
-      })
-      .catch(err => {
-        res.status(500).json({ valid: false, error: err.message });
+      }
+    } catch (cacheError) {
+      logger.warn(`⚠️ Error accediendo caché: ${cacheError.message}, continuando...`);
+    }
+    
+    // Si no está en caché, buscar en BD
+    try {
+      const user = await User.findById(decoded.userId);
+      
+      if (!user) {
+        return res.status(404).json({ valid: false, error: 'Usuario no encontrado' });
+      }
+      
+      const userData = {
+        id: user.id,
+        nombre: user.nombre,
+        email: user.email,
+        rol: user.rol,
+        proyectos: user.proyectos || []
+      };
+      
+      // Guardar en caché por 1 hora
+      try {
+        await req.cache.set(cacheKey, userData, 3600);
+      } catch (cacheError) {
+        logger.warn(`⚠️ Error guardando en caché: ${cacheError.message}`);
+      }
+      
+      res.json({
+        valid: true,
+        user: userData,
+        fromCache: false
       });
+    } catch (dbError) {
+      logger.error(`❌ Error en BD al verificar usuario: ${dbError.message}`);
+      // Si falla la BD pero tenemos token válido, permitir acceso
+      return res.status(503).json({ 
+        valid: true,
+        error: 'BD no disponible, usando sesión almacenada',
+        message: 'Servicios limitados'
+      });
+    }
   } catch (err) {
+    logger.warn(`⚠️ Error verificando token: ${err.message}`);
     res.status(401).json({ valid: false, error: 'Token inválido o expirado' });
   }
 };
@@ -46,28 +86,115 @@ exports.loginUser = async (req, res) => {
     const users = await User.findAll();
     const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
     if (!user) return res.status(401).json({ error: 'Usuario no encontrado' });
+    
     // Si usas bcrypt:
     // const validPassword = await bcrypt.compare(password, user.password);
     // if (!validPassword) return res.status(401).json({ error: 'Contraseña incorrecta' });
+    
     // Si usas texto plano:
     if (password !== user.password) return res.status(401).json({ error: 'Contraseña incorrecta' });
-    const token = jwt.sign(
-      { userId: user.id, rol: user.rol },
-      'secreto_super_seguro',
-      { expiresIn: '1h' }
-    );
+    
+    // Generar tokens seguros
+    const { accessToken, refreshToken } = generateTokens(user.id, user.rol);
+    
+    // Guardar refresh token en caché (7 días)
+    try {
+      await req.cache.set(`refresh:${user.id}`, refreshToken, 7 * 24 * 60 * 60);
+    } catch (cacheError) {
+      logger.warn(`⚠️ Error guardando refresh token en caché: ${cacheError.message}`);
+    }
+    
+    // Configurar cookie con refresh token (HttpOnly, Secure, SameSite)
+    const cookieOptions = getCookieOptions();
+    res.cookie('refreshToken', refreshToken, cookieOptions);
+    
+    logger.info(`✅ Login exitoso para: ${user.email}`);
+    
     res.json({
       success: true,
-      token,
+      accessToken,
+      refreshToken,
       user: {
         id: user.id,
-        name: user.nombre,
+        nombre: user.nombre,
         email: user.email,
-        role: user.rol
+        rol: user.rol
       }
     });
   } catch (err) {
-    console.error(err);
+    logger.error('Error en login:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Refrescar token JWT
+exports.refreshToken = async (req, res) => {
+  try {
+    // Obtener refresh token de la cookie o del body
+    const refreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
+    
+    if (!refreshToken) {
+      return res.status(401).json({ error: 'Refresh token no proporcionado' });
+    }
+    
+    try {
+      // Verificar y decodificar refresh token
+      const { verifyRefreshToken } = require('../config/jwt');
+      const decoded = verifyRefreshToken(refreshToken);
+      
+      // Verificar que el token está almacenado en caché (no fue revocado)
+      const storedToken = await req.cache.get(`refresh:${decoded.userId}`);
+      if (storedToken !== refreshToken) {
+        return res.status(401).json({ error: 'Refresh token no válido o revocado' });
+      }
+      
+      // Generar nuevo access token
+      const { generateTokens } = require('../config/jwt');
+      const user = await User.findById(decoded.userId);
+      
+      if (!user) {
+        return res.status(404).json({ error: 'Usuario no encontrado' });
+      }
+      
+      const { accessToken: newAccessToken } = generateTokens(user.id, user.rol);
+      
+      logger.info(`✅ Token refrescado para usuario: ${user.email}`);
+      
+      res.json({
+        success: true,
+        accessToken: newAccessToken,
+        refreshToken: refreshToken // Puede ser el mismo o generarse uno nuevo
+      });
+    } catch (err) {
+      logger.warn(`⚠️ Error refrescando token: ${err.message}`);
+      res.status(401).json({ error: 'Refresh token inválido o expirado' });
+    }
+  } catch (err) {
+    logger.error('Error en refreshToken:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Revocar refresh token (logout)
+exports.revokeRefreshToken = async (req, res) => {
+  try {
+    const { userId } = req.body;
+    
+    if (!userId) {
+      return res.status(400).json({ error: 'userId requerido' });
+    }
+    
+    // Eliminar refresh token del caché
+    await req.cache.delete(`refresh:${userId}`);
+    
+    // Limpiar cookie
+    res.clearCookie('refreshToken');
+    
+    logger.info(`✅ Refresh token revocado para usuario: ${userId}`);
+    
+    res.json({ success: true, message: 'Logout exitoso' });
+  } catch (err) {
+    logger.error('Error revocando refresh token:', err);
     res.status(500).json({ error: err.message });
   }
 };

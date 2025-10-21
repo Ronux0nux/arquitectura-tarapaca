@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
 
 // ...existing code...
 
 const Projects = () => {
   // URL base del API - ajustar según el entorno
   const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+  
+  // Obtener usuario autenticado del contexto
+  const { user, isLoading: authLoading } = useAuth();
   
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -27,8 +31,8 @@ const Projects = () => {
   const [supervisores, setSupervisores] = useState([]);
   const [loadingSupervisores, setLoadingSupervisores] = useState(false);
   
-  // Simulando rol del usuario (en producción vendría del contexto de autenticación)
-  const [userRole, setUserRole] = useState('supervisor'); // 'supervisor', 'administrador', 'usuario'
+  // Obtener rol del usuario autenticado (fallback a 'usuario' si no está definido)
+  const userRole = user?.rol || user?.role || 'usuario';
   
   // Estados para búsqueda avanzada
   const [searchFilters, setSearchFilters] = useState({
@@ -54,11 +58,25 @@ const Projects = () => {
 
   const estados = ['Planificación', 'Cotización', 'Pendiente de Aprobación', 'En Ejecución', 'Finalizado'];
 
+  /**
+   * Helper para obtener headers con autenticación
+   */
+  const getAuthHeaders = (includeJson = true) => {
+    const token = localStorage.getItem('tarapaca_token');
+    const headers = includeJson ? { 'Content-Type': 'application/json' } : {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    return headers;
+  };
+
   // Cargar proyectos
   const fetchProjects = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/projects`);
+      const response = await fetch(`${API_BASE_URL}/projects`, {
+        headers: getAuthHeaders()
+      });
       const data = await response.json();
       
       console.log('📋 Proyectos cargados desde el backend:', data);
@@ -98,7 +116,9 @@ const Projects = () => {
         ? `${API_BASE_URL}/projects/search?${queryParams}`
         : `${API_BASE_URL}/projects`;
 
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        headers: getAuthHeaders()
+      });
       const data = await response.json();
       // El backend devuelve directamente el array de proyectos
       setProjects(data || []);
@@ -135,9 +155,7 @@ const Projects = () => {
 
       const response = await fetch(`${API_BASE_URL}/projects`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: getAuthHeaders(true),
         body: JSON.stringify(projectData),
       });
 
@@ -150,11 +168,11 @@ const Projects = () => {
           nombre: '',
           codigo: '',
           descripcion: '',
-          ubicacion: '',
           fechaInicio: '',
           fechaTermino: '',
           estado: 'Planificación',
-          subencargado: ''
+          subencargado: '',
+          ubicacion: ''
         });
         console.log('🆕 Proyecto creado exitosamente, recargando lista...');
         await fetchProjects();
@@ -196,9 +214,7 @@ const Projects = () => {
   }
   const response = await fetch(`${API_BASE_URL}/projects/${projectToEdit.id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: getAuthHeaders(true),
         body: JSON.stringify(projectData),
       });
 
@@ -291,7 +307,7 @@ const Projects = () => {
         
         const response = await fetch(`${API_BASE_URL}/actas-reunion`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: getAuthHeaders(true),
           body: JSON.stringify(payload),
         });
         
@@ -333,7 +349,7 @@ const Projects = () => {
         };
         const response = await fetch(`${API_BASE_URL}/actas-reunion/${editActa._id}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: getAuthHeaders(true),
           body: JSON.stringify(payload),
         });
         if (response.ok) {
@@ -357,7 +373,9 @@ const Projects = () => {
   const fetchActasForProject = async (projectId) => {
     try {
       setLoadingActas(true);
-      const response = await fetch(`${API_BASE_URL}/actas-reunion/project/${projectId}`);
+      const response = await fetch(`${API_BASE_URL}/actas-reunion/project/${projectId}`, {
+        headers: getAuthHeaders()
+      });
       const data = await response.json();
       setActas(Array.isArray(data) ? data : (data.actas || []));
     } catch (error) {
@@ -372,7 +390,9 @@ const Projects = () => {
   const fetchCotizacionesForProject = async (projectId) => {
     try {
       setLoadingCotizaciones(true);
-      const response = await fetch(`${API_BASE_URL}/cotizaciones/project/${projectId}`);
+      const response = await fetch(`${API_BASE_URL}/cotizaciones/project/${projectId}`, {
+        headers: getAuthHeaders()
+      });
       const data = await response.json();
       setCotizaciones(data.cotizaciones || []);
     } catch (error) {
@@ -388,7 +408,9 @@ const Projects = () => {
     try {
       console.log('👥 Cargando supervisores desde:', `${API_BASE_URL}/users/supervisores`);
       setLoadingSupervisores(true);
-      const response = await fetch(`${API_BASE_URL}/users/supervisores`);
+      const response = await fetch(`${API_BASE_URL}/users/supervisores`, {
+        headers: getAuthHeaders()
+      });
       console.log('👥 Respuesta del servidor:', response.status, response.statusText);
       
       if (response.ok) {
@@ -397,22 +419,22 @@ const Projects = () => {
         setSupervisores(data || []);
       } else {
         console.log('👥 Endpoint no disponible, usando datos de ejemplo');
-        // Si no existe el endpoint, usar datos de ejemplo con ObjectIds válidos
+        // Si no existe el endpoint, usar datos de ejemplo con IDs válidos (strings para HTML)
         setSupervisores([
-          { _id: '507f1f77bcf86cd799439011', nombre: 'Mónica Rodríguez', email: 'monica.rodriguez@aceleratarapaka.cl', rol: 'supervisor' },
-          { _id: '507f1f77bcf86cd799439012', nombre: 'Cecilia García', email: 'cecilia.garcia@aceleratarapaka.cl', rol: 'supervisor' },
-          { _id: '507f1f77bcf86cd799439013', nombre: 'Carlos Marcoleta', email: 'carlos.marcoleta@aceleratarapaka.cl', rol: 'administrador' },
-          { _id: '507f1f77bcf86cd799439014', nombre: 'José Miguel Astudillo', email: 'jose.astudillo@aceleratarapaka.cl', rol: 'coordinador de especialidades' }
+          { _id: '3', id: 3, nombre: 'Mónica Rodríguez', email: 'monica.rodriguez@aceleratarapaka.cl', rol: 'supervisor' },
+          { _id: '4', id: 4, nombre: 'Cecilia García', email: 'cecilia.garcia@aceleratarapaka.cl', rol: 'supervisor' },
+          { _id: '6', id: 6, nombre: 'Carlos Marcoleta', email: 'carlos.marcoleta@aceleratarapaka.cl', rol: 'administrador' },
+          { _id: '7', id: 7, nombre: 'José Miguel Astudillo', email: 'jose.astudillo@aceleratarapaka.cl', rol: 'coordinador de especialidades' }
         ]);
       }
     } catch (error) {
       console.error('Error al cargar supervisores:', error);
-      // Datos de ejemplo en caso de error con ObjectIds válidos
+      // Datos de ejemplo en caso de error con IDs válidos del sistema
       setSupervisores([
-        { _id: '507f1f77bcf86cd799439011', nombre: 'Mónica Rodríguez', email: 'monica.rodriguez@aceleratarapaka.cl', rol: 'supervisor' },
-        { _id: '507f1f77bcf86cd799439012', nombre: 'Cecilia García', email: 'cecilia.garcia@aceleratarapaka.cl', rol: 'supervisor' },
-        { _id: '507f1f77bcf86cd799439013', nombre: 'Carlos Marcoleta', email: 'carlos.marcoleta@aceleratarapaka.cl', rol: 'administrador' },
-        { _id: '507f1f77bcf86cd799439014', nombre: 'José Miguel Astudillo', email: 'jose.astudillo@aceleratarapaka.cl', rol: 'coordinador de especialidades' }
+        { _id: '3', id: 3, nombre: 'Mónica Rodríguez', email: 'monica.rodriguez@aceleratarapaka.cl', rol: 'supervisor' },
+        { _id: '4', id: 4, nombre: 'Cecilia García', email: 'cecilia.garcia@aceleratarapaka.cl', rol: 'supervisor' },
+        { _id: '6', id: 6, nombre: 'Carlos Marcoleta', email: 'carlos.marcoleta@aceleratarapaka.cl', rol: 'administrador' },
+        { _id: '7', id: 7, nombre: 'José Miguel Astudillo', email: 'jose.astudillo@aceleratarapaka.cl', rol: 'coordinador de especialidades' }
       ]);
     } finally {
       setLoadingSupervisores(false);
@@ -522,9 +544,7 @@ const Projects = () => {
 
   const response = await fetch(`${API_BASE_URL}/projects/${detailsProjectEdit.id || detailsProjectEdit._id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: getAuthHeaders(true),
         body: JSON.stringify(projectData),
       });
 
@@ -591,6 +611,12 @@ const Projects = () => {
     setShowActaDetailsModal(true);
   };
 
+  // Log para debuguear el user cuando cambia
+  useEffect(() => {
+    console.log('👤 User del contexto:', user);
+    console.log('👤 User Role:', userRole);
+  }, [user, userRole]);
+
   useEffect(() => {
     fetchProjects();
     fetchSupervisores();
@@ -612,16 +638,7 @@ const Projects = () => {
           <h1 className="text-3xl font-bold text-gray-800">Gestión de Proyectos</h1>
           <div className="flex items-center gap-4 mt-2">
             <span className="text-sm text-gray-600">Rol actual:</span>
-            <select
-              value={userRole}
-              onChange={(e) => setUserRole(e.target.value)}
-              className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="usuario">Usuario</option>
-              <option value="supervisor">Supervisor</option>
-              <option value="administrador">Administrador</option>
-            </select>
-            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+            <span className={`px-3 py-1 rounded-full text-xs font-medium ${
               userRole === 'administrador' ? 'bg-red-100 text-red-800' :
               userRole === 'supervisor' ? 'bg-blue-100 text-blue-800' :
               'bg-gray-100 text-gray-800'
@@ -841,10 +858,10 @@ const Projects = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {project.fechaInicio ? new Date(project.fechaInicio).toLocaleDateString() : 'No definida'}
+                        {(project.fechaInicio || project.fechainicio) ? new Date(project.fechaInicio || project.fechainicio).toLocaleDateString('es-CL') : 'No definida'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {project.fechaTermino ? new Date(project.fechaTermino).toLocaleDateString() : 'No definida'}
+                        {(project.fechaTermino || project.fechatermino) ? new Date(project.fechaTermino || project.fechatermino).toLocaleDateString('es-CL') : 'No definida'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {getSupervisorName(project.subencargado)}
@@ -949,16 +966,56 @@ const Projects = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Ubicación
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  📍 Ubicación (Dirección)
                 </label>
-                <input
-                  type="text"
-                  value={newProject.ubicacion}
-                  onChange={(e) => setNewProject({...newProject, ubicacion: e.target.value})}
-                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Ubicación del proyecto"
-                />
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newProject.ubicacion}
+                    onChange={(e) => setNewProject({...newProject, ubicacion: e.target.value})}
+                    placeholder="Ej: Iquique, Chile o Calle Principal, Santiago..."
+                    className="flex-1 p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!newProject.ubicacion.trim()) {
+                        alert('Por favor ingresa una dirección');
+                        return;
+                      }
+                      try {
+                        const response = await fetch(
+                          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(newProject.ubicacion)}&limit=1&timeout=10`,
+                          {
+                            headers: {
+                              'Accept': 'application/json',
+                              'User-Agent': 'Tarapaca-App/1.0'
+                            }
+                          }
+                        );
+                        const data = await response.json();
+                        if (data && data.length > 0) {
+                          setNewProject({
+                            ...newProject,
+                            ubicacion: data[0].display_name
+                          });
+                          alert(`✅ Dirección validada: ${data[0].display_name}`);
+                        } else {
+                          alert('❌ No se encontró la dirección. Intenta con otra');
+                        }
+                      } catch (error) {
+                        alert('❌ Error validando dirección: ' + error.message);
+                      }
+                    }}
+                    className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                  >
+                    🔍 Validar
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  Ubicación: {newProject.ubicacion || 'No ingresada'}
+                </p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -981,9 +1038,20 @@ const Projects = () => {
                   <input
                     type="date"
                     value={newProject.fechaTermino}
-                    onChange={(e) => setNewProject({...newProject, fechaTermino: e.target.value})}
+                    onChange={(e) => {
+                      // Validar que fecha de término sea mayor a fecha de inicio
+                      if (newProject.fechaInicio && e.target.value < newProject.fechaInicio) {
+                        alert('⚠️ La fecha de término no puede ser anterior a la fecha de inicio');
+                        return;
+                      }
+                      setNewProject({...newProject, fechaTermino: e.target.value});
+                    }}
                     className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    min={newProject.fechaInicio}
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Debe ser mayor o igual a la fecha de inicio
+                  </p>
                 </div>
               </div>
 
@@ -1012,9 +1080,9 @@ const Projects = () => {
                   className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                   required
                 >
-                  <option value="">Seleccionar coordinador...</option>
-                  {supervisores.map(supervisor => (
-                    <option key={supervisor._id} value={supervisor._id}>
+                  <option key="empty" value="">Seleccionar coordinador...</option>
+                  {supervisores.map((supervisor, idx) => (
+                    <option key={`supervisor-${supervisor._id}-${idx}`} value={supervisor._id}>
                       {supervisor.nombre} - {supervisor.rol}
                     </option>
                   ))}
@@ -1135,9 +1203,20 @@ const Projects = () => {
                     type="date"
                     required
                     value={projectToEdit.fechaTermino}
-                    onChange={(e) => setProjectToEdit({...projectToEdit, fechaTermino: e.target.value})}
+                    onChange={(e) => {
+                      // Validar que fecha de término sea mayor a fecha de inicio
+                      if (projectToEdit.fechaInicio && e.target.value < projectToEdit.fechaInicio) {
+                        alert('⚠️ La fecha de término no puede ser anterior a la fecha de inicio');
+                        return;
+                      }
+                      setProjectToEdit({...projectToEdit, fechaTermino: e.target.value});
+                    }}
                     className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    min={projectToEdit.fechaInicio}
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Debe ser mayor o igual a la fecha de inicio
+                  </p>
                 </div>
               </div>
 
@@ -1167,9 +1246,9 @@ const Projects = () => {
                   className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                   required
                 >
-                  <option value="">Seleccionar coordinador...</option>
-                  {supervisores.map(supervisor => (
-                    <option key={supervisor._id} value={supervisor._id}>
+                  <option key="empty" value="">Seleccionar coordinador...</option>
+                  {supervisores.map((supervisor, idx) => (
+                    <option key={`supervisor-${supervisor._id}-${idx}`} value={supervisor._id}>
                       {supervisor.nombre} - {supervisor.rol}
                     </option>
                   ))}
@@ -1264,7 +1343,16 @@ const Projects = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de Término *</label>
-                    <input type="date" required value={detailsProjectEdit.fechaTermino || ''} onChange={e => setDetailsProjectEdit({...detailsProjectEdit, fechaTermino: e.target.value})} className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" />
+                    <input type="date" required value={detailsProjectEdit.fechaTermino || ''} onChange={e => {
+                      if (detailsProjectEdit.fechaInicio && e.target.value < detailsProjectEdit.fechaInicio) {
+                        alert('⚠️ La fecha de término no puede ser anterior a la fecha de inicio');
+                        return;
+                      }
+                      setDetailsProjectEdit({...detailsProjectEdit, fechaTermino: e.target.value});
+                    }} className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" min={detailsProjectEdit.fechaInicio} />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Debe ser mayor o igual a la fecha de inicio
+                    </p>
                   </div>
                 </div>
                 <div>
@@ -1278,7 +1366,7 @@ const Projects = () => {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Coordinador Encargado *</label>
                   <select value={detailsProjectEdit.subencargado || ''} onChange={e => setDetailsProjectEdit({...detailsProjectEdit, subencargado: e.target.value})} className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" required>
-                    <option value="">Seleccionar coordinador...</option>
+                    <option key="empty" value="">Seleccionar coordinador...</option>
                     {supervisores.map((supervisor, idx) => (
                       <option key={supervisor._id || idx} value={supervisor._id}>{supervisor.nombre} - {supervisor.rol}</option>
                     ))}
@@ -1326,11 +1414,11 @@ const Projects = () => {
                   <div className="space-y-4">
                     <div>
                       <span className="font-semibold text-gray-700">Fecha de Inicio:</span>
-                      <p className="text-gray-900">{selectedProject.fechaInicio ? new Date(selectedProject.fechaInicio).toLocaleDateString() : 'No definida'}</p>
+                      <p className="text-gray-900">{(selectedProject.fechaInicio || selectedProject.fechainicio) ? new Date(selectedProject.fechaInicio || selectedProject.fechainicio).toLocaleDateString('es-CL') : 'No definida'}</p>
                     </div>
                     <div>
                       <span className="font-semibold text-gray-700">Fecha de Término:</span>
-                      <p className="text-gray-900">{selectedProject.fechaTermino ? new Date(selectedProject.fechaTermino).toLocaleDateString() : 'No definida'}</p>
+                      <p className="text-gray-900">{(selectedProject.fechaTermino || selectedProject.fechatermino) ? new Date(selectedProject.fechaTermino || selectedProject.fechatermino).toLocaleDateString('es-CL') : 'No definida'}</p>
                     </div>
                     <div>
                       <span className="font-semibold text-gray-700">Coordinador Encargado:</span>
@@ -1795,8 +1883,8 @@ const Projects = () => {
                       onChange={(e) => setNewActa({...newActa, horaInicio_period: e.target.value})}
                       className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                     >
-                      <option value="a.m.">a.m.</option>
-                      <option value="p.m.">p.m.</option>
+                      <option key="am1" value="a.m.">a.m.</option>
+                      <option key="pm1" value="p.m.">p.m.</option>
                     </select>
                   </div>
                 </div>
@@ -1848,8 +1936,8 @@ const Projects = () => {
                       onChange={(e) => setNewActa({...newActa, horaTermino_period: e.target.value})}
                       className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                     >
-                      <option value="a.m.">a.m.</option>
-                      <option value="p.m.">p.m.</option>
+                      <option key="am2" value="a.m.">a.m.</option>
+                      <option key="pm2" value="p.m.">p.m.</option>
                     </select>
                   </div>
                 </div>

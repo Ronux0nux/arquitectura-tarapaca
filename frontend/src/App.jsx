@@ -3,8 +3,8 @@ import { CartProvider } from './context/CartContext';
 import { CotizacionesProvider } from './context/CotizacionesContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { AuthProvider } from './context/AuthContext';
-import ProtectedRoute from './components/ProtectedRoute';
 import NavbarResponsive from "./components/NavbarResponsive";
+import ConnectionStatus from './components/ConnectionStatus';
 import Home from "./pages/Home";
 import Users from "./pages/Users";
 import Projects from "./pages/Projects";
@@ -45,6 +45,7 @@ export default function App() {
         <CartProvider>
           <CotizacionesProvider>
             <Router>
+              <ConnectionStatus />
               <CotizacionCartV2 />
               <Chatbot />
               <Routes>

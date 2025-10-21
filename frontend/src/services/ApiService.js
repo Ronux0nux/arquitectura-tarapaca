@@ -19,8 +19,38 @@ class ApiService {
     // En desarrollo usa localhost:5000, en producción usa la URL relativa
     const isDevelopment = process.env.NODE_ENV === 'development' || window.location.hostname === 'localhost';
     this.BACKEND_URL = isDevelopment ? 'http://localhost:5000/api' : '/api';
+    this.MAX_RETRIES = 3;
+    this.RETRY_DELAY = 1000; // ms
     
     console.log(`🔗 API Service configurado para: ${this.BACKEND_URL}`);
+  }
+
+  /**
+   * Reintenta una operación con backoff exponencial
+   */
+  async retryWithBackoff(fn, retries = this.MAX_RETRIES) {
+    let lastError;
+    
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        return await fn();
+      } catch (error) {
+        lastError = error;
+        
+        // No reintentar para errores 4xx (excepto 408, 429, 503)
+        if (error.status >= 400 && error.status < 500 && ![408, 429, 503].includes(error.status)) {
+          throw error;
+        }
+        
+        if (attempt < retries) {
+          const delay = Math.min(this.RETRY_DELAY * Math.pow(2, attempt - 1), 10000);
+          console.warn(`⚠️ Reintentando en ${delay}ms... (Intento ${attempt}/${retries})`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+    }
+    
+    throw lastError;
   }
 
   /**
@@ -46,86 +76,111 @@ class ApiService {
       const data = await response.json();
       
       if (!response.ok) {
-        throw new Error(data.message || `Error HTTP: ${response.status}`);
+        const error = new Error(data.message || `Error HTTP: ${response.status}`);
+        error.status = response.status;
+        error.data = data;
+        throw error;
       }
       
       return data;
     } else {
       if (!response.ok) {
-        throw new Error(`Error HTTP: ${response.status}`);
+        const error = new Error(`Error HTTP: ${response.status}`);
+        error.status = response.status;
+        throw error;
       }
       return response;
     }
   }
 
   /**
-   * Método GET genérico
+   * Método GET genérico con reintentos
    */
   async get(endpoint) {
-    try {
-      const response = await fetch(`${this.BACKEND_URL}${endpoint}`, {
-        method: 'GET',
-        headers: this.getAuthHeaders(),
-      });
-      
-      return await this.handleResponse(response);
-    } catch (error) {
-      console.error(`❌ Error en GET ${endpoint}:`, error);
-      throw error;
-    }
+    return this.retryWithBackoff(async () => {
+      try {
+        const response = await fetch(`${this.BACKEND_URL}${endpoint}`, {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+          signal: AbortSignal.timeout(10000) // Timeout de 10 segundos
+        });
+        
+        return await this.handleResponse(response);
+      } catch (error) {
+        if (error.name === 'AbortError') {
+          error.status = 408; // Request Timeout
+        }
+        throw error;
+      }
+    });
   }
 
   /**
-   * Método POST genérico
+   * Método POST genérico con reintentos
    */
   async post(endpoint, data) {
-    try {
-      const response = await fetch(`${this.BACKEND_URL}${endpoint}`, {
-        method: 'POST',
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify(data),
-      });
-      
-      return await this.handleResponse(response);
-    } catch (error) {
-      console.error(`❌ Error en POST ${endpoint}:`, error);
-      throw error;
-    }
+    return this.retryWithBackoff(async () => {
+      try {
+        const response = await fetch(`${this.BACKEND_URL}${endpoint}`, {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify(data),
+          signal: AbortSignal.timeout(10000) // Timeout de 10 segundos
+        });
+        
+        return await this.handleResponse(response);
+      } catch (error) {
+        if (error.name === 'AbortError') {
+          error.status = 408; // Request Timeout
+        }
+        throw error;
+      }
+    });
   }
 
   /**
-   * Método PUT genérico
+   * Método PUT genérico con reintentos
    */
   async put(endpoint, data) {
-    try {
-      const response = await fetch(`${this.BACKEND_URL}${endpoint}`, {
-        method: 'PUT',
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify(data),
-      });
-      
-      return await this.handleResponse(response);
-    } catch (error) {
-      console.error(`❌ Error en PUT ${endpoint}:`, error);
-      throw error;
-    }
+    return this.retryWithBackoff(async () => {
+      try {
+        const response = await fetch(`${this.BACKEND_URL}${endpoint}`, {
+          method: 'PUT',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify(data),
+          signal: AbortSignal.timeout(10000) // Timeout de 10 segundos
+        });
+        
+        return await this.handleResponse(response);
+      } catch (error) {
+        if (error.name === 'AbortError') {
+          error.status = 408; // Request Timeout
+        }
+        throw error;
+      }
+    });
   }
 
   /**
-   * Método DELETE genérico
+   * Método DELETE genérico con reintentos
    */
   async delete(endpoint) {
-    try {
-      const response = await fetch(`${this.BACKEND_URL}${endpoint}`, {
-        method: 'DELETE',
-        headers: this.getAuthHeaders(),
-      });
-      
-      return await this.handleResponse(response);
-    } catch (error) {
-      console.error(`❌ Error en DELETE ${endpoint}:`, error);
-      throw error;
-    }
+    return this.retryWithBackoff(async () => {
+      try {
+        const response = await fetch(`${this.BACKEND_URL}${endpoint}`, {
+          method: 'DELETE',
+          headers: this.getAuthHeaders(),
+          signal: AbortSignal.timeout(10000) // Timeout de 10 segundos
+        });
+        
+        return await this.handleResponse(response);
+      } catch (error) {
+        if (error.name === 'AbortError') {
+          error.status = 408; // Request Timeout
+        }
+        throw error;
+      }
+    });
   }
 
   /**
@@ -137,7 +192,7 @@ class ApiService {
       const response = await fetch(`${this.BACKEND_URL}/health`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
-        timeout: 5000
+        signal: AbortSignal.timeout(5000)
       });
       return response.ok;
     } catch (error) {
@@ -148,4 +203,5 @@ class ApiService {
 }
 
 // Exportar instancia singleton
-export default new ApiService();
+const apiService = new ApiService();
+export default apiService;

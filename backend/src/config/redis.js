@@ -7,10 +7,15 @@ const redisConfig = {
   port: process.env.REDIS_PORT || 6379,
   password: process.env.REDIS_PASSWORD || undefined,
   retryStrategy: (times) => {
-    const delay = Math.min(times * 50, 2000);
+    const delay = Math.min(times * 100, 5000); // Aumentar delay máximo a 5 segundos
     return delay;
   },
-  maxRetriesPerRequest: 3,
+  maxRetriesPerRequest: null, // null = infinitos reintentos
+  enableReadyCheck: true,
+  enableOfflineQueue: true,
+  connectTimeout: 10000, // 10 segundos para conectar
+  commandTimeout: 5000,  // 5 segundos por comando
+  keepAlive: 30000,      // Keep-alive cada 30 segundos
 };
 
 // Crear cliente de Redis

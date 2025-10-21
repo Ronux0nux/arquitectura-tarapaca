@@ -39,11 +39,11 @@ class AuthService {
 
   /**
    * Login con email y contraseña contra MongoDB
-   * RETORNA: { success, user, token, message }
+   * RETORNA: { success, user, accessToken, refreshToken, message }
    */
   async login(email, password, rememberMe = false) {
     try {
-      console.log('🔑 Intentando login con BD para:', email);
+      console.log('🔑 Intentando login para:', email);
       
       // Llamada a la API del backend
       const response = await this.apiService.post(this.endpoints.login, {
@@ -51,31 +51,40 @@ class AuthService {
         password
       });
 
-      if (response.success && response.token) {
-        const { user, token } = response;
+      if (response.success && (response.accessToken || response.token)) {
+        const { user, accessToken, token, refreshToken } = response;
+        
+        // Usar accessToken del nuevo sistema o token del antiguo
+        const finalToken = accessToken || token;
         
         // ALMACENAMIENTO DEL TOKEN Y USUARIO
-        // Para cambiar a cookies: usar document.cookie en lugar de localStorage
-  localStorage.setItem('tarapaca_token', token);
-    localStorage.setItem('tarapaca_user', JSON.stringify(user));
+        localStorage.setItem('tarapaca_token', finalToken);
+        localStorage.setItem('tarapaca_user', JSON.stringify(user));
         
-        console.log('✅ Login exitoso desde BD:', user.name);
+        // Guardar refresh token si está disponible
+        if (refreshToken) {
+          localStorage.setItem('tarapaca_refresh_token', refreshToken);
+          // Iniciar timer de refresco automático
+          this.startTokenRefreshTimer(user.id);
+        }
+        
+        console.log('✅ Login exitoso:', user.nombre || user.name);
         
         return {
           success: true,
           user: user,
-          token: token,
-          message: `Bienvenido ${user.name}`
+          accessToken: finalToken,
+          refreshToken: refreshToken,
+          message: `Bienvenido ${user.nombre || user.name}`
         };
       } else {
         throw new Error(response.message || 'Error de autenticación');
       }
       
     } catch (error) {
-      console.error('❌ Error en login con BD:', error.message);
+      console.error('❌ Error en login:', error.message);
       
       // FALLBACK: Si no hay conexión, usar autenticación local
-      // Esto mantiene la funcionalidad aunque la BD esté caída
       return await this.loginOffline(email, password, rememberMe);
     }
   }
@@ -258,7 +267,9 @@ class AuthService {
       empleado: ['cotizaciones', 'proveedores', 'proyectos']
     };
     
-    const userPermissions = rolePermissions[user.role] || [];
+    // Usar rol o role (por compatibilidad)
+    const userRole = user.role || user.rol;
+    const userPermissions = rolePermissions[userRole] || [];
     return userPermissions.includes('all') || userPermissions.includes(permission);
   }
 
@@ -274,12 +285,102 @@ class AuthService {
       empleado: 1
     };
     
-    const userLevel = roleHierarchy[user.role] || 0;
+    // Usar rol o role (por compatibilidad)
+    const userRole = user.role || user.rol;
+    const userLevel = roleHierarchy[userRole] || 0;
     const requiredLevel = roleHierarchy[requiredRole] || 0;
     
     return userLevel >= requiredLevel;
   }
+
+  /**
+   * Refrescar access token usando el refresh token
+   */
+  async refreshAccessToken() {
+    try {
+      const refreshToken = localStorage.getItem('tarapaca_refresh_token');
+      
+      if (!refreshToken) {
+        console.warn('⚠️ No hay refresh token disponible');
+        return false;
+      }
+
+      const response = await this.apiService.post('/users/refresh-token', {
+        refreshToken
+      });
+
+      if (response.success && response.accessToken) {
+        localStorage.setItem('tarapaca_token', response.accessToken);
+        console.log('✅ Access token refrescado exitosamente');
+        return true;
+      } else {
+        console.warn('⚠️ Fallo al refrescar token');
+        return false;
+      }
+    } catch (error) {
+      console.error('❌ Error refrescando token:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Iniciar timer para refrescar token automáticamente
+   * Se ejecuta 5 minutos antes de que expire el access token (24h - 5m = 1435m)
+   */
+  startTokenRefreshTimer(userId) {
+    // Limpiar timer anterior si existe
+    if (this.tokenRefreshTimer) {
+      clearInterval(this.tokenRefreshTimer);
+    }
+
+    // Refrescar token cada 20 horas (token dura 24h, se refresca a las 20h)
+    const REFRESH_INTERVAL = 20 * 60 * 60 * 1000; // 20 horas en milisegundos
+
+    this.tokenRefreshTimer = setInterval(async () => {
+      console.log('🔄 Refrescando token automáticamente...');
+      const success = await this.refreshAccessToken();
+      
+      if (!success) {
+        // Si falla el refresco, limpiar datos de sesión
+        console.warn('⚠️ Fallo al refrescar token automáticamente, requiere nuevo login');
+        this.logout();
+      }
+    }, REFRESH_INTERVAL);
+
+    console.log(`⏰ Timer de refresco de token configurado (cada ${REFRESH_INTERVAL / 3600000}h)`);
+  }
+
+  /**
+   * Detener timer de refresco
+   */
+  stopTokenRefreshTimer() {
+    if (this.tokenRefreshTimer) {
+      clearInterval(this.tokenRefreshTimer);
+      this.tokenRefreshTimer = null;
+      console.log('⏱️  Timer de refresco detenido');
+    }
+  }
+
+  /**
+   * Revocar refresh token (logout completo)
+   */
+  async revokeRefreshToken(userId) {
+    try {
+      const refreshToken = localStorage.getItem('tarapaca_refresh_token');
+      
+      if (refreshToken) {
+        await this.apiService.post('/users/revoke-token', { userId });
+        console.log('✅ Refresh token revocado');
+      }
+    } catch (error) {
+      console.warn('⚠️ Error revocando refresh token:', error);
+    } finally {
+      this.stopTokenRefreshTimer();
+      localStorage.removeItem('tarapaca_refresh_token');
+    }
+  }
 }
 
 // Exportar instancia singleton
-export default new AuthService();
+const authService = new AuthService();
+export default authService;

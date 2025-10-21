@@ -54,42 +54,39 @@ export const AuthProvider = ({ children }) => {
         const storedToken = AuthService.getStoredToken();
         
         if (storedUser && storedToken) {
-          console.log('📱 Token encontrado, verificando con BD...');
+          console.log('📱 Token encontrado localmente, restaurando sesión...');
           
-          // Verificar token con la base de datos
-          const verification = await AuthService.verifyToken();
+          // Restaurar sesión local inmediatamente (no esperes a BD)
+          setUser(storedUser);
+          setIsAuthenticated(true);
+          console.log('✅ Sesión restaurada:', storedUser.nombre || storedUser.name);
           
-          if (verification.valid && verification.user) {
-            setUser(verification.user);
-            setIsAuthenticated(true);
-            setConnectionStatus('online');
-            console.log('✅ Sesión válida restaurada desde BD:', verification.user.name);
-          } else {
-            // Token inválido, mantener datos locales si existen
-            if (storedUser.id?.startsWith('offline_')) {
-              setUser(storedUser);
-              setIsAuthenticated(true);
-              setConnectionStatus('offline');
-              console.log('⚠️ Usando sesión offline:', storedUser.name);
+          // Verificar token con la BD EN BACKGROUND (sin bloquear)
+          try {
+            const verification = await AuthService.verifyToken();
+            
+            if (verification.valid && verification.user) {
+              // Actualizar datos si la BD tiene información más reciente
+              setUser(verification.user);
+              setConnectionStatus('online');
+              console.log('📡 Datos sincronizados con BD');
             } else {
-              console.log('❌ Token inválido, limpiando sesión');
+              // Token inválido en BD
+              console.warn('⚠️ Token inválido en BD, limpiando sesión');
               await AuthService.logout();
             }
+          } catch (error) {
+            // Error de conexión con BD - mantener sesión local
+            console.warn('⚠️ No se pudo verificar con BD (sin conexión), usando sesión local');
+            setConnectionStatus('offline');
           }
         } else {
           console.log('📭 No hay sesión previa');
+          setIsAuthenticated(false);
         }
       } catch (error) {
         console.error('❌ Error inicializando auth:', error);
-        
-        // En caso de error, verificar si hay datos locales
-        const storedUser = AuthService.getStoredUser();
-        if (storedUser) {
-          setUser(storedUser);
-          setIsAuthenticated(true);
-          setConnectionStatus('offline');
-          console.log('⚠️ Error de conexión, usando datos locales');
-        }
+        setIsAuthenticated(false);
       } finally {
         setIsLoading(false);
       }
