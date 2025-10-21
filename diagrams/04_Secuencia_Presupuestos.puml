@@ -1,0 +1,346 @@
+@startuml Modulo_Presupuestos
+title Módulo de Presupuestos/Cotizaciones - Diagrama de Secuencia
+
+actor Usuario
+participant "Frontend\n(React)" as Frontend
+participant "Express\nServer" as Express
+participant "cotizacionRouter\n(Routes)" as Router
+participant "cotizacionController\n(Controllers)" as Controller
+participant "Cotizacion\n(Model)" as Model
+database "PostgreSQL" as DB
+
+== CREAR COTIZACIÓN ==
+
+Usuario -> Frontend: Selecciona:\n- Proyecto\n- Proveedor\n- Material\n- Cantidad\n- Precio Unitario
+activate Frontend
+note right of Frontend
+  Form:
+  • proyectoId: 5
+  • proveedorId: 3
+  • insumoId: 12
+  • nombreMaterial: "Cemento"
+  • cantidad: 10
+  • precioUnitario: 8500
+  • estado: "Pendiente"
+end note
+
+Frontend -> Express: POST /api/cotizaciones\nwith form data
+activate Express
+
+Express -> Router: router.post('/')
+activate Router
+
+Router -> Controller: createCotizacion(req.body)
+activate Controller
+
+Controller -> Controller: Validar datos
+note right of Controller
+  Validaciones:
+  • proyectoId existe
+  • proveedorId existe
+  • cantidad > 0
+  • precio > 0
+end note
+
+Controller -> Model: create(req.body)
+activate Model
+
+Model -> DB: INSERT INTO cotizaciones\n(proyectoId, proveedorId,\n insumoId, nombreMaterial,\n cantidad, precioUnitario,\n estado)\nVALUES (5, 3, 12, ...,\n 10, 8500, 'Pendiente')
+activate DB
+DB --> Model: cotizacionId = 42
+deactivate DB
+
+Model --> Controller: {id: 42, ...}
+deactivate Model
+
+Controller -> Express: res.status(201).json(result)
+deactivate Controller
+
+Express --> Frontend: 201 Created\n{cotizacion: {...}}
+deactivate Express
+deactivate Router
+
+Frontend -> Frontend: Mostrar confirmación\nRecargar lista
+Frontend --> Usuario: "Cotización creada!"
+deactivate Frontend
+
+== OBTENER COTIZACIONES POR PROYECTO ==
+
+Usuario -> Frontend: Click en proyecto\n(Ver presupuestos)
+activate Frontend
+
+Frontend -> Express: GET /api/cotizaciones/proyecto/5
+activate Express
+
+Express -> Router: router.get('/proyecto/:id')
+activate Router
+
+Router -> Controller: getCotizacionesByProject(5)
+activate Controller
+
+Controller -> Model: findAll()
+activate Model
+
+Model -> DB: SELECT * FROM cotizaciones\nWHERE proyectoId = 5
+activate DB
+DB --> Model: [6 cotizaciones]
+deactivate DB
+
+Model --> Controller: cotizaciones
+deactivate Model
+
+Controller -> Controller: Calculate summary
+note right of Controller
+  CÁLCULOS:
+  
+  total: 6
+  
+  pendientes: 3
+  aprobadas: 2
+  compradas: 1
+  
+  montoTotal: 
+  SUM(cantidad * precioUnitario)
+  = 10*8500 + 20*3200 + ...
+  = $145,600
+  
+  Estados:
+  • Pendiente (3)
+  • Aprobada (2)
+  • Comprada (1)
+  • Rechazada (0)
+end note
+
+Controller -> Express: res.json({\n  cotizaciones: [...],\n  resumen: {\n    total: 6,\n    pendientes: 3,\n    aprobadas: 2,\n    compradas: 1,\n    montoTotal: 145600\n  }\n})
+deactivate Controller
+
+Express --> Frontend: 200 OK\n{data with summary}
+deactivate Express
+deactivate Router
+
+Frontend -> Frontend: Renderizar:\n1. Tabla cotizaciones\n2. Cards resumen\n3. Gráfico estados
+activate Frontend
+
+Frontend --> Usuario: Display:\n- 6 cotizaciones\n- Resumen $145,600\n- Gráficos estados
+deactivate Frontend
+
+== OBTENER COTIZACIÓN POR ID ==
+
+Usuario -> Frontend: Click en cotización\n(Ver detalles)
+activate Frontend
+
+Frontend -> Express: GET /api/cotizaciones/42
+activate Express
+
+Express -> Router: router.get('/:id')
+activate Router
+
+Router -> Controller: getCotizacionById(42)
+activate Controller
+
+Controller -> Model: findById(42)
+activate Model
+
+Model -> DB: SELECT * FROM cotizaciones\nWHERE id = 42
+activate DB
+
+alt Cotización encontrada
+  DB --> Model: {id: 42, ...}
+else No encontrada
+  DB --> Model: null
+end
+
+deactivate DB
+
+alt if cotizacion
+  Model --> Controller: cotizacion
+  Controller -> Express: res.json(cotizacion)
+  Express --> Frontend: 200 OK
+  deactivate Controller
+  deactivate Model
+else
+  Model --> Controller: null
+  deactivate Model
+  Controller -> Express: res.status(404).json\n({error: 'Not found'})
+  Express --> Frontend: 404 Not Found
+  deactivate Controller
+end
+
+deactivate Express
+deactivate Router
+
+Frontend --> Usuario: Show cotización details
+deactivate Frontend
+
+== ACTUALIZAR COTIZACIÓN ==
+
+Usuario -> Frontend: Modifica estado\nCambio: Pendiente → Aprobada
+activate Frontend
+
+Frontend -> Express: PUT /api/cotizaciones/42\n{estado: "Aprobada"}
+activate Express
+
+Express -> Router: router.put('/:id')
+activate Router
+
+Router -> Controller: updateCotizacion(42, body)
+activate Controller
+
+Controller -> Model: update(42, body)
+activate Model
+
+Model -> DB: UPDATE cotizaciones SET\n  estado = 'Aprobada',\n  updatedAt = NOW()\nWHERE id = 42
+activate DB
+DB --> Model: rows updated
+deactivate DB
+
+Model --> Controller: updated cotizacion
+deactivate Model
+
+Controller -> Express: res.json(updated)
+deactivate Controller
+
+Express --> Frontend: 200 OK
+deactivate Express
+deactivate Router
+
+Frontend -> Frontend: Actualizar tabla\nMostrar nuevo estado
+Frontend --> Usuario: "Estado actualizado!"
+deactivate Frontend
+
+== APROBAR COTIZACIÓN (Workflow) ==
+
+Usuario -> Frontend: Click botón\n"Aprobar Cotización"
+activate Frontend
+
+Frontend -> Express: POST /api/cotizaciones/42/aprobar
+activate Express
+
+Express -> Router: router.post('/:id/aprobar')
+activate Router
+
+Router -> Controller: aprobarCotizacion(42)
+activate Controller
+
+note right of Controller
+  LÓGICA DE APROBACIÓN:
+  
+  1. Validar estado actual
+     (debe ser 'Pendiente')
+  
+  2. Verificar permisos
+     (usuario es Admin/Supervisor)
+  
+  3. Actualizar estado
+     Pendiente → Aprobada
+  
+  4. Registrar auditoría
+     (quién, cuándo)
+  
+  5. Notificar stakeholders
+     (email al proveedor)
+end note
+
+Controller -> Model: update(42, {estado: "Aprobada"})
+activate Model
+
+Model -> DB: UPDATE cotizaciones SET\n  estado = 'Aprobada',\n  aprobadoEn = NOW(),\n  aprobadoPor = userId\nWHERE id = 42
+activate DB
+DB --> Model: success
+deactivate DB
+
+Model --> Controller: updated
+deactivate Model
+
+Controller -> Controller: Registrar auditoría
+note right of Controller
+  INSERT INTO audit_log:
+  • tabla: "cotizaciones"
+  • accion: "APPROVE"
+  • recordId: 42
+  • usuario: currentUser
+  • timestamp: NOW()
+end note
+
+Controller -> Express: res.json({\n  success: true,\n  message: "Aprobada",\n  cotizacion: {...}\n})
+deactivate Controller
+
+Express --> Frontend: 200 OK
+deactivate Express
+deactivate Router
+
+Frontend -> Frontend: Actualizar:\n- Estado: Aprobada\n- Botones disponibles\n- Historial
+Frontend --> Usuario: "¡Aprobada!"
+deactivate Frontend
+
+== RECHAZAR COTIZACIÓN ==
+
+Usuario -> Frontend: Click botón\n"Rechazar Cotización"
+activate Frontend
+
+Frontend -> Express: POST /api/cotizaciones/42/rechazar\n{motivo: "Precio muy alto"}
+activate Express
+
+Express -> Router: router.post('/:id/rechazar')
+activate Router
+
+Router -> Controller: rechazarCotizacion(42, body)
+activate Controller
+
+Controller -> Model: update(42, {\n  estado: "Rechazada",\n  motivo: "Precio muy alto"\n})
+activate Model
+
+Model -> DB: UPDATE cotizaciones SET\n  estado = 'Rechazada',\n  rechazadoEn = NOW(),\n  motivo = 'Precio muy alto'\nWHERE id = 42
+activate DB
+DB --> Model: success
+deactivate DB
+
+Model --> Controller: updated
+deactivate Model
+
+Controller -> Express: res.json({\n  success: true,\n  message: "Rechazada"\n})
+deactivate Controller
+
+Express --> Frontend: 200 OK
+deactivate Express
+deactivate Router
+
+Frontend --> Usuario: "Rechazada"
+deactivate Frontend
+
+== ELIMINAR COTIZACIÓN ==
+
+Usuario -> Frontend: Click botón\n"Eliminar"
+activate Frontend
+
+Frontend -> Express: DELETE /api/cotizaciones/42
+activate Express
+
+Express -> Router: router.delete('/:id')
+activate Router
+
+Router -> Controller: deleteCotizacion(42)
+activate Controller
+
+Controller -> Model: delete(42)
+activate Model
+
+Model -> DB: DELETE FROM cotizaciones\nWHERE id = 42
+activate DB
+DB --> Model: confirmation
+deactivate DB
+
+Model --> Controller: success
+deactivate Model
+
+Controller -> Express: res.json\n({message: 'Deleted'})
+deactivate Controller
+
+Express --> Frontend: 200 OK
+deactivate Express
+deactivate Router
+
+Frontend --> Usuario: "Eliminada!"
+deactivate Frontend
+
+@enduml

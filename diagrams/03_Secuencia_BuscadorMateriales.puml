@@ -1,0 +1,248 @@
+@startuml Modulo_BuscadorMateriales
+title Módulo de Búsqueda de Materiales (SERPAPI) - Diagrama de Secuencia
+
+actor Usuario
+participant "Frontend\n(React)" as Frontend
+participant "Express\nServer" as Express
+participant "datasetRouter\n(Routes)" as Router
+participant "datasetController\n(Controllers)" as Controller
+participant "SERPAPI\nService" as SERPAPI
+participant "Insumo\n(Model)" as Model
+database "PostgreSQL" as DB
+
+== BUSCAR MATERIALES CON SERPAPI ==
+
+Usuario -> Frontend: Ingresa "cemento"\nClick buscar
+activate Frontend
+note right of Frontend
+  Usuario busca en:
+  Google Shopping
+  Buscador integrado
+end note
+
+Frontend -> Express: GET /api/search/materials?\nterm=cemento&type=shopping
+activate Express
+
+Express -> Router: router.get('/search')
+activate Router
+
+Router -> Controller: searchMaterials(term)
+activate Controller
+
+Controller -> SERPAPI: Call SERPAPI API\nwith parameters:\n• q: "cemento"\n• gl: "cl"\n• hl: "es"
+activate SERPAPI
+note right of SERPAPI
+  SERPAPI retorna:
+  {\n  "shopping_results": [\n    {\n      "title": "Cemento Portland",\n      "price": "$8,500",\n      "link": "https://...",\n      "product_link": "https://...",\n      "source": "Proveedor A",\n      "rating": 4.5,\n      "reviews": 250,\n      "thumbnail": "https://..."\n    },\n    ... 14 más\n  ]\n}
+end note
+
+SERPAPI --> Controller: 200 OK\n[15 results]
+deactivate SERPAPI
+
+note right of Controller
+  Extrae datos:
+  • title ✅
+  • price ✅
+  • link ✅
+  • product_link ✅
+  • rating ✅
+  • reviews ✅
+  • source
+  • thumbnail
+end note
+
+Controller -> Express: res.json(results)
+deactivate Controller
+
+Express --> Frontend: 200 OK\n{searchResults: [15]}
+deactivate Express
+deactivate Router
+
+Frontend -> Frontend: Display results\nin table:\n- Nombre\n- Precio\n- Link\n- Rating\n- Reviews
+activate Frontend
+
+Frontend --> Usuario: Show 15 materials\nwith links ✅
+deactivate Frontend
+
+== GUARDAR RESULTADOS DE BÚSQUEDA ==
+
+Usuario -> Frontend: (Auto) o Click\n"Guardar búsqueda"
+activate Frontend
+
+Frontend -> Express: POST /api/dataset/saveSearchResults\n{\n  searchTerm: "cemento",\n  searchType: "shopping",\n  results: [15 items]\n}
+activate Express
+
+Express -> Router: router.post('/saveSearchResults')
+activate Router
+
+Router -> Controller: saveSearchResults(body)
+activate Controller
+
+loop for each result in results (15 items)
+  Controller -> Model: findOne({\n    nombre: result.title,\n    OR metadata.link\n  })
+  activate Model
+  
+  Model -> DB: SELECT * FROM insumos\n  WHERE nombre = ...\n  OR metadata.link = ...
+  activate DB
+  
+  alt Insumo ya existe
+    DB --> Model: existing insumo
+    note right of Model
+      Actualizar metadata:
+      • link (NUEVO) ✅
+      • product_link ✅
+      • rating ✅
+      • reviews ✅
+      • ultimaActualizacion
+      • vecesEncontrado++
+    end note
+    Model -> DB: UPDATE insumos SET\n  metadata = {...}\n  WHERE id = ...
+    activate DB
+    DB --> Model: confirmation
+    deactivate DB
+  else Insumo NO existe
+    DB --> Model: null
+    note right of Model
+      Crear nuevo insumo
+      con metadata:
+      • link ✅
+      • product_link ✅
+      • price
+      • rating ✅
+      • reviews ✅
+      • origenBusqueda: "SERPAPI"
+      • fechaAgregado
+    end note
+    Model -> DB: INSERT INTO insumos\n  (nombre, descripcion,\n   unidad, precioReferencia,\n   metadata)\n  VALUES (...)
+    activate DB
+    DB --> Model: id generado
+    deactivate DB
+  end
+  
+  deactivate DB
+  Model --> Controller: success
+  deactivate Model
+end
+
+note right of Controller
+  RESULTADO del LOOP:
+  • savedCount: 14
+  • totalResults: 15
+  • errors: []
+  
+  14 nuevos/actualizados
+end note
+
+Controller -> Express: res.json({\n  message: "Procesados",\n  searchTerm: "cemento",\n  totalResults: 15,\n  savedCount: 14,\n  errors: []\n})
+deactivate Controller
+
+Express --> Frontend: 200 OK\n{saved data}
+deactivate Express
+deactivate Router
+
+Frontend -> Frontend: Mostrar confirmación\n"14 materiales\nsalvados"
+Frontend --> Usuario: Success message
+deactivate Frontend
+
+== BUSCAR EN BD (MATERIALES YA GUARDADOS) ==
+
+Usuario -> Frontend: Nueva búsqueda\nIngresa "cemento"\nClick buscar
+activate Frontend
+
+Frontend -> Express: GET /api/insumos/search?\nterm=cemento
+activate Express
+
+Express -> Router: router.get('/search')
+activate Router
+
+Router -> Controller: searchInsumos(term)
+activate Controller
+
+Controller -> Model: findAll()
+activate Model
+
+Model -> DB: SELECT * FROM insumos\n  WHERE nombre ILIKE '%cemento%'\n  OR descripcion ILIKE '%cemento%'
+activate DB
+DB --> Model: [3 insumos guardados]
+deactivate DB
+
+Model --> Controller: [insumos]
+deactivate Model
+
+note right of Controller
+  Retorna insumos con:
+  • Nombre
+  • Precio
+  • metadata: {\n    link,\n    product_link,\n    rating,\n    reviews,\n    origenBusqueda: "SERPAPI"\n  }
+end note
+
+Controller -> Express: res.json(insumos)
+deactivate Controller
+
+Express --> Frontend: 200 OK\n{insumos: [3]}
+deactivate Express
+deactivate Router
+
+Frontend -> Frontend: Display cached\nresults (sin llamar SERPAPI)
+Frontend --> Usuario: Instant results\nfrom cache
+deactivate Frontend
+
+== SUBIR CSV CON MATERIALES ==
+
+Usuario -> Frontend: Selecciona archivo\n"productos.csv"\nClick "Subir"
+activate Frontend
+
+Frontend -> Express: POST /api/dataset/upload\n(multipart/form-data)\nfile: productos.csv
+activate Express
+
+Express -> Router: router.post('/upload',\n  upload.single('file'))
+activate Router
+
+Router -> Controller: uploadDataset(req.file)
+activate Controller
+
+note right of Controller
+  Procesa archivo CSV
+  esperando columnas:
+  • IDLicitación (nombre)
+  • Unidad
+  • Precio Unitario
+end note
+
+Controller -> Controller: createReadStream(filePath)
+note right of Controller
+  Lee archivo línea por línea
+  usando csv-parser
+end note
+
+loop for each row in CSV
+  Controller -> Model: findOneAndUpdate({\n    nombre: row["IDLicitación"]\n  }, {\n    unidad: row["Unidad"],\n    precioReferencia: row["Precio..."]\n  }, {upsert: true})\n
+  activate Model
+  
+  Model -> DB: SELECT/INSERT/UPDATE
+  activate DB
+  DB --> Model: result
+  deactivate DB
+  
+  Model --> Controller: success
+  deactivate Model
+end
+
+Controller -> Controller: fs.unlinkSync(filePath)\nElimina archivo temporal
+note right of Controller
+  Limpia archivo después
+  de procesar
+end note
+
+Controller -> Express: res.json({\n  message: "Dataset procesado",\n  rows: 150\n})
+deactivate Controller
+
+Express --> Frontend: 200 OK\n{rows processed}
+deactivate Express
+deactivate Router
+
+Frontend -> Frontend: Mostrar:\n"150 filas cargadas"
+Frontend --> Usuario: Upload complete
+deactivate Frontend
+
+@enduml

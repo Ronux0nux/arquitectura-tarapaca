@@ -1,0 +1,351 @@
+@startuml Modulo_ExcelOnline
+title Módulo Excel Online - Diagrama de Secuencia
+
+actor Usuario
+participant "Frontend\n(React +\nXLSX.js)" as Frontend
+participant "Express\nServer" as Express
+participant "excelRouter\n(Routes)" as Router
+participant "excelController\n(Controllers)" as Controller
+participant "Insumo\n(Model)" as Model
+database "PostgreSQL" as DB
+
+== OBTENER PLANTILLA EXCEL ==
+
+Usuario -> Frontend: Click "Generar Excel"\nSelecciona tipo:\nPRESUPUESTO
+activate Frontend
+
+Frontend -> Express: GET /api/excel/template?\nprojectId=5
+activate Express
+
+Express -> Router: router.get('/template')
+activate Router
+
+Router -> Controller: getExcelTemplate(query)
+activate Controller
+
+note right of Controller
+  SIN ACCESO A BD
+  (En memoria solamente)
+end note
+
+Controller -> Controller: createPresupuestoTemplate()
+activate Controller as PresupuestoTemplate
+note right of PresupuestoTemplate
+  Retorna Array 2D:
+  [
+    ['ITEM', 'DESCRIPCIÓN',
+     'UNIDAD', 'CANTIDAD',
+     'PRECIO UNITARIO',
+     'PRECIO TOTAL',
+     'PROVEEDOR',
+     'CATEGORÍA', 'PROYECTO'],
+    ['1', 'Ejemplo: Cemento',
+     'Sacos', '10', '8500',
+     '85000', 'Proveedor A',
+     'Mat. Básicos', ''],
+    ['2', '', '', '', '', '', ...],
+    ...
+    ['', '', '', '',
+     'TOTAL:', '=SUM(F2:F100)',
+     '', '', '']
+  ]
+end note
+deactivate PresupuestoTemplate
+
+Controller -> Controller: createAPUTemplate()
+activate Controller as APUTemplate
+note right of APUTemplate
+  Array 2D con:
+  - ACTIVIDAD
+  - DESCRIPCIÓN RECURSO
+  - TIPO (MANO OBRA/EQUIPO/MATERIAL)
+  - UNIDAD
+  - CANTIDAD
+  - PRECIO UNITARIO
+  - PRECIO TOTAL
+  - PROVEEDOR
+  
+  Ejemplos: Excavación, Albañilería, etc
+end note
+deactivate APUTemplate
+
+Controller -> Controller: createRecursosTemplate()
+activate Controller as RecursosTemplate
+note right of RecursosTemplate
+  Array 2D con:
+  - CÓDIGO (MAT001, MAT002...)
+  - DESCRIPCIÓN
+  - UNIDAD
+  - PRECIO UNITARIO
+  - PROVEEDOR
+  - CATEGORÍA
+  - ÚLTIMA ACTUALIZACIÓN
+  - ORIGEN (SERPAPI/MANUAL/BD)
+end note
+deactivate RecursosTemplate
+
+Controller -> Express: res.json({\n  success: true,\n  data: {\n    sheets: {\n      'PRESUPUESTO': [...],\n      'APU': [...],\n      'RECURSOS': [...]\n    },\n    sheetNames: [\n      'PRESUPUESTO',\n      'APU',\n      'RECURSOS'\n    ],\n    projectId: 5,\n    metadata: {\n      created: '2025-10-20T...',\n      template: true\n    }\n  }\n})
+deactivate Controller
+
+Express --> Frontend: 200 OK\n{sheets, sheetNames}
+deactivate Express
+deactivate Router
+
+Frontend -> Frontend: Renderizar tabla Excel\nen memoria (NO BD):\n- Headers\n- Filas ejemplo\n- Fórmulas
+activate Frontend
+
+Frontend --> Usuario: Display plantilla\ninteractiva
+deactivate Frontend
+
+== AGREGAR DATASET AL EXCEL ==
+
+Usuario -> Frontend: Selecciona\nmateriales del buscador:\n- Cemento (10 sacos)\n- Arena (15 m3)\nClick "Agregar"
+activate Frontend
+
+Frontend -> Express: POST /api/excel/addDataset\n{\n  sheetName: "PRESUPUESTO",\n  products: [\n    {nombre: "Cemento",\n     cantidad: 10,\n     precio: 8500, ...},\n    {nombre: "Arena",\n     cantidad: 15,\n     precio: 3200, ...}\n  ],\n  format: "presupuesto",\n  projectId: 5\n}
+activate Express
+
+Express -> Router: router.post('/addDataset')
+activate Router
+
+Router -> Controller: addDatasetToExcel(body)
+activate Controller
+
+Controller -> Controller: getCurrentSheetData\n("PRESUPUESTO")
+activate Controller as GetSheet
+note right of GetSheet
+  Obtiene datos actuales
+  del sheet en memoria
+  (ya tiene headers +\n   datos previos si los hay)
+end note
+deactivate GetSheet
+
+Controller -> Controller: formatProductsForExcel\n(products, "presupuesto", 5)
+activate Controller as FormatProducts
+note right of FormatProducts
+  Convierte datos a Array 2D
+  con formato PRESUPUESTO:
+  
+  [
+    [1, "Cemento", "Sacos", 10,
+     8500, "=C2*E2",
+     "Proveedor A",
+     "Mat. Básicos", 5],
+    [2, "Arena", "m3", 15, 3200,
+     "=C3*E3",
+     "Proveedor B",
+     "Mat. Básicos", 5]
+  ]
+  
+  Nota: Fórmulas =SUM() se
+  mantienen en totales
+end note
+deactivate FormatProducts
+
+note right of Controller
+  Inserta fila de totales:
+  [
+    '', '', '', '',
+    'TOTAL:',
+    '=SUM(F2:F100)',
+    '', '', ''
+  ]
+end note
+
+Controller -> Express: res.json({\n  success: true,\n  message: "2 productos agregados",\n  rowsAdded: 2,\n  startRow: 2,\n  data: [...datos actualizados...]\n})
+deactivate Controller
+
+Express --> Frontend: 200 OK\n{updated data}
+deactivate Express
+deactivate Router
+
+Frontend -> Frontend: Actualizar tabla:\n- 2 nuevas filas\n- Recalcular TOTAL\n- Mostrar: $149,800
+activate Frontend
+note right of Frontend
+  TOTAL ACTUAL:
+  (10 * 8500) + (15 * 3200)
+  = 85,000 + 48,000
+  = $133,000
+end note
+
+Frontend --> Usuario: Excel actualizado:\n2 filas agregadas
+deactivate Frontend
+
+== GUARDAR DATOS EXCEL ==
+
+Usuario -> Frontend: (Automático al editar\no click "Guardar")
+activate Frontend
+
+Frontend -> Express: POST /api/excel/save\n{\n  sheets: {...},\n  sheetNames: [...],\n  projectId: 5,\n  timestamp: NOW()\n}
+activate Express
+
+Express -> Router: router.post('/save')
+activate Router
+
+Router -> Controller: saveExcelData(body)
+activate Controller
+
+note right of Controller
+  IMPORTANTE:
+  NO se guarda en BD\n  (excepto metadata)
+  
+  Los datos se guardan
+  EN SESIÓN/CACHE\n  del usuario
+  
+  O se pueden guardar en:
+  • Redis (caché temporal)
+  • Session Storage
+  • Local Storage (cliente)
+end note
+
+Controller -> Express: res.json({\n  success: true,\n  message: "Datos guardados",\n  timestamp: new Date()\n})
+deactivate Controller
+
+Express --> Frontend: 200 OK
+deactivate Express
+deactivate Router
+
+Frontend --> Usuario: "Guardado"
+deactivate Frontend
+
+== DESCARGAR EXCEL (.xlsx) ==
+
+Usuario -> Frontend: Click "Descargar\nExcel"
+activate Frontend
+
+Frontend -> Frontend: XLSX Processing\n(EN CLIENTE - SIN BACKEND)
+activate Frontend as XLSXClient
+note right of XLSXClient
+  Usa librería XLSX.js
+  en el navegador
+  
+  const wb = XLSX.utils.book_new()
+  
+  Para cada sheet:
+  const ws = XLSX.utils.aoa_to_sheet\n    (arrayData)
+  XLSX.utils.book_append_sheet\n    (wb, ws, sheetName)
+  
+  XLSX.writeFile(wb,\n    'presupuesto_proyecto_5.xlsx')
+end note
+
+Frontend -> Frontend: Generar archivo\nBinario XLSX
+Frontend -> Frontend: Triggerdescargar
+deactivate XLSXClient
+
+Frontend --> Usuario: ⬇️ Descarga archivo\n"presupuesto_proyecto_5.xlsx"
+deactivate Frontend
+
+note right of Usuario
+  Archivo en PC de usuario:
+  • 3 sheets: PRESUPUESTO,
+    APU, RECURSOS
+  • Fórmulas SUM() activas
+  • Editable en Excel/Calc
+  • Formato profesional
+end note
+
+== EXPORTAR A PDF ==
+
+Usuario -> Frontend: Click "Exportar\na PDF"
+activate Frontend
+
+Frontend -> Express: POST /api/excel/export\n{\n  sheets: {...},\n  format: "pdf",\n  projectId: 5\n}
+activate Express
+
+Express -> Router: router.post('/export')
+activate Router
+
+Router -> Controller: exportToPDF(body)
+activate Controller
+
+note right of Controller
+  Usar librería:
+  • pdfkit (Backend)
+  o
+  • jsPDF (Frontend)
+  
+  Convertir:
+  Array 2D → Tabla PDF
+  → Archivo
+end note
+
+Controller -> Controller: Generate PDF
+activate Controller as GenPDF
+note right of GenPDF
+  Crea PDF con:
+  • Header: Nombre Proyecto
+  • Tabla PRESUPUESTO
+  • Tabla APU
+  • Tabla RECURSOS
+  • Footer: Fecha/Firma
+end note
+deactivate GenPDF
+
+Controller -> Express: res.attachment(\n  'presupuesto_proyecto_5.pdf'\n).send(pdfBuffer)
+deactivate Controller
+
+Express --> Frontend: 200 OK\n(archivo PDF)
+deactivate Express
+deactivate Router
+
+Frontend --> Usuario: ⬇️ Descarga\n"presupuesto_proyecto_5.pdf"
+deactivate Frontend
+
+== IMPORTAR DATOS DESDE EXCEL ==
+
+Usuario -> Frontend: Click "Importar\nExcel"
+activate Frontend
+
+Frontend -> Express: POST /api/excel/import\n(multipart/form-data)\nfile: "presupuesto.xlsx"
+activate Express
+
+Express -> Router: router.post('/import',\n  upload.single('file'))
+activate Router
+
+Router -> Controller: importExcelData(req.file)
+activate Controller
+
+note right of Controller
+  Procesa archivo XLSX:
+  
+  const workbook = XLSX\n    .readFile(filePath)
+  const sheet = workbook\n    .Sheets[sheetName]
+  const data = XLSX.utils\n    .sheet_to_json(sheet)
+end note
+
+Controller -> Controller: Parse Excel file
+activate Controller as ParseExcel
+note right of ParseExcel
+  Lee cada fila y:
+  • Valida formato
+  • Extrae valores
+  • Ignora fórmulas
+  • Convierte tipos
+end note
+deactivate ParseExcel
+
+loop for each row in excel
+  Controller -> Model: findOneAndUpdate({\n    nombre: row.DESCRIPCIÓN\n  }, {\n    unidad: row.UNIDAD,\n    precioReferencia: row.PRECIO,\n    ...\n  }, {upsert: true})
+  activate Model
+  
+  Model -> DB: SELECT/INSERT/UPDATE
+  activate DB
+  DB --> Model: result
+  deactivate DB
+  
+  Model --> Controller: success
+  deactivate Model
+end
+
+Controller -> Express: res.json({\n  success: true,\n  message: "50 filas importadas",\n  imported: 50,\n  errors: []\n})
+deactivate Controller
+
+Express --> Frontend: 200 OK
+deactivate Express
+deactivate Router
+
+Frontend -> Frontend: Mostrar resultado:\n"50 filas importadas"
+Frontend --> Usuario: Import complete
+deactivate Frontend
+
+@enduml

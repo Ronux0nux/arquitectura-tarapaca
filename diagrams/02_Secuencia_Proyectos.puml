@@ -1,0 +1,252 @@
+@startuml Modulo_Proyectos
+title Módulo de Proyectos - Diagrama de Secuencia
+
+actor Usuario
+participant "Frontend\n(React)" as Frontend
+participant "Express\nServer" as Express
+participant "projectRouter\n(Routes)" as Router
+participant "projectController\n(Controllers)" as Controller
+participant "Project\n(Model)" as ProjectModel
+participant "Cotizacion\n(Model)" as CotizacionModel
+participant "OrdenCompra\n(Model)" as OrdenModel
+database "PostgreSQL" as DB
+
+== CREAR PROYECTO ==
+
+Usuario -> Frontend: Completa formulario\nproyecto
+activate Frontend
+note right of Frontend
+  Datos:
+  • nombre
+  • código
+  • descripción
+  • fechaInicio
+  • fechaTermino
+end note
+
+Frontend -> Express: POST /api/projects\nwith req.body
+activate Express
+
+Express -> Router: router.post('/')
+activate Router
+
+Router -> Controller: createProject(req.body)
+activate Controller
+
+Controller -> ProjectModel: create(req.body)
+activate ProjectModel
+
+ProjectModel -> DB: INSERT INTO projects\n(nombre, codigo, ...)
+activate DB
+DB --> ProjectModel: projectId
+deactivate DB
+
+ProjectModel --> Controller: {id, nombre, codigo, ...}
+deactivate ProjectModel
+
+Controller -> Express: res.status(201).json(result)
+deactivate Controller
+
+Express --> Frontend: 201 Created\n{projectId: 5}
+deactivate Express
+deactivate Router
+
+Frontend --> Usuario: "Proyecto creado!"
+deactivate Frontend
+
+== OBTENER RESUMEN DE MATERIALES ==
+
+Usuario -> Frontend: Click en proyecto\n(Ver detalles)
+activate Frontend
+
+Frontend -> Express: GET /api/projects/5/materiales
+activate Express
+
+Express -> Router: router.get('/:id/materiales')
+activate Router
+
+Router -> Controller: getProjectMaterialSummary(5)
+activate Controller
+
+par
+  Controller -> ProjectModel: findById(5)
+  activate ProjectModel
+  ProjectModel -> DB: SELECT * FROM projects\nWHERE id = 5
+  activate DB
+  DB --> ProjectModel: project
+  deactivate DB
+  ProjectModel --> Controller: project
+  deactivate ProjectModel
+and
+  Controller -> CotizacionModel: find({proyectoId: 5})
+  activate CotizacionModel
+  CotizacionModel -> DB: SELECT * FROM cotizaciones\nWHERE proyectoId = 5
+  activate DB
+  DB --> CotizacionModel: [6 cotizaciones]
+  deactivate DB
+  CotizacionModel --> Controller: cotizaciones
+  deactivate CotizacionModel
+and
+  Controller -> OrdenModel: find({proyectoId: 5})
+  activate OrdenModel
+  OrdenModel -> DB: SELECT * FROM orden_compra\nWHERE proyectoId = 5
+  activate DB
+  DB --> OrdenModel: [3 órdenes]
+  deactivate DB
+  OrdenModel --> Controller: ordenes
+  deactivate OrdenModel
+end
+
+note right of Controller
+  CÁLCULOS EN CONTROLLER:
+  
+  Cotizaciones:
+  • total: 6
+  • pendientes: 3
+  • aprobadas: 2
+  • compradas: 1
+  • montoTotal: $145,600
+  
+  Órdenes:
+  • total: 3
+  • aprobadas: 2
+  • recibidas: 1
+  • montoTotal: $85,000
+  
+  Top 10 Materiales más
+  cotizados con:
+  • nombre
+  • unidad
+  • cantidad total
+  • precio promedio
+  • mejor precio
+  • proveedores
+end note
+
+Controller -> Express: res.json({\n  proyecto,\n  cotizaciones: {...},\n  ordenes: {...},\n  materialesMasCotizados\n})
+deactivate Controller
+
+Express --> Frontend: 200 OK\n{complete summary}
+deactivate Express
+deactivate Router
+
+Frontend -> Frontend: Renderizar:\n1. Detalles proyecto\n2. Tabla cotizaciones\n3. Tabla órdenes\n4. Top 10 materiales\n5. Gráficos
+activate Frontend
+
+Frontend --> Usuario: Display complete\nproject dashboard
+deactivate Frontend
+
+== BUSCAR PROYECTOS CON FILTROS ==
+
+Usuario -> Frontend: Ingresa filtros\n(nombre, código, fecha)
+activate Frontend
+
+Frontend -> Express: GET /api/projects/search?\nname=Office&codigo=P001
+activate Express
+
+Express -> Router: router.get('/search')
+activate Router
+
+Router -> Controller: searchProjects(query)
+activate Controller
+
+Controller -> ProjectModel: findAll()
+activate ProjectModel
+ProjectModel -> DB: SELECT * FROM projects
+activate DB
+DB --> ProjectModel: all projects
+deactivate DB
+deactivate ProjectModel
+
+Controller -> Controller: filter(projects)
+note right of Controller
+  Aplica filtros:
+  • if nombre: .includes()
+  • if código: .includes()
+  • if fechaInicio: >=
+  • if fechaTermino: <=
+  Returns: filtered array
+end note
+
+Controller -> Express: res.json(filtered)
+deactivate Controller
+
+Express --> Frontend: 200 OK\n{filtered projects}
+deactivate Express
+deactivate Router
+
+Frontend -> Frontend: Display filtered\nresults
+Frontend --> Usuario: Show matched\nprojects
+deactivate Frontend
+
+== ACTUALIZAR PROYECTO ==
+
+Usuario -> Frontend: Modifica datos\nGuarda cambios
+activate Frontend
+
+Frontend -> Express: PUT /api/projects/5\nwith updated data
+activate Express
+
+Express -> Router: router.put('/:id')
+activate Router
+
+Router -> Controller: updateProject(5, req.body)
+activate Controller
+
+Controller -> ProjectModel: update(5, req.body)
+activate ProjectModel
+
+ProjectModel -> DB: UPDATE projects SET ...\nWHERE id = 5
+activate DB
+DB --> ProjectModel: updated
+deactivate DB
+
+ProjectModel --> Controller: updated project
+deactivate ProjectModel
+
+Controller -> Express: res.json(updated)
+deactivate Controller
+
+Express --> Frontend: 200 OK
+deactivate Express
+deactivate Router
+
+Frontend --> Usuario: "Actualizado!"
+deactivate Frontend
+
+== ELIMINAR PROYECTO ==
+
+Usuario -> Frontend: Confirma eliminación
+activate Frontend
+
+Frontend -> Express: DELETE /api/projects/5
+activate Express
+
+Express -> Router: router.delete('/:id')
+activate Router
+
+Router -> Controller: deleteProject(5)
+activate Controller
+
+Controller -> ProjectModel: delete(5)
+activate ProjectModel
+
+ProjectModel -> DB: DELETE FROM projects\nWHERE id = 5
+activate DB
+DB --> ProjectModel: confirmation
+deactivate DB
+
+ProjectModel --> Controller: success
+deactivate ProjectModel
+
+Controller -> Express: res.json\n({message: 'Deleted'})
+deactivate Controller
+
+Express --> Frontend: 200 OK
+deactivate Express
+deactivate Router
+
+Frontend --> Usuario: "Proyecto eliminado!"
+deactivate Frontend
+
+@enduml

@@ -1,0 +1,215 @@
+@startuml Modulo_Proveedores
+title Módulo de Proveedores - Diagrama de Secuencia
+
+actor Usuario
+participant "Frontend\n(React)" as Frontend
+participant "Express\nServer" as Express
+participant "providerRouter\n(Routes)" as Router
+participant "providerController\n(Controllers)" as Controller
+participant "Provider\n(Model)" as Model
+database "PostgreSQL" as DB
+
+== LISTAR PROVEEDORES ==
+
+Usuario -> Frontend: GET /api/providers\n(Click en "Listar")
+activate Frontend
+
+Frontend -> Express: GET /api/providers
+activate Express
+
+Express -> Router: router.get('/')
+activate Router
+
+Router -> Controller: getProviders()
+activate Controller
+
+Controller -> Model: findAll()
+activate Model
+
+Model -> DB: SELECT * FROM providers
+activate DB
+DB --> Model: [25+ providers]
+deactivate DB
+
+Model --> Controller: providers array
+deactivate Model
+
+Controller -> Express: res.json(providers)
+deactivate Controller
+
+Express --> Frontend: 200 OK\n{providers: [...]}
+deactivate Express
+deactivate Router
+
+Frontend -> Frontend: Render table\nwith 25+ providers
+note right of Frontend
+  Muestra tabla con:
+  - Nombre
+  - Contacto
+  - Dirección
+  - Teléfono
+end note
+
+Frontend --> Usuario: Display providers list
+deactivate Frontend
+
+== CREAR NUEVO PROVEEDOR ==
+
+Usuario -> Frontend: Completa formulario\n{ nombre, contacto, ... }
+activate Frontend
+
+Frontend -> Express: POST /api/providers\nwith req.body
+activate Express
+
+Express -> Router: router.post('/')
+activate Router
+
+Router -> Controller: createProvider(req.body)
+activate Controller
+
+Controller -> Controller: Validar datos
+note right of Controller
+  • Validar campos requeridos
+  • Validar formato email
+end note
+
+Controller -> Model: create(req.body)
+activate Model
+
+Model -> DB: INSERT INTO providers\n(nombre, contacto, ...)
+activate DB
+DB --> Model: id generado
+deactivate DB
+
+Model --> Controller: {id, nombre, contacto, ...}
+deactivate Model
+
+Controller -> Express: res.status(201).json(result)
+deactivate Controller
+
+Express --> Frontend: 201 Created\n{id: 1, ...}
+deactivate Express
+deactivate Router
+
+Frontend -> Frontend: Mostrar confirmación\ny recargar lista
+Frontend --> Usuario: "Proveedor creado!"
+deactivate Frontend
+
+== OBTENER PROVEEDOR POR ID ==
+
+Usuario -> Frontend: Click en proveedor\n(Ver detalles)
+activate Frontend
+
+Frontend -> Express: GET /api/providers/123
+activate Express
+
+Express -> Router: router.get('/:id')
+activate Router
+
+Router -> Controller: getProviderById(123)
+activate Controller
+
+Controller -> Model: findById(123)
+activate Model
+
+Model -> DB: SELECT * FROM providers\nWHERE id = 123
+activate DB
+
+alt Provider encontrado
+  DB --> Model: {id: 123, nombre: "Proveedor A", ...}
+else Provider no encontrado
+  DB --> Model: null
+end
+
+deactivate DB
+
+alt if provider
+  Model --> Controller: provider object
+  Controller -> Express: res.json(provider)
+  Express --> Frontend: 200 OK\n{provider data}
+  deactivate Controller
+  Frontend -> Frontend: Display provider details
+else
+  Model --> Controller: null
+  deactivate Model
+  Controller -> Express: res.status(404).json\n({error: 'Not found'})
+  deactivate Controller
+  Express --> Frontend: 404 Not Found
+  Frontend -> Frontend: Display error message
+end
+
+deactivate Express
+deactivate Router
+deactivate Frontend
+
+== ACTUALIZAR PROVEEDOR ==
+
+Usuario -> Frontend: Modifica campos\nGuarda cambios
+activate Frontend
+
+Frontend -> Express: PUT /api/providers/123\nwith updated data
+activate Express
+
+Express -> Router: router.put('/:id')
+activate Router
+
+Router -> Controller: updateProvider(123, req.body)
+activate Controller
+
+Controller -> Model: update(123, req.body)
+activate Model
+
+Model -> DB: UPDATE providers SET ...\nWHERE id = 123
+activate DB
+DB --> Model: rows affected
+deactivate DB
+
+Model --> Controller: updated provider
+deactivate Model
+
+Controller -> Express: res.json(updated)
+deactivate Controller
+
+Express --> Frontend: 200 OK\n{updated provider}
+deactivate Express
+deactivate Router
+
+Frontend --> Usuario: "Actualizado!"
+deactivate Frontend
+
+== ELIMINAR PROVEEDOR ==
+
+Usuario -> Frontend: Confirma eliminación
+activate Frontend
+
+Frontend -> Express: DELETE /api/providers/123
+activate Express
+
+Express -> Router: router.delete('/:id')
+activate Router
+
+Router -> Controller: deleteProvider(123)
+activate Controller
+
+Controller -> Model: delete(123)
+activate Model
+
+Model -> DB: DELETE FROM providers\nWHERE id = 123
+activate DB
+DB --> Model: confirmation
+deactivate DB
+
+Model --> Controller: success
+deactivate Model
+
+Controller -> Express: res.json\n({message: 'Deleted'})
+deactivate Controller
+
+Express --> Frontend: 200 OK
+deactivate Express
+deactivate Router
+
+Frontend --> Usuario: "Eliminado!"
+deactivate Frontend
+
+@enduml
