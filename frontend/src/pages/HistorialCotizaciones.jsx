@@ -139,7 +139,7 @@ const HistorialCotizaciones = () => {
                     <h5 className="font-medium text-gray-700 mb-2">Productos:</h5>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                       {cotizacion.productos.slice(0, 6).map((producto, index) => (
-                        <div key={index} className="text-xs bg-gray-50 p-2 rounded">
+                        <div key={`${cotizacion.id}-producto-${index}`} className="text-xs bg-gray-50 p-2 rounded">
                           <p className="font-medium truncate">{producto.title}</p>
                           <p className="text-gray-500">
                             {producto.quantity || 1} {producto.unit || 'un'} - {producto.price || 'Consultar'}

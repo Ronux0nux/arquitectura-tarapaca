@@ -30,6 +30,9 @@ const Projects = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [supervisores, setSupervisores] = useState([]);
   const [loadingSupervisores, setLoadingSupervisores] = useState(false);
+  const [selectedMateriales, setSelectedMateriales] = useState(new Set());
+  const [approvingMateriales, setApprovingMateriales] = useState(false);
+  const [materialesAprobados, setMaterialesAprobados] = useState({});
   
   // Obtener rol del usuario autenticado (fallback a 'usuario' si no está definido)
   const userRole = user?.rol || user?.role || 'usuario';
@@ -345,7 +348,7 @@ const Projects = () => {
       try {
         const payload = {
           ...editActa,
-          proyectoId: selectedProject._id,
+          proyectoId: selectedProject.id || selectedProject._id,
         };
         const response = await fetch(`${API_BASE_URL}/actas-reunion/${editActa._id}`, {
           method: 'PUT',
@@ -354,7 +357,7 @@ const Projects = () => {
         });
         if (response.ok) {
           setShowEditActaModal(false);
-          fetchActasForProject(selectedProject._id);
+          fetchActasForProject(selectedProject.id || selectedProject._id);
           alert('Acta actualizada exitosamente');
         } else {
           alert('Error al actualizar acta');
@@ -390,13 +393,26 @@ const Projects = () => {
   const fetchCotizacionesForProject = async (projectId) => {
     try {
       setLoadingCotizaciones(true);
+      console.log('🔍 Buscando cotizaciones para proyecto:', projectId);
+      
       const response = await fetch(`${API_BASE_URL}/cotizaciones/project/${projectId}`, {
         headers: getAuthHeaders()
       });
+      
+      console.log('📡 Respuesta del servidor:', response.status);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
       const data = await response.json();
+      
+      console.log('📦 Datos recibidos:', data);
+      console.log('📊 Cantidad de cotizaciones:', data.cotizaciones?.length || 0);
+      
       setCotizaciones(data.cotizaciones || []);
     } catch (error) {
-      console.error('Error al cargar cotizaciones:', error);
+      console.error('❌ Error al cargar cotizaciones:', error);
       setCotizaciones([]);
     } finally {
       setLoadingCotizaciones(false);
@@ -542,7 +558,8 @@ const Projects = () => {
 
       console.log('💾 Datos finales a enviar:', projectData);
 
-  const response = await fetch(`${API_BASE_URL}/projects/${detailsProjectEdit.id || detailsProjectEdit._id}`, {
+  const projectId = detailsProjectEdit.id || detailsProjectEdit._id;
+  const response = await fetch(`${API_BASE_URL}/projects/${projectId}`, {
         method: 'PUT',
         headers: getAuthHeaders(true),
         body: JSON.stringify(projectData),
@@ -595,14 +612,127 @@ const Projects = () => {
   const handleViewActas = (project) => {
     setSelectedProject(project);
     setShowActasModal(true);
-    fetchActasForProject(project._id);
+    const projectId = project._id || project.id;
+    fetchActasForProject(projectId);
   };
 
   // Ver materiales cotizados del proyecto
   const handleViewMateriales = (project) => {
     setSelectedProject(project);
     setShowMaterialesModal(true);
-    fetchCotizacionesForProject(project._id);
+    setSelectedMateriales(new Set());
+    setMaterialesAprobados({});
+    const projectId = project._id || project.id;
+    console.log('📌 Abriendo modal de materiales para proyecto:', projectId);
+    if (!projectId) {
+      console.error('❌ No se encontró ID del proyecto:', project);
+      alert('Error: No se pudo obtener el ID del proyecto');
+      return;
+    }
+    fetchCotizacionesForProject(projectId);
+  };
+
+  // Seleccionar/deseleccionar material para aprobación
+  const toggleMaterialSelection = (materialId) => {
+    const newSelected = new Set(selectedMateriales);
+    if (newSelected.has(materialId)) {
+      newSelected.delete(materialId);
+    } else {
+      newSelected.add(materialId);
+    }
+    setSelectedMateriales(newSelected);
+  };
+
+  // Aprobar materiales seleccionados
+  const handleApproveMateriales = async () => {
+    if (selectedMateriales.size === 0) {
+      alert('Por favor selecciona al menos un material');
+      return;
+    }
+
+    try {
+      setApprovingMateriales(true);
+      const materialesArray = Array.from(selectedMateriales);
+      
+      const response = await fetch(`${API_BASE_URL}/cotizaciones/approve`, {
+        method: 'POST',
+        headers: getAuthHeaders(true),
+        body: JSON.stringify({
+          projectId: selectedProject.id || selectedProject._id,
+          cotizacionIds: materialesArray,
+          estado: 'aprobado'
+        })
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        alert('Materiales aprobados exitosamente');
+        // Actualizar estado de los materiales aprobados
+        const newAprobados = { ...materialesAprobados };
+        materialesArray.forEach(id => {
+          newAprobados[id] = 'aprobado';
+        });
+        setMaterialesAprobados(newAprobados);
+        setSelectedMateriales(new Set());
+        
+        // Recargar cotizaciones
+        await fetchCotizacionesForProject(selectedProject.id);
+      } else {
+        alert(`Error al aprobar materiales: ${result.error || 'Error desconocido'}`);
+      }
+    } catch (error) {
+      console.error('Error al aprobar materiales:', error);
+      alert(`Error al aprobar materiales: ${error.message}`);
+    } finally {
+      setApprovingMateriales(false);
+    }
+  };
+
+  // Rechazar materiales seleccionados
+  const handleRejectMateriales = async () => {
+    if (selectedMateriales.size === 0) {
+      alert('Por favor selecciona al menos un material');
+      return;
+    }
+
+    try {
+      setApprovingMateriales(true);
+      const materialesArray = Array.from(selectedMateriales);
+      
+      const response = await fetch(`${API_BASE_URL}/cotizaciones/reject`, {
+        method: 'POST',
+        headers: getAuthHeaders(true),
+        body: JSON.stringify({
+          projectId: selectedProject.id || selectedProject._id,
+          cotizacionIds: materialesArray,
+          estado: 'rechazado'
+        })
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        alert('Materiales rechazados');
+        // Actualizar estado de los materiales rechazados
+        const newAprobados = { ...materialesAprobados };
+        materialesArray.forEach(id => {
+          newAprobados[id] = 'rechazado';
+        });
+        setMaterialesAprobados(newAprobados);
+        setSelectedMateriales(new Set());
+        
+        // Recargar cotizaciones
+        await fetchCotizacionesForProject(selectedProject.id);
+      } else {
+        alert(`Error al rechazar materiales: ${result.error || 'Error desconocido'}`);
+      }
+    } catch (error) {
+      console.error('Error al rechazar materiales:', error);
+      alert(`Error al rechazar materiales: ${error.message}`);
+    } finally {
+      setApprovingMateriales(false);
+    }
   };
 
   // Ver detalles de un acta específica
@@ -841,7 +971,7 @@ const Projects = () => {
                   </tr>
                 ) : (
                   projects.map((project) => (
-                    <tr key={project._id} className="hover:bg-gray-50 transition-colors">
+                    <tr key={project.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {project.nombre}
                       </td>
@@ -1389,7 +1519,7 @@ const Projects = () => {
                   <div className="space-y-4">
                     <div>
                       <span className="font-semibold text-gray-700">ID:</span>
-                      <p className="text-gray-600 bg-gray-50 p-2 rounded text-sm">{selectedProject._id}</p>
+                      <p className="text-gray-600 bg-gray-50 p-2 rounded text-sm">{selectedProject.id || selectedProject._id}</p>
                     </div>
                     <div>
                       <span className="font-semibold text-gray-700">Nombre:</span>
@@ -1635,11 +1765,14 @@ const Projects = () => {
       {/* Modal para materiales cotizados del proyecto */}
       {showMaterialesModal && selectedProject && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg w-full max-w-5xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-white p-6 rounded-lg w-full max-w-6xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold">
-                Materiales Cotizados - {selectedProject.nombre}
-              </h2>
+              <div>
+                <h2 className="text-2xl font-bold">
+                  Materiales Cotizados - {selectedProject.nombre}
+                </h2>
+                <p className="text-sm text-gray-600 mt-1">Selecciona los materiales para aprobar o rechazar</p>
+              </div>
               <button 
                 onClick={() => setShowMaterialesModal(false)}
                 className="text-gray-500 hover:text-gray-700 text-2xl"
@@ -1663,111 +1796,191 @@ const Projects = () => {
               </div>
             ) : (
               <div className="space-y-4">
-                <div className="mb-4 flex justify-between items-center">
-                  <p className="text-gray-600">
-                    Total de cotizaciones: <span className="font-semibold">{cotizaciones.length}</span>
-                  </p>
-                  <div className="text-sm text-gray-500">
-                    <span className="inline-block w-3 h-3 bg-yellow-400 rounded-full mr-1"></span> En proceso
-                    <span className="inline-block w-3 h-3 bg-green-400 rounded-full mr-1 ml-4"></span> Aprobado
-                    <span className="inline-block w-3 h-3 bg-red-400 rounded-full mr-1 ml-4"></span> Rechazado
+                {/* Resumen */}
+                <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="text-gray-700 font-medium">
+                        📊 Total de cotizaciones: <span className="font-bold text-blue-600">{cotizaciones.length}</span>
+                      </p>
+                      <p className="text-sm text-gray-600 mt-1">
+                        ✓ Seleccionados: <span className="font-semibold">{selectedMateriales.size}</span>
+                        {' | '}
+                        ✓ Aprobados: <span className="font-semibold text-green-600">{Object.values(materialesAprobados).filter(e => e === 'aprobado').length}</span>
+                        {' | '}
+                        ✕ Rechazados: <span className="font-semibold text-red-600">{Object.values(materialesAprobados).filter(e => e === 'rechazado').length}</span>
+                      </p>
+                      <p className="text-sm text-gray-600 mt-1">
+                        💰 Monto total estimado: <span className="font-bold text-green-600">
+                          ${cotizaciones.reduce((sum, c) => {
+                            const cant = c.cantidad || 1;
+                            const precio = typeof c.precio_unitario === 'string' 
+                              ? parseFloat(c.precio_unitario.replace(/[$,]/g, '')) 
+                              : c.precio_unitario || 0;
+                            return sum + (cant * precio);
+                          }, 0).toLocaleString()}
+                        </span>
+                      </p>
+                    </div>
+                    <div className="flex gap-3">
+                      {selectedMateriales.size > 0 && (
+                        <>
+                          <button
+                            disabled={approvingMateriales}
+                            onClick={handleApproveMateriales}
+                            className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:bg-gray-400 transition-colors font-medium"
+                          >
+                            {approvingMateriales ? 'Aprobando...' : `✓ Aprobar (${selectedMateriales.size})`}
+                          </button>
+                          <button
+                            disabled={approvingMateriales}
+                            onClick={handleRejectMateriales}
+                            className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 disabled:bg-gray-400 transition-colors font-medium"
+                          >
+                            {approvingMateriales ? 'Rechazando...' : `✕ Rechazar (${selectedMateriales.size})`}
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-sm text-gray-600 mt-2 flex gap-4">
+                    <span><span className="inline-block w-3 h-3 bg-yellow-400 rounded-full mr-1"></span> En proceso</span>
+                    <span><span className="inline-block w-3 h-3 bg-green-400 rounded-full mr-1"></span> Aprobado</span>
+                    <span><span className="inline-block w-3 h-3 bg-red-400 rounded-full mr-1"></span> Rechazado</span>
                   </div>
                 </div>
-                
-                {cotizaciones.map((cotizacion) => (
-                  <div key={cotizacion._id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="text-lg font-semibold text-gray-900">
-                            Cotización #{cotizacion.numero || cotizacion._id.slice(-6)}
-                          </h3>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            cotizacion.estado === 'aprobado' 
-                              ? 'bg-green-100 text-green-800' 
-                              : cotizacion.estado === 'rechazado'
-                              ? 'bg-red-100 text-red-800'
-                              : 'bg-yellow-100 text-yellow-800'
-                          }`}>
-                            {cotizacion.estado === 'aprobado' ? 'Aprobado' : 
-                             cotizacion.estado === 'rechazado' ? 'Rechazado' : 'En Proceso'}
-                          </span>
+
+                {/* Lista de cotizaciones con checkboxes */}
+                <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+                  {cotizaciones.map((cotizacion) => (
+                    <div 
+                      key={cotizacion.id} 
+                      className={`border-2 rounded-lg p-4 transition-all ${
+                        selectedMateriales.has(cotizacion.id)
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="flex items-start gap-4">
+                        {/* Checkbox */}
+                        <div className="flex items-center mt-1">
+                          <input
+                            type="checkbox"
+                            checked={selectedMateriales.has(cotizacion.id)}
+                            onChange={() => toggleMaterialSelection(cotizacion.id)}
+                            disabled={cotizacion.estado !== 'pendiente'}
+                            className="w-5 h-5 rounded border-gray-300 cursor-pointer"
+                          />
                         </div>
-                        
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600 mb-3">
-                          <div>
-                            <span className="font-medium">Proveedor:</span>
-                            <p>{cotizacion.proveedor?.nombre || 'No asignado'}</p>
+
+                        {/* Contenido de la cotización */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-3 mb-2 flex-wrap">
+                            <h3 className="text-lg font-semibold text-gray-900">
+                              Cotización #{cotizacion.numero || cotizacion.id}
+                            </h3>
+                            <span className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
+                              cotizacion.estado === 'aprobado' 
+                                ? 'bg-green-100 text-green-800' 
+                                : cotizacion.estado === 'rechazado'
+                                ? 'bg-red-100 text-red-800'
+                                : 'bg-yellow-100 text-yellow-800'
+                            }`}>
+                              {cotizacion.estado === 'aprobado' ? '✓ Aprobado' : 
+                               cotizacion.estado === 'rechazado' ? '✕ Rechazado' : '⏱ En Proceso'}
+                            </span>
                           </div>
-                          <div>
-                            <span className="font-medium">Fecha solicitud:</span>
-                            <p>{cotizacion.fechaSolicitud ? new Date(cotizacion.fechaSolicitud).toLocaleDateString() : 'No definida'}</p>
-                          </div>
-                          <div>
-                            <span className="font-medium">Fecha vencimiento:</span>
-                            <p>{cotizacion.fechaVencimiento ? new Date(cotizacion.fechaVencimiento).toLocaleDateString() : 'No definida'}</p>
-                          </div>
-                          <div>
-                            <span className="font-medium">Total estimado:</span>
-                            <p className="font-semibold text-green-600">
-                              ${cotizacion.precioTotal?.toLocaleString() || 'Por calcular'}
-                            </p>
-                          </div>
-                        </div>
-                        
-                        {cotizacion.items && cotizacion.items.length > 0 && (
-                          <div className="mt-3">
-                            <span className="font-medium text-sm text-gray-700">Materiales incluidos:</span>
-                            <div className="mt-2 bg-gray-50 p-3 rounded">
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                {cotizacion.items.slice(0, 4).map((item, index) => (
-                                  <div key={index} className="text-sm">
-                                    <span className="font-medium">{item.cantidad}x</span> {item.descripcion}
-                                    <span className="text-green-600 ml-2">${item.precioUnitario?.toLocaleString()}</span>
-                                  </div>
-                                ))}
-                                {cotizacion.items.length > 4 && (
-                                  <div className="text-sm text-gray-500 italic">
-                                    +{cotizacion.items.length - 4} materiales más...
-                                  </div>
-                                )}
-                              </div>
+                          
+                          {/* Información principal */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-gray-600 mb-3">
+                            <div>
+                              <span className="font-medium text-gray-700">📦 Material:</span>
+                              <p className="text-gray-900 font-medium">{cotizacion.nombre_material || cotizacion.nombreMaterial || 'No especificado'}</p>
+                            </div>
+                            <div>
+                              <span className="font-medium text-gray-700">🏷️ Categoría:</span>
+                              <p className="text-gray-600">{cotizacion.detalles || cotizacion.category || 'General'}</p>
                             </div>
                           </div>
-                        )}
-                        
-                        {cotizacion.observaciones && (
-                          <div className="mt-3">
-                            <span className="font-medium text-sm text-gray-700">Observaciones:</span>
-                            <p className="text-gray-700 text-sm mt-1">{cotizacion.observaciones}</p>
+
+                          {/* Especificaciones técnicas */}
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mb-3">
+                            <div className="bg-gray-50 p-2 rounded">
+                              <span className="font-medium text-gray-700">📏 Cantidad:</span>
+                              <p className="text-gray-900 font-semibold">{cotizacion.cantidad || 1}</p>
+                            </div>
+                            <div className="bg-gray-50 p-2 rounded">
+                              <span className="font-medium text-gray-700">📐 Unidad:</span>
+                              <p className="text-gray-900 font-semibold">{cotizacion.unidad || 'un'}</p>
+                            </div>
+                            <div className="bg-green-50 p-2 rounded">
+                              <span className="font-medium text-gray-700">💰 Precio unitario:</span>
+                              <p className="text-green-600 font-bold">
+                                ${(typeof cotizacion.precio_unitario === 'string' 
+                                  ? parseFloat(cotizacion.precio_unitario.replace(/[$,]/g, '')) 
+                                  : cotizacion.precio_unitario || 0).toLocaleString()}
+                              </p>
+                            </div>
+                            <div className="bg-blue-50 p-2 rounded">
+                              <span className="font-medium text-gray-700">💵 Subtotal:</span>
+                              <p className="text-blue-600 font-bold">
+                                ${((cotizacion.cantidad || 1) * (typeof cotizacion.precio_unitario === 'string' 
+                                  ? parseFloat(cotizacion.precio_unitario.replace(/[$,]/g, '')) 
+                                  : cotizacion.precio_unitario || 0)).toLocaleString()}
+                              </p>
+                            </div>
                           </div>
-                        )}
-                      </div>
-                      
-                      <div className="ml-4 flex flex-col gap-2">
+
+                          {/* Observaciones/Notas */}
+                          {(cotizacion.observaciones || cotizacion.notes) && (
+                            <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-sm">
+                              <span className="font-medium text-gray-700">📝 Observaciones:</span>
+                              <p className="text-gray-600">{cotizacion.observaciones || cotizacion.notes}</p>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Botón de ver detalles */}
                         <button
-                          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors text-sm"
+                          className="px-3 py-2 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors text-sm font-medium whitespace-nowrap"
                           onClick={() => {
-                            // Aquí podrías agregar funcionalidad para ver detalles completos
                             console.log('Ver detalles de cotización:', cotizacion);
                           }}
                         >
-                          Ver Detalles
+                          Detalles
                         </button>
-                        {cotizacion.estado === 'pendiente' && (
-                          <div className="flex flex-col gap-1">
-                            <button className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition-colors text-xs">
-                              Aprobar
-                            </button>
-                            <button className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors text-xs">
-                              Rechazar
-                            </button>
-                          </div>
-                        )}
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
+
+                {/* Botones de acción finales */}
+                <div className="mt-6 flex justify-end gap-3 border-t pt-4">
+                  <button
+                    onClick={() => setShowMaterialesModal(false)}
+                    className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition-colors"
+                  >
+                    Cerrar
+                  </button>
+                  {selectedMateriales.size > 0 && (
+                    <>
+                      <button
+                        disabled={approvingMateriales}
+                        onClick={handleApproveMateriales}
+                        className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:bg-gray-400 transition-colors font-medium"
+                      >
+                        {approvingMateriales ? 'Aprobando...' : `✓ Aprobar ${selectedMateriales.size > 1 ? `(${selectedMateriales.size})` : ''}`}
+                      </button>
+                      <button
+                        disabled={approvingMateriales}
+                        onClick={handleRejectMateriales}
+                        className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 disabled:bg-gray-400 transition-colors font-medium"
+                      >
+                        {approvingMateriales ? 'Rechazando...' : `✕ Rechazar ${selectedMateriales.size > 1 ? `(${selectedMateriales.size})` : ''}`}
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
             )}
           </div>

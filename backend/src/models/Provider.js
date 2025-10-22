@@ -5,6 +5,7 @@ const pool = require('../db');
 
 module.exports = {
   create: async (data) => {
+    // La BD genera automáticamente el ID con SERIAL, no incluirlo en el INSERT
     const res = await pool.query(
       'INSERT INTO providers (nombre, rut, direccion, telefono, email, sitioweb, rubros) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
       [data.nombre, data.rut, data.direccion, data.telefono, data.email, data.sitioweb || data.sitioWeb, JSON.stringify(data.rubros || [])]

@@ -94,9 +94,9 @@ export default function Presupuestos() {
             );
           }
           
-          // Si no hay cotizaciones reales, generar datos de ejemplo
+          // Si no hay cotizaciones reales, mostrar mensaje vacío
           if (budgetItems.length === 0) {
-            budgetItems = generateSampleBudget(selectedProject.id);
+            console.warn('⚠️ No hay cotizaciones para este proyecto');
           }
           
           setBudgetData(budgetItems);
@@ -106,12 +106,11 @@ export default function Presupuestos() {
         } catch (error) {
           console.error('❌ Error cargando presupuesto:', error);
           
-          // Generar datos de ejemplo en caso de error
-          const sampleBudget = generateSampleBudget(selectedProject.id);
-          setBudgetData(sampleBudget);
-          calculateStats(sampleBudget);
+          // No mostrar datos de ejemplo - mostrar lista vacía
+          setBudgetData([]);
+          calculateStats([]);
           
-          notifyError('Error cargando datos. Mostrando presupuesto de ejemplo');
+          notifyError('Error cargando datos del presupuesto');
         } finally {
           setLoading(false);
         }
@@ -120,134 +119,6 @@ export default function Presupuestos() {
       loadBudgetData();
     }
   }, [selectedProject, notifyError]);
-
-  // Generar presupuesto de ejemplo para demostración
-  const generateSampleBudget = (projectId) => {
-    const sampleItems = [
-      {
-        id: '1',
-        codigo: 'CEM-001',
-        descripcion: 'Cemento Portland Tipo I - 42.5kg',
-        categoria: 'Materiales Base',
-        cantidad: 100,
-        unidad: 'sacos',
-        precioUnitario: 8500,
-        precioTotal: 850000,
-        proveedor: 'Cementos Tarapacá',
-        proveedorContacto: '+56 57 245-1000',
-        fechaCotizacion: '2024-12-15',
-        estado: 'aprobado',
-        observaciones: 'Entrega en obra'
-      },
-      {
-        id: '2',
-        codigo: 'FIE-012',
-        descripcion: 'Fierro Corrugado 12mm x 12m',
-        categoria: 'Estructura',
-        cantidad: 50,
-        unidad: 'barras',
-        precioUnitario: 15000,
-        precioTotal: 750000,
-        proveedor: 'Aceros del Norte',
-        proveedorContacto: '+56 57 248-2000',
-        fechaCotizacion: '2024-12-14',
-        estado: 'aprobado',
-        observaciones: 'Certificado de calidad incluido'
-      },
-      {
-        id: '3',
-        codigo: 'LAD-006',
-        descripcion: 'Ladrillo Fiscal 29x14x7cm',
-        categoria: 'Albañilería',
-        cantidad: 2500,
-        unidad: 'unidades',
-        precioUnitario: 350,
-        precioTotal: 875000,
-        proveedor: 'Ladrillos Atacama',
-        proveedorContacto: '+56 57 251-3000',
-        fechaCotizacion: '2024-12-13',
-        estado: 'pendiente',
-        observaciones: 'Verificar calidad antes del despacho'
-      },
-      {
-        id: '4',
-        codigo: 'ARE-003',
-        descripcion: 'Arena Gruesa m³',
-        categoria: 'Áridos',
-        cantidad: 20,
-        unidad: 'm³',
-        precioUnitario: 18000,
-        precioTotal: 360000,
-        proveedor: 'Áridos Pampa',
-        proveedorContacto: '+56 57 247-4000',
-        fechaCotizacion: '2024-12-12',
-        estado: 'aprobado',
-        observaciones: 'Material cribado'
-      },
-      {
-        id: '5',
-        codigo: 'GRA-002',
-        descripcion: 'Gravilla 20mm m³',
-        categoria: 'Áridos',
-        cantidad: 15,
-        unidad: 'm³',
-        precioUnitario: 22000,
-        precioTotal: 330000,
-        proveedor: 'Áridos Pampa',
-        proveedorContacto: '+56 57 247-4000',
-        fechaCotizacion: '2024-12-12',
-        estado: 'aprobado',
-        observaciones: 'Tamaño uniforme'
-      },
-      {
-        id: '6',
-        codigo: 'TUB-050',
-        descripcion: 'Tubería PVC 50mm x 6m',
-        categoria: 'Instalaciones',
-        cantidad: 25,
-        unidad: 'tubos',
-        precioUnitario: 12500,
-        precioTotal: 312500,
-        proveedor: 'Instalaciones Norte',
-        proveedorContacto: '+56 57 252-5000',
-        fechaCotizacion: '2024-12-11',
-        estado: 'cotizado',
-        observaciones: 'Incluye uniones'
-      },
-      {
-        id: '7',
-        codigo: 'PIN-001',
-        descripcion: 'Pintura Látex Interior 4L',
-        categoria: 'Terminaciones',
-        cantidad: 30,
-        unidad: 'galones',
-        precioUnitario: 18500,
-        precioTotal: 555000,
-        proveedor: 'Pinturas del Desierto',
-        proveedorContacto: '+56 57 249-6000',
-        fechaCotizacion: '2024-12-10',
-        estado: 'cotizado',
-        observaciones: 'Color blanco hueso'
-      },
-      {
-        id: '8',
-        codigo: 'CER-025',
-        descripcion: 'Cerámica Piso 30x30cm',
-        categoria: 'Terminaciones',
-        cantidad: 150,
-        unidad: 'm²',
-        precioUnitario: 8900,
-        precioTotal: 1335000,
-        proveedor: 'Cerámicas Tarapacá',
-        proveedorContacto: '+56 57 250-7000',
-        fechaCotizacion: '2024-12-09',
-        estado: 'pendiente',
-        observaciones: 'Primera calidad, antideslizante'
-      }
-    ];
-
-    return sampleItems;
-  };
 
   // Calcular estadísticas del presupuesto
   const calculateStats = (items) => {

@@ -92,7 +92,7 @@ exports.createOrdenFromCotizacion = async (req, res) => {
 
     const newOrden = new OrdenCompra({
       proyectoId: cotizacion.proyectoId,
-      cotizacionId: cotizacion._id,
+      cotizacionId: cotizacion.id,
       numeroOrden,
       comprador,
       proveedor: cotizacion.proveedorId.nombre,

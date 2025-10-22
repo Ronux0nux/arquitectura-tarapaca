@@ -12,7 +12,7 @@ export default function Providers() {
   const [editSuccess, setEditSuccess] = useState(null);
   const [editLoading, setEditLoading] = useState(false);
   // Formulario de creación
-  const [form, setForm] = useState({ nombre: '', rut: '', direccion: '', telefono: '', email: '', sitioweb: '' });
+  const [form, setForm] = useState({ nombre: '', rut: '', direccion: '', telefono: '', email: '', sitioweb: '', rubros: '' });
   const [rutError, setRutError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -137,10 +137,12 @@ export default function Providers() {
     setRutError(null);
     setLoading(true);
     try {
+      // Convertir rubros a array
+      const rubrosArray = form.rubros ? form.rubros.split(',').map(r => r.trim()) : [];
       const res = await fetch('/api/providers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form)
+        body: JSON.stringify({ ...form, rubros: rubrosArray })
       });
       if (!res.ok) {
         let errorMsg = 'Error al crear proveedor';
@@ -151,7 +153,7 @@ export default function Providers() {
         throw new Error(errorMsg);
       }
       setSuccess('Proveedor creado exitosamente');
-      setForm({ nombre: '', rut: '', direccion: '', telefono: '', email: '', sitioWeb: '' });
+      setForm({ nombre: '', rut: '', direccion: '', telefono: '', email: '', sitioweb: '', rubros: '' });
       setRefreshKey(k => k + 1); // fuerza refresco del listado
     } catch (err) {
       setError(err.message);
@@ -191,6 +193,7 @@ export default function Providers() {
   <input name="telefono" value={form.telefono} onChange={handleChange} placeholder="Teléfono" className="border p-2 rounded w-32" />
   <input name="email" value={form.email} onChange={handleChange} placeholder="Email" className="border p-2 rounded w-40" />
   <input name="sitioweb" value={form.sitioweb} onChange={handleChange} placeholder="Sitio Web (opcional)" className="border p-2 rounded w-40" />
+  <input name="rubros" value={form.rubros} onChange={handleChange} placeholder="Rubros (separados por coma)" className="border p-2 rounded w-48" />
   <button type="submit" disabled={loading} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">{loading ? 'Agregando...' : 'Agregar Proveedor'}</button>
   {error && <span className="text-red-600 ml-4">{error}</span>}
   {success && <span className="text-green-600 ml-4">{success}</span>}

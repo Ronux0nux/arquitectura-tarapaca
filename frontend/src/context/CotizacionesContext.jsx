@@ -27,9 +27,29 @@ export const CotizacionesProvider = ({ children }) => {
       setProductosDatabase(JSON.parse(savedProductos));
     }
   }, []);
-
   // Guardar cotización cuando se exporta a Excel
-  const guardarCotizacion = (cotizacionData) => {
+  const guardarCotizacion = async (cotizacionData) => {
+    console.log('🔵 GUARDAR_COTIZACION LLAMADA CON:', cotizacionData);
+    console.log('🔵 Proyecto:', cotizacionData.projectId, 'Tipo:', typeof cotizacionData.projectId);
+    console.log('🔵 Productos:', cotizacionData.productos?.length || 0);
+    
+    // ✅ VALIDACIÓN PRINCIPAL: El projectId debe ser un número válido
+    if (!cotizacionData.projectId || isNaN(cotizacionData.projectId) || cotizacionData.projectId === null) {
+      console.error('❌ VALIDACIÓN FALLIDA: projectId debe ser un número válido', {
+        projectId: cotizacionData.projectId,
+        isNaN: isNaN(cotizacionData.projectId),
+        tipo: typeof cotizacionData.projectId
+      });
+      alert('⚠️ Error: Proyecto inválido. Por favor, selecciona un proyecto válido.');
+      return null;
+    }
+    
+    if (!cotizacionData.productos || !Array.isArray(cotizacionData.productos) || cotizacionData.productos.length === 0) {
+      console.error('❌ VALIDACIÓN FALLIDA: Productos inválidos o vacíos');
+      alert('⚠️ Error: No hay productos para guardar.');
+      return null;
+    }
+    
     const nuevaCotizacion = {
       id: Date.now(),
       fecha: new Date().toISOString(),
@@ -48,19 +68,70 @@ export const CotizacionesProvider = ({ children }) => {
     const nuevasCotizaciones = [nuevaCotizacion, ...cotizaciones];
     setCotizaciones(nuevasCotizaciones);
 
-    // Notificar sobre la nueva cotización (si está disponible)
-    if (typeof window !== 'undefined' && window.notificationService) {
-      window.notificationService.notifyCotizacion(
-        `Nueva cotización creada con ${nuevaCotizacion.totalItems} items`,
-        'Cotización Guardada'
-      );
-    }
-    localStorage.setItem('cotizaciones_historial', JSON.stringify(nuevasCotizaciones));
+    // Guardar cada item como cotización individual en el backend
+    try {
+      console.log('💾 Guardando cotizaciones en backend para proyecto:', cotizacionData.projectId);
+      console.log('💾 Número de productos:', cotizacionData.productos.length);
+      
+      const token = localStorage.getItem('tarapaca_token');
+      console.log('🔐 Token disponible:', !!token);
+      
+      const promises = cotizacionData.productos.map((producto, idx) => {
+        console.log(`📦 PRODUCTO #${idx}:`, JSON.stringify(producto, null, 2));
+        
+        const precio = typeof producto.price === 'string' && producto.price.includes('$') 
+          ? parseFloat(producto.price.replace(/[$.,\s]/g, '')) || 0
+          : parseInt(producto.price) || 0;
 
-    // Actualizar base de datos de productos
-    actualizarProductosDatabase(cotizacionData.productos);
-    
-    return nuevaCotizacion;
+        const cotizacionItem = {
+          proyectoId: parseInt(cotizacionData.projectId), // Garantizar que es número
+          nombreMaterial: producto.title || 'Material sin nombre',
+          unidad: producto.unit || 'un',
+          cantidad: producto.quantity || 1,
+          precioUnitario: precio,  // Campo correcto para backend
+          estado: 'pendiente',
+          observaciones: producto.notes || '',
+          detalles: producto.category || ''
+        };
+
+        console.log(`📝 COTIZACIÓN #${idx} A ENVIAR:`, JSON.stringify(cotizacionItem, null, 2));
+        
+        return fetch('http://localhost:5000/api/cotizaciones', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(cotizacionItem)
+        });
+      });
+
+      const responses = await Promise.all(promises);
+      console.log('🔄 Respuestas HTTP del servidor:', responses.map(r => ({ status: r.status, ok: r.ok })));
+      
+      // Procesar respuestas
+      const results = await Promise.all(
+        responses.map(async (r, idx) => {
+          const json = await r.json();
+          console.log(`📊 RESPUESTA #${idx} (Status: ${r.status}):`, json);
+          return json;
+        })
+      );
+      
+      console.log('✅ Cotizaciones guardadas exitosamente:', results.length, 'items');
+      
+      // Guardar en localStorage
+      localStorage.setItem('cotizaciones_historial', JSON.stringify(nuevasCotizaciones));
+      
+      // Actualizar base de datos de productos
+      actualizarProductosDatabase(cotizacionData.productos);
+      
+      return nuevaCotizacion;
+    } catch (error) {
+      console.error('❌ Error al guardar cotizaciones en backend:', error);
+      alert('⚠️ Error al guardar la cotización en el servidor. Por favor, intenta nuevamente.');
+      return null;
+    }
   };
 
   // Actualizar base de datos de productos únicos

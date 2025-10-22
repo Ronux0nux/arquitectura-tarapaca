@@ -2,6 +2,11 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const CartContext = createContext();
 
+// Función para generar UUID única y robusta
+const generateUniqueId = () => {
+  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${Math.random().toString(36).substr(2, 9)}`;
+};
+
 export const useCart = () => {
   const context = useContext(CartContext);
   if (!context) {
@@ -17,19 +22,30 @@ export const CartProvider = ({ children }) => {
   // Cargar carrito desde localStorage al iniciar
   useEffect(() => {
     const savedCart = localStorage.getItem('cotizacionCart');
+    console.log('📦 Cargando carrito desde localStorage:', savedCart ? 'ENCONTRADO' : 'VACÍO');
     if (savedCart) {
-      setCartItems(JSON.parse(savedCart));
+      try {
+        const parsedCart = JSON.parse(savedCart);
+        console.log('📦 Carrito parseado:', parsedCart.length, 'items');
+        setCartItems(parsedCart);
+      } catch (error) {
+        console.error('❌ Error al cargar carrito:', error);
+        setCartItems([]);
+      }
     }
   }, []);
 
   // Guardar carrito en localStorage cuando cambie
   useEffect(() => {
+    console.log('💾 Guardando carrito en localStorage. Items:', cartItems.length);
+    console.log('💾 Contenido:', cartItems.map(item => ({ id: item.id, title: item.title })));
     localStorage.setItem('cotizacionCart', JSON.stringify(cartItems));
+    console.log('✅ Carrito guardado exitosamente en localStorage');
   }, [cartItems]);
 
   const addToCart = (item) => {
     const newItem = {
-      id: Date.now() + Math.random(), // ID único
+      id: generateUniqueId(), // ID único y robusto
       title: item.title,
       price: item.price || 'Precio no disponible',
       source: item.source,
@@ -45,7 +61,16 @@ export const CartProvider = ({ children }) => {
       projectName: item.projectName || '' // 🆕 Nombre del proyecto
     };
 
-    setCartItems(prev => [...prev, newItem]);
+    console.log('🛒 AGREGANDO AL CARRITO:');
+    console.log('  - Producto:', newItem.title);
+    console.log('  - ID único:', newItem.id);
+    console.log('  - Precio:', newItem.price);
+    
+    setCartItems(prev => {
+      const updated = [...prev, newItem];
+      console.log('🛒 Carrito actualizado. Total items:', updated.length);
+      return updated;
+    });
   };
 
   const removeFromCart = (itemId) => {

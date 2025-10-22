@@ -21,7 +21,20 @@ const CotizacionCartV2 = () => {
     const fetchProjects = async () => {
       try {
         console.log('📥 Cargando proyectos...');
-        const response = await axios.get('http://localhost:5000/api/projects');
+        
+        // 🔑 Obtener token
+        const token = localStorage.getItem('tarapaca_token');
+        console.log('🔐 Token disponible:', !!token);
+        
+        const config = {
+          headers: {}
+        };
+        
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
+        
+        const response = await axios.get('http://localhost:5000/api/projects', config);
         console.log('📦 Respuesta del servidor:', response.data);
         console.log('📊 Tipo de response.data:', typeof response.data);
         console.log('📊 Es array?:', Array.isArray(response.data));
@@ -30,6 +43,14 @@ const CotizacionCartV2 = () => {
         console.log('✅ Proyectos cargados:', response.data?.length || 0);
       } catch (error) {
         console.error('❌ Error al cargar proyectos:', error);
+        // Intentar cargar sin token como fallback
+        try {
+          console.log('🔄 Reintentando sin token...');
+          const response = await axios.get('http://localhost:5000/api/projects');
+          setProjects(response.data || []);
+        } catch (error2) {
+          console.error('❌ Error también en reintento:', error2);
+        }
       }
     };
     
@@ -38,11 +59,25 @@ const CotizacionCartV2 = () => {
 
   // 🆕 Actualizar nombre y cliente cuando se selecciona un proyecto
   const handleProjectSelect = (projectId) => {
-    setSelectedProjectId(projectId);
-    const selected = projects.find(p => p.id === parseInt(projectId));
+    console.log('🔵 handleProjectSelect llamado con:', projectId, 'tipo:', typeof projectId);
+    
+    // Convertir a número si es string
+    const projectIdNum = parseInt(projectId);
+    setSelectedProjectId(projectIdNum); // Guardar como número
+    
+    const selected = projects.find(p => {
+      console.log('🔍 Comparando:', p.id, '===', projectIdNum, '?', p.id === projectIdNum);
+      return p.id === projectIdNum;
+    });
+    
     if (selected) {
+      console.log('✅ Proyecto encontrado:', selected.nombre);
       setProjectName(selected.nombre || '');
       setClientName(selected.cliente || ''); // Asumiendo que el proyecto tiene un campo 'cliente'
+    } else {
+      console.warn('⚠️ Proyecto NO encontrado');
+      setProjectName('');
+      setClientName('');
     }
   };
 
@@ -63,14 +98,26 @@ const CotizacionCartV2 = () => {
   };
 
   const exportToExcel = async () => {
+    console.log('🟢 EXPORTAR A EXCEL CLICKEADO');
+    console.log('🟢 cartItems:', cartItems.length);
+    console.log('🟢 selectedProjectId:', selectedProjectId);
+    
     if (cartItems.length === 0) {
       alert('No hay productos en el carrito para exportar');
+      return;
+    }
+    
+    // ✅ VALIDAR QUE HAYA PROYECTO SELECCIONADO
+    if (!selectedProjectId || selectedProjectId === '') {
+      alert('⚠️ Por favor, selecciona un proyecto antes de exportar.');
+      console.warn('⚠️ EXPORTACIÓN CANCELADA: No hay proyecto seleccionado');
       return;
     }
 
     setExportLoading(true);
 
     try {
+      console.log('🟢 Iniciando generación de Excel...');
       // Crear libro de Excel
       const wb = XLSX.utils.book_new();
       
@@ -208,14 +255,20 @@ const CotizacionCartV2 = () => {
 
       // Guardar en historial de cotizaciones
       const cotizacionData = {
-        projectId: selectedProjectId ? parseInt(selectedProjectId) : null, // 🆕 ID del proyecto
+        projectId: selectedProjectId ? parseInt(selectedProjectId) : null, // Convertir a número
         projectName: projectName || 'Proyecto sin nombre',
         clientName: clientName || 'Cliente no especificado',
         productos: cartItems,
         fileName: fileName
       };
       
-      guardarCotizacion(cotizacionData);
+      console.log('🟡 DATOS A GUARDAR:', cotizacionData);
+      console.log('🟡 projectId type:', typeof cotizacionData.projectId, 'value:', cotizacionData.projectId);
+      console.log('🟡 productos:', cotizacionData.productos.length);
+      
+      await guardarCotizacion(cotizacionData);
+      
+      console.log('🟢 guardarCotizacion COMPLETADA');
       
       // Mostrar notificación de éxito
       const notification = document.createElement('div');
@@ -245,8 +298,33 @@ const CotizacionCartV2 = () => {
 
   const handleCompra = async (compraData) => {
     try {
-      // Aquí puedes agregar lógica para guardar la compra en el backend
-      console.log('Compra realizada:', compraData);
+      console.log('🛒 COMPRA INICIADA');
+      console.log('🛒 Datos de compra:', compraData);
+      
+      // ✅ VALIDAR QUE HAYA PROYECTO SELECCIONADO
+      if (!selectedProjectId || selectedProjectId === '') {
+        alert('⚠️ Por favor, selecciona un proyecto antes de comprar.');
+        console.warn('⚠️ COMPRA CANCELADA: No hay proyecto seleccionado');
+        return;
+      }
+      
+      // 🆕 Guardar cotización en la base de datos
+      const cotizacionData = {
+        projectId: parseInt(selectedProjectId), // Usar selectedProjectId validado
+        projectName: projectName || 'Proyecto sin nombre',
+        clientName: clientName || 'Cliente no especificado',
+        productos: compraData.productos,
+        observaciones: compraData.observaciones || '',
+        estado: 'comprada'
+      };
+      
+      console.log('💾 GUARDANDO COTIZACIÓN DESDE COMPRA');
+      console.log('💾 Datos a guardar:', cotizacionData);
+      
+      // Llamar a guardarCotizacion para persistir en BD
+      await guardarCotizacion(cotizacionData);
+      
+      console.log('✅ Cotización guardada en BD');
       
       // Limpiar carrito después de la compra
       clearCart();
@@ -264,7 +342,7 @@ const CotizacionCartV2 = () => {
       }, 4000);
       
     } catch (error) {
-      console.error('Error procesando compra:', error);
+      console.error('❌ Error procesando compra:', error);
       throw error;
     }
   };

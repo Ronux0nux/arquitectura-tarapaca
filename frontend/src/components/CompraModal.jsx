@@ -76,7 +76,7 @@ const CompraModal = ({ isOpen, onClose, productos, onComprar }) => {
           <h4 className="font-medium mb-2">Productos a comprar ({productos.length})</h4>
           <div className="max-h-32 overflow-y-auto bg-gray-50 rounded p-2">
             {productos.map((producto, index) => (
-              <div key={index} className="flex justify-between text-sm py-1">
+              <div key={`producto-${producto.id}-${index}`} className="flex justify-between text-sm py-1">
                 <span className="truncate">{producto.title}</span>
                 <span className="font-medium">
                   ${(typeof producto.price === 'string' 
@@ -105,7 +105,7 @@ const CompraModal = ({ isOpen, onClose, productos, onComprar }) => {
           >
             <option value="">Seleccionar proyecto...</option>
             {proyectos.map((proyecto) => (
-              <option key={proyecto._id} value={proyecto._id}>
+              <option key={proyecto.id || proyecto._id} value={proyecto.id || proyecto._id}>
                 {proyecto.nombre} - {proyecto.ubicacion}
               </option>
             ))}
