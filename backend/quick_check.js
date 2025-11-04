@@ -14,7 +14,7 @@ pool.query('SELECT COUNT(*) as total FROM cotizaciones')
   .then(res => {
     console.log('\n📦 Cotizaciones por proyecto:');
     if (res.rows.length === 0) {
-      console.log('  ⚠️  NO HAY COTIZACIONES EN LA BD');
+      console.log('  ⚠️  NO HAY COTIZACIONES EN LA Base De Datos');
     } else {
       res.rows.forEach(row => {
         console.log(`  Proyecto ${row.projects_id}: ${row.cantidad} cotizaciones`);

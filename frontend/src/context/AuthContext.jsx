@@ -119,7 +119,7 @@ export const AuthProvider = ({ children }) => {
             setConnectionStatus('online');
           }
         
-        console.log('✅ Login exitoso:', result.user.name);
+  console.log('✅ Login exitoso:', result.user.nombre || result.user.name || result.user.email);
         return { success: true, user: result.user };
       } else {
         return { success: false, error: result.message };

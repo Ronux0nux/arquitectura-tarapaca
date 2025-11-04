@@ -25,7 +25,7 @@ exports.verifyToken = async (req, res) => {
       // Intentar obtener del caché primero
       const cachedUser = await req.cache.get(cacheKey);
       if (cachedUser) {
-        logger.debug(`✅ Usuario desde caché: ${cachedUser.nombre}`);
+        logger.debug(`✅ Usuario desde caché: ${cachedUser.nombre || cachedUser.name || cachedUser.email}`);
         return res.json({
           valid: true,
           user: cachedUser,
@@ -47,6 +47,7 @@ exports.verifyToken = async (req, res) => {
       const userData = {
         id: user.id,
         nombre: user.nombre,
+        name: user.name || user.nombre || user.email || '',
         email: user.email,
         rol: user.rol,
         proyectos: user.proyectos || []
@@ -95,7 +96,7 @@ exports.loginUser = async (req, res) => {
     if (password !== user.password) return res.status(401).json({ error: 'Contraseña incorrecta' });
     
     // Generar tokens seguros
-    const { accessToken, refreshToken } = generateTokens(user.id, user.rol);
+  const { accessToken, refreshToken } = generateTokens(user.id, user.rol);
     
     // Guardar refresh token en caché (7 días)
     try {
@@ -117,6 +118,7 @@ exports.loginUser = async (req, res) => {
       user: {
         id: user.id,
         nombre: user.nombre,
+        name: user.name || user.nombre || user.email || '',
         email: user.email,
         rol: user.rol
       }
@@ -222,8 +224,8 @@ exports.createUser = async (req, res) => {
     if (existingUser) {
       return res.status(409).json({ error: 'El correo ya está registrado' });
     }
-    const result = await User.create({ nombre, email, rol, password });
-    res.status(201).json({ id: result.id, nombre, email, rol });
+  const result = await User.create({ nombre, email, rol, password });
+  res.status(201).json({ id: result.id, nombre, name: result.name || nombre || email, email, rol });
   } catch (err) {
     console.error(err);
     res.status(400).json({ error: err.message });

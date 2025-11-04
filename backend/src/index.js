@@ -10,6 +10,10 @@ const { redisClient, cache } = require('./config/redis');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const fs = require('fs');
+
+// Middleware que adjunta req.user si hay un token válido (no exige auth)
+const attachUser = require('./middleware/attachUser');
 
 // ==================== MIDDLEWARE ====================
 app.use(cors());
@@ -22,6 +26,40 @@ app.use(morgan('combined', { stream: logger.stream }));
 app.use((req, res, next) => {
   req.logger = logger;
   req.cache = cache;
+  next();
+});
+
+// Adjuntar usuario autenticado cuando exista token Bearer (no bloqueante)
+app.use(attachUser);
+
+// Registrar acciones mutantes con el usuario (POST/PUT/DELETE) para auditoría ligera
+app.use((req, res, next) => {
+  try {
+    const method = req.method && req.method.toUpperCase();
+    if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
+      const actor = req.user ? `${req.user.name || req.user.email} (${req.user.id})` : 'anon';
+      logger.info(`🔒 Acción: ${method} ${req.path} por ${actor}`);
+    }
+  } catch (e) {
+    // no bloquear
+  }
+  next();
+});
+
+// ----- Fix rápido: normalizar rutas con doble prefijo '/api/api' -----
+// Si el frontend (o proxy) genera '/api/api/...' reescribimos a '/api/...'
+// Esto evita 500 por intento de servir frontend inexistente y es reversible.
+app.use((req, res, next) => {
+  try {
+    if (req.path === '/api/api' || req.path === '/api/api/') {
+      req.url = req.url.replace(/^\/api\/api\/?/, '/api');
+    } else if (req.path.startsWith('/api/api/')) {
+      req.url = req.url.replace(/^\/api\/api/, '/api');
+    }
+  } catch (e) {
+    // No bloquear la petición si ocurre algún error aquí
+    console.warn('Error al normalizar URL:', e && e.message);
+  }
   next();
 });
 
@@ -72,14 +110,21 @@ app.get('/api', (req, res) => {
   res.send('API funcionando 🚀');
 });
 
-// ==================== SERVIR FRONTEND ====================
-// 👉 Servir frontend (React build)
-app.use(express.static(path.join(__dirname, '../../frontend/build')));
+// ==================== SERVIR FRONTEND (solo si existe build) ====================
+// Servimos el build de React únicamente si la carpeta existe para evitar errores ENOENT
+const frontendBuildPath = path.join(__dirname, '../../frontend/build');
+if (fs.existsSync(frontendBuildPath)) {
+  // 👉 Servir frontend (React build)
+  app.use(express.static(frontendBuildPath));
 
-// Catch-all: enviar frontend para rutas que no sean API
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../../frontend/build/index.html'));
-});
+  // Catch-all: enviar frontend para rutas que no sean API
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(frontendBuildPath, 'index.html'));
+  });
+} else {
+  // Si no existe el build, no registramos el catch-all; las rutas API no resueltas devolverán 404
+  console.warn('Frontend build no encontrado en:', frontendBuildPath);
+}
 
 // ==================== MANEJO DE ERRORES ====================
 app.use((err, req, res, next) => {

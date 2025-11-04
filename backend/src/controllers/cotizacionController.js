@@ -22,33 +22,122 @@ exports.getCotizacionesByProject = async (req, res) => {
 
     console.log(`📦 Buscando cotizaciones para proyecto: ${proyectoId}`);
     
-    // Usar nuevo método del modelo que filtra en BD
-    const cotizaciones = await Cotizacion.findByProject(proyectoId);
-    
-    console.log(`📦 Cotizaciones encontradas: ${cotizaciones.length}`);
-    
+  // Usar nuevo método del modelo que filtra en BD
+  const cotizacionesRaw = await Cotizacion.findByProject(proyectoId);
+
+    console.log(`📦 Cotizaciones encontradas: ${cotizacionesRaw.length}`);
+
+    // Normalizar cada cotización para el frontend: añadir 'status' en inglés y precio_total numérico
+  const cotizaciones = cotizacionesRaw.map(c => {
+      // estado en español -> status en inglés
+      const estado = (c.estado || '').toString().toLowerCase();
+      let status = 'unknown';
+      if (estado === 'aprobado') status = 'approved';
+      else if (estado === 'pendiente') status = 'pending';
+      else if (estado === 'rechazado') status = 'rejected';
+
+      // precio_total puede venir como string o numeric
+      let precioTotal = 0;
+      try {
+        if (c.precio_total !== undefined && c.precio_total !== null) {
+          precioTotal = typeof c.precio_total === 'string'
+            ? parseFloat(c.precio_total.replace(/[$,]/g, ''))
+            : Number(c.precio_total);
+        } else {
+          const cantidad = Number(c.cantidad || 0);
+          const pu = typeof c.precio_unitario === 'string'
+            ? parseFloat(c.precio_unitario.replace(/[$,]/g, ''))
+            : Number(c.precio_unitario || 0);
+          precioTotal = cantidad * pu;
+        }
+      } catch (e) {
+        precioTotal = 0;
+      }
+
+      // Agregar estructura 'productos' esperada por el frontend (cada fila representa típicamente 1 producto)
+      const producto = {
+        id: c.id || `${c.id}_prod`,
+        nombre: c.nombre_material || c.producto || c.nombre || 'Sin nombre',
+        descripcion: c.nombre_material || c.descripcion || 'Sin descripción',
+        cantidad: Number(c.cantidad || 0),
+        unidad: c.unidad || 'un',
+        precio: Number(c.precio_unitario || 0),
+        categoria: c.categoria || 'Sin categoría',
+        observaciones: c.observaciones || ''
+      };
+
+      return {
+        ...c,
+        status,
+        estado,
+        precio_total: precioTotal,
+        precioTotal: precioTotal, // alias para frontend
+        productos: [producto],
+        proveedor: {
+          id: c.providers_id || c.proveedor_id || null,
+          nombre: c.proveedor_nombre || c.proveedor || null
+        },
+        fecha: c.created_at || c.fecha || null
+      };
+    });
+
     // Calcular resumen
     const resumen = {
       total: cotizaciones.length,
       pendientes: cotizaciones.filter(c => c.estado === 'pendiente').length,
       aprobadas: cotizaciones.filter(c => c.estado === 'aprobado').length,
       rechazadas: cotizaciones.filter(c => c.estado === 'rechazado').length,
-      montoTotal: cotizaciones.reduce((sum, c) => {
-        const cantidad = parseInt(c.cantidad || 0);
-        // Precio viene como money type, puede tener $
-        const precio = typeof c.precio_unitario === 'string' 
-          ? parseFloat(c.precio_unitario.replace(/[$,]/g, '')) 
-          : parseFloat(c.precio_unitario || 0);
-        return sum + (cantidad * precio);
-      }, 0)
+      montoTotal: cotizaciones.reduce((sum, c) => sum + (Number(c.precio_total || c.precioTotal || 0)), 0)
     };
 
-    res.json({ 
-      cotizaciones: cotizaciones || [],
-      resumen 
+    const aprobadasList = cotizaciones.filter(c => c.status === 'approved');
+
+    // Devolver en formato compatible: mantener 'success' y 'data',
+    // pero también exponer 'cotizaciones' y 'resumen' en el nivel superior
+    res.json({
+      success: true,
+      cotizaciones,
+      resumen,
+      aprobadas: aprobadasList,
+      data: {
+        cotizaciones,
+        resumen,
+        aprobadas: aprobadasList
+      }
     });
   } catch (err) {
     console.error('❌ Error al obtener cotizaciones por proyecto:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Obtener solo cotizaciones aprobadas de un proyecto
+exports.getAprobadasByProject = async (req, res) => {
+  try {
+    const { proyectoId } = req.params;
+    if (!proyectoId || proyectoId === 'undefined') {
+      return res.status(400).json({ error: 'ID de proyecto requerido' });
+    }
+
+    const cotizacionesRaw = await Cotizacion.getApprovedByProject(proyectoId);
+    const cotizaciones = cotizacionesRaw.map(c => ({ ...c, status: 'approved', precioTotal: Number(c.precio_total || 0) }));
+
+    res.json({ success: true, data: { cotizaciones } });
+  } catch (err) {
+    console.error('❌ Error al obtener cotizaciones aprobadas por proyecto:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Obtener audit trail de una cotización
+exports.getCotizacionAudit = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const audit = await Cotizacion.getAuditTrail(id);
+    if (!audit) return res.status(404).json({ error: 'Cotización no encontrada' });
+    res.json({ success: true, data: audit });
+  } catch (err) {
+    console.error('❌ Error obteniendo audit trail:', err.message);
     res.status(500).json({ error: err.message });
   }
 };
@@ -80,7 +169,10 @@ exports.createCotizacion = async (req, res) => {
     
     console.log('✅ Campos validados, procediendo a crear...');
     
-    const result = await Cotizacion.create(req.body);
+  // Pasar información de auditoría si está disponible
+  const payload = { ...req.body };
+  if (req.user && req.user.id) payload.created_by = req.user.id;
+  const result = await Cotizacion.create(payload);
     
     console.log('✅ Cotización creada exitosamente:');
     console.log('✅ ID:', result.id);
@@ -109,7 +201,9 @@ exports.getCotizacionById = async (req, res) => {
 
 exports.updateCotizacion = async (req, res) => {
   try {
-    const updated = await Cotizacion.update(req.params.id, req.body);
+    const payload = { ...req.body };
+    if (req.user && req.user.id) payload.updated_by = req.user.id;
+    const updated = await Cotizacion.update(req.params.id, payload);
     res.json(updated);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -120,7 +214,8 @@ exports.updateCotizacion = async (req, res) => {
 exports.aprobarCotizacion = async (req, res) => {
   try {
     const { id } = req.params;
-    const updated = await Cotizacion.update(id, { estado: 'aprobado' });
+    const approvedBy = req.user && req.user.id ? req.user.id : null;
+    const updated = await Cotizacion.approveOne(id, approvedBy);
     res.json({ 
       message: 'Cotización aprobada exitosamente',
       cotizacion: updated 
@@ -148,15 +243,24 @@ exports.rechazarCotizacion = async (req, res) => {
 exports.approveMateriales = async (req, res) => {
   try {
     const { cotizacionIds } = req.body;
-    
+
     if (!cotizacionIds || !Array.isArray(cotizacionIds) || cotizacionIds.length === 0) {
       return res.status(400).json({ error: 'Debe proporcionar un array de IDs de cotizaciones' });
     }
 
-    console.log(`✅ Aprobando ${cotizacionIds.length} cotizaciones:`, cotizacionIds);
-    
-    // Usar el método del modelo para actualizar múltiples
-    const updated = await Cotizacion.approveMany(cotizacionIds);
+    // Normalizar IDs a enteros
+    const parsedIds = cotizacionIds.map(id => parseInt(id, 10)).filter(n => !Number.isNaN(n));
+    if (parsedIds.length === 0) {
+      return res.status(400).json({ error: 'No se proporcionaron IDs válidos' });
+    }
+
+    console.log(`✅ Aprobando ${parsedIds.length} cotizaciones:`, parsedIds);
+
+    // Usar el método del modelo para actualizar múltiples y registrar quién aprobó
+    const approvedBy = req.user && req.user.id ? req.user.id : null;
+    const updated = await Cotizacion.approveMany(parsedIds, approvedBy);
+
+    console.log(`✅ approveMateriales - filas actualizadas: ${updated.length}`);
 
     res.json({ 
       message: `${updated.length} cotizaciones aprobadas exitosamente`,

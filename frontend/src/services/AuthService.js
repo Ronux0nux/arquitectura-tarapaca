@@ -37,6 +37,16 @@ class AuthService {
     console.log('🔐 AuthService inicializado con endpoints:', this.endpoints);
   }
 
+  // Normalizar user shape: asegurar que existan 'name' y 'nombre'
+  normalizeUser(user) {
+    if (!user) return user;
+    const normalized = { ...user };
+    // name preferido para frontend; nombre se mantiene para compatibilidad
+    normalized.name = normalized.name || normalized.nombre || normalized.email || '';
+    normalized.nombre = normalized.nombre || normalized.name || normalized.email || '';
+    return normalized;
+  }
+
   /**
    * Login con email y contraseña contra MongoDB
    * RETORNA: { success, user, accessToken, refreshToken, message }
@@ -52,30 +62,32 @@ class AuthService {
       });
 
       if (response.success && (response.accessToken || response.token)) {
-        const { user, accessToken, token, refreshToken } = response;
+  const { user, accessToken, token, refreshToken } = response;
+  // Normalizar estructura del usuario para frontend
+  const normalizedUser = this.normalizeUser(user);
         
-        // Usar accessToken del nuevo sistema o token del antiguo
-        const finalToken = accessToken || token;
+  // Usar accessToken del nuevo sistema o token del antiguo
+  const finalToken = accessToken || token;
         
         // ALMACENAMIENTO DEL TOKEN Y USUARIO
-        localStorage.setItem('tarapaca_token', finalToken);
-        localStorage.setItem('tarapaca_user', JSON.stringify(user));
+  localStorage.setItem('tarapaca_token', finalToken);
+  localStorage.setItem('tarapaca_user', JSON.stringify(normalizedUser));
         
         // Guardar refresh token si está disponible
         if (refreshToken) {
           localStorage.setItem('tarapaca_refresh_token', refreshToken);
           // Iniciar timer de refresco automático
-          this.startTokenRefreshTimer(user.id);
+          this.startTokenRefreshTimer(normalizedUser.id || normalizedUser._id);
         }
         
-        console.log('✅ Login exitoso:', user.nombre || user.name);
+  console.log('✅ Login exitoso:', normalizedUser.nombre || normalizedUser.name || normalizedUser.email);
         
         return {
           success: true,
-          user: user,
+          user: normalizedUser,
           accessToken: finalToken,
           refreshToken: refreshToken,
-          message: `Bienvenido ${user.nombre || user.name}`
+          message: `Bienvenido ${normalizedUser.nombre || normalizedUser.name}`
         };
       } else {
         throw new Error(response.message || 'Error de autenticación');
@@ -128,7 +140,7 @@ class AuthService {
     // Simular delay de red
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    const foundUser = mockUsers.find(u => u.email === email && u.password === password);
+  const foundUser = mockUsers.find(u => u.email === email && u.password === password);
     
     if (!foundUser) {
       return {
@@ -137,19 +149,21 @@ class AuthService {
       };
     }
 
-    const { password: _, ...userWithoutPassword } = foundUser;
-    const token = `offline_token_${foundUser.id}_${Date.now()}`;
+  const { password: _, ...userWithoutPassword } = foundUser;
+  // Normalizar shape para que frontend encuentre 'name' y 'nombre'
+  const normalizedUser = this.normalizeUser(userWithoutPassword);
+  const token = `offline_token_${foundUser.id}_${Date.now()}`;
     
     // Almacenar en el storage apropiado
     const storage = rememberMe ? localStorage : sessionStorage;
-    localStorage.setItem('tarapaca_token', token);
-    storage.setItem('tarapaca_user', JSON.stringify(userWithoutPassword));
+  localStorage.setItem('tarapaca_token', token);
+  storage.setItem('tarapaca_user', JSON.stringify(normalizedUser));
     
     return {
       success: true,
-      user: userWithoutPassword,
+      user: normalizedUser,
       token: token,
-      message: `Bienvenido ${userWithoutPassword.name} (Modo Offline)`
+      message: `Bienvenido ${normalizedUser.name} (Modo Offline)`
     };
   }
 

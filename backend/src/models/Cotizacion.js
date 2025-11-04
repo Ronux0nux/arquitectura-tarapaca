@@ -40,18 +40,32 @@ module.exports = {
     console.log('🔷 ID Generado:', id);
     
     // 🆕 INCLUIR ID EN EL INSERT
-    const res = await pool.query(
-      `INSERT INTO cotizaciones (id, projects_id, insumos_id, providers_id, users_id, nombre_material, unidad, cantidad, precio_unitario, estado, detalles, observaciones, created_at, updated_at) 
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW()) RETURNING *`,
-      [id, proyectoId, insumoId, proveedorId, userId, nombreMaterial, unidad, cantidad, precioUnitario, estado, detalles, observaciones]
-    );
-    
-    console.log('✅ Cotización insertada en BD:');
-    console.log('✅ ID:', res.rows[0].id);
-    console.log('✅ ProyectoID:', res.rows[0].projects_id);
-    console.log('✅ Fila completa:', res.rows[0]);
-    
-    return res.rows[0];
+    // Intentamos insertar incluyendo campos de auditoría si están disponibles en la tabla.
+    try {
+      const res = await pool.query(
+        `INSERT INTO cotizaciones (id, projects_id, insumos_id, providers_id, users_id, nombre_material, unidad, cantidad, precio_unitario, estado, detalles, observaciones, created_by, updated_by, created_at, updated_at) 
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW(), NOW()) RETURNING *`,
+        [id, proyectoId, insumoId, proveedorId, userId, nombreMaterial, unidad, cantidad, precioUnitario, estado, detalles, observaciones, data.created_by || userId, data.updated_by || userId]
+      );
+
+      console.log('✅ Cotización insertada en BD (con auditoría):');
+      console.log('✅ ID:', res.rows[0].id);
+      console.log('✅ ProyectoID:', res.rows[0].projects_id);
+      console.log('✅ Fila completa:', res.rows[0]);
+
+      return res.rows[0];
+    } catch (err) {
+      // Si la tabla no contiene las columnas de auditoría, caemos al INSERT simple
+      console.warn('⚠️ Inserción con auditoría falló (fallback):', err.message);
+      const res = await pool.query(
+        `INSERT INTO cotizaciones (id, projects_id, insumos_id, providers_id, users_id, nombre_material, unidad, cantidad, precio_unitario, estado, detalles, observaciones, created_at, updated_at) 
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW()) RETURNING *`,
+        [id, proyectoId, insumoId, proveedorId, userId, nombreMaterial, unidad, cantidad, precioUnitario, estado, detalles, observaciones]
+      );
+
+      console.log('✅ Cotización insertada en BD (sin auditoría):');
+      return res.rows[0];
+    }
   },
   findAll: async () => {
     const res = await pool.query('SELECT *, cantidad * (precio_unitario::numeric) AS precio_total FROM cotizaciones ORDER BY created_at DESC');
@@ -97,6 +111,11 @@ module.exports = {
       updates.push(`observaciones = $${paramCount++}`);
       values.push(data.observaciones);
     }
+    // auditoría: updated_by
+    if (data.updated_by) {
+      updates.push(`updated_by = $${paramCount++}`);
+      values.push(data.updated_by);
+    }
     
     updates.push(`updated_at = NOW()`);
     values.push(id);
@@ -110,13 +129,66 @@ module.exports = {
   delete: async (id) => {
     await pool.query('DELETE FROM cotizaciones WHERE id = $1', [id]);
   },
-  approveMany: async (ids) => {
-    const placeholders = ids.map((_, i) => `$${i + 1}`).join(',');
-    const res = await pool.query(
-      `UPDATE cotizaciones SET estado = 'aprobado', updated_at = NOW() WHERE id IN (${placeholders}) RETURNING *`,
-      ids
-    );
-    return res.rows;
+  approveMany: async (ids, approvedBy = null) => {
+    // Normalizar IDs a array de enteros (si vienen como strings)
+    const intIds = ids.map(id => Number.isInteger(id) ? id : parseInt(id, 10)).filter(n => !Number.isNaN(n));
+    if (intIds.length === 0) return [];
+
+    try {
+      // Usar un único parámetro tipo array para mayor robustez
+      if (approvedBy) {
+        const res = await pool.query(
+          `UPDATE cotizaciones SET estado = 'aprobado', updated_at = NOW(), approved_by = $2, approved_at = NOW() WHERE id = ANY($1::int[]) RETURNING *`,
+          [intIds, approvedBy]
+        );
+        // registrar para debug
+        console.log(`🔔 approveMany: aprobadas ${res.rowCount} filas (approvedBy=${approvedBy})`);
+        return res.rows;
+      } else {
+        const res = await pool.query(
+          `UPDATE cotizaciones SET estado = 'aprobado', updated_at = NOW() WHERE id = ANY($1::int[]) RETURNING *`,
+          [intIds]
+        );
+        console.log(`🔔 approveMany: aprobadas ${res.rowCount} filas (approvedBy=null)`);
+        return res.rows;
+      }
+    } catch (err) {
+      console.error('❌ approveMany error:', err && err.message);
+      // Intentar fallback con placeholders individuales
+      const placeholders = intIds.map((_, i) => `$${i + 1}`).join(',');
+      const res = await pool.query(
+        `UPDATE cotizaciones SET estado = 'aprobado', updated_at = NOW() WHERE id IN (${placeholders}) RETURNING *`,
+        intIds
+      );
+      console.log(`🔔 approveMany (fallback): aprobadas ${res.rowCount} filas`);
+      return res.rows;
+    }
+  },
+  // Aprobar una cotización individualmente y registrar approver
+  approveOne: async (id, approvedBy = null) => {
+    const intId = Number.isInteger(id) ? id : parseInt(id, 10);
+    if (Number.isNaN(intId)) return null;
+    try {
+      if (approvedBy) {
+        const res = await pool.query(
+          `UPDATE cotizaciones SET estado = 'aprobado', updated_at = NOW(), approved_by = $2, approved_at = NOW() WHERE id = $1 RETURNING *`,
+          [intId, approvedBy]
+        );
+        console.log(`🔔 approveOne: id=${intId} aprobado por ${approvedBy}`);
+        return res.rows[0];
+      } else {
+        const res = await pool.query(
+          `UPDATE cotizaciones SET estado = 'aprobado', updated_at = NOW() WHERE id = $1 RETURNING *`,
+          [intId]
+        );
+        console.log(`🔔 approveOne: id=${intId} aprobado (approvedBy=null)`);
+        return res.rows[0];
+      }
+    } catch (err) {
+      console.error('❌ approveOne error:', err && err.message);
+      const res = await pool.query(`UPDATE cotizaciones SET estado = 'aprobado', updated_at = NOW() WHERE id = $1 RETURNING *`, [intId]);
+      return res.rows[0];
+    }
   },
   rejectMany: async (ids) => {
     const placeholders = ids.map((_, i) => `$${i + 1}`).join(',');
@@ -125,5 +197,18 @@ module.exports = {
       ids
     );
     return res.rows;
+  },
+  // Obtener solo cotizaciones aprobadas por proyecto
+  getApprovedByProject: async (proyectoId) => {
+    const res = await pool.query(
+      "SELECT *, cantidad * (precio_unitario::numeric) AS precio_total FROM cotizaciones WHERE projects_id = $1 AND estado = 'aprobado' ORDER BY created_at DESC",
+      [proyectoId]
+    );
+    return res.rows;
+  },
+  // Obtener línea de auditoría para una cotización
+  getAuditTrail: async (id) => {
+    const res = await pool.query('SELECT id, users_id, created_at, updated_at, created_by, updated_by, approved_by, approved_at FROM cotizaciones WHERE id = $1', [id]);
+    return res.rows[0] || null;
   },
 };

@@ -395,11 +395,14 @@ class CotizacionService {
       const response = await this.apiService.get(`${this.endpoints.getByProject}/${projectId}`);
       
       if (response.success && response.data) {
-        // Cachear cotizaciones del proyecto
+        // Cachear cotizaciones del proyecto (guardar el objeto data completo)
         this.cache.projectCotizaciones.set(projectId, response.data);
-        
+
+        // Normalizar salida para compatibilidad con diferentes consumidores
         return {
           success: true,
+          cotizaciones: response.data.cotizaciones || [],
+          resumen: response.data.resumen || {},
           data: response.data,
           source: 'database'
         };
