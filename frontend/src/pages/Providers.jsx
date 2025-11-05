@@ -1,6 +1,5 @@
 
 import React, { useState, useEffect } from 'react';
-import CSVProviders from '../components/CSVProviders';
 
 export default function Providers() {
   // Estado para búsqueda de proveedores
@@ -25,25 +24,34 @@ export default function Providers() {
   const [selectedProject, setSelectedProject] = useState('');
   const [selectedProvider, setSelectedProvider] = useState('');
   const [providersList, setProvidersList] = useState([]);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [linkSuccess, setLinkSuccess] = useState(null);
   const [linkError, setLinkError] = useState(null);
 
+  // Cargar proyectos y proveedores cuando sea necesario
   useEffect(() => {
     if (showPopup) {
       fetch('/api/projects')
         .then(res => res.json())
         .then(data => setProjects(data));
-      fetch('/api/providers')
-        .then(res => res.json())
-        .then(data => setProvidersList(data));
-    }
-    // Refrescar lista si se cierra modal de edición
-    if (!editProvider) {
-      fetch('/api/providers')
-        .then(res => res.json())
-        .then(data => setProvidersList(data));
     }
   }, [showPopup]);
+
+  // Cargar proveedores al montar y cuando refreshKey cambie
+  useEffect(() => {
+    const loadProviders = async () => {
+      try {
+        const res = await fetch('/api/providers');
+        if (!res.ok) throw new Error('Error cargando proveedores');
+        const data = await res.json();
+        setProvidersList(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error('Error al cargar providers:', err);
+        setProvidersList([]);
+      }
+    };
+    loadProviders();
+  }, [refreshKey]);
   // Abrir modal de edición y cargar datos
   const handleEditClick = (provider) => {
     setEditProvider(provider);
@@ -72,7 +80,7 @@ export default function Providers() {
     setEditSuccess(null);
     setEditLoading(true);
     // Validar RUT
-    const rutRegex = /^\d{1,2}\.?(\d{3})\.?(\d{3})\-([\dkK])$/;
+  const rutRegex = /^\d{1,2}\.?(\d{3})\.?(\d{3})-([\dkK])$/;
     if (!rutRegex.test(editForm.rut)) {
       setEditError('Formato de RUT inválido. Ejemplo: 12.345.678-9 o 12.345.678-k');
       setEditLoading(false);
@@ -110,10 +118,10 @@ export default function Providers() {
 
   const handleChange = (e) => {
     if (e.target.name === 'rut') {
-      const value = e.target.value.replace(/[^0-9kK\-]/g, '');
+  const value = e.target.value.replace(/[^0-9kK-]/g, '');
       setForm({ ...form, rut: value });
       // Validación de formato: números, guion y k/K al final
-      const rutRegex = /^\d{1,2}\.?(\d{3})\.?(\d{3})\-([\dkK])$/;
+  const rutRegex = /^\d{1,2}\.?(\d{3})\.?(\d{3})-([\dkK])$/;
       if (value && !rutRegex.test(value)) {
         setRutError('Formato de RUT inválido. Ejemplo: 12.345.678-9 o 12.345.678-k');
       } else {
@@ -129,7 +137,7 @@ export default function Providers() {
     setError(null);
     setSuccess(null);
     // Validar RUT antes de enviar
-    const rutRegex = /^\d{1,2}\.?(\d{3})\.?(\d{3})\-([\dkK])$/;
+  const rutRegex = /^\d{1,2}\.?(\d{3})\.?(\d{3})-([\dkK])$/;
     if (!rutRegex.test(form.rut)) {
       setRutError('Formato de RUT inválido. Ejemplo: 12.345.678-9 o 12.345.678-k');
       return;
@@ -180,27 +188,86 @@ export default function Providers() {
     }
   };
 
+  // Mostrar todo (limpiar búsqueda y recargar)
+  const handleShowAll = () => {
+    setSearch('');
+    setRefreshKey(k => k + 1);
+  };
+
+  // Exportar proveedores a CSV (simple)
+  const exportProvidersCSV = () => {
+    try {
+      const rows = [
+        ['ID','Nombre','DNI/CIF','Dirección','Teléfono','Email','Sitio Web','Rubros']
+      ];
+      providersList.forEach(p => {
+
+  const direccion = p.direccion || '';
+        rows.push([
+          p.id || p._id || '',
+          p.nombre || '',
+          p.rut || '',
+          direccion,
+          p.telefono || '',
+          p.email || '',
+          p.sitioweb || '',
+          Array.isArray(p.rubros) ? p.rubros.join(', ') : (p.rubros || '')
+        ]);
+      });
+      const csvContent = rows.map(r => r.map(cell => `"${String(cell || '').replace(/"/g,'""')}"`).join(',')).join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `proveedores_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      console.error('Error exportando CSV:', err);
+    }
+  };
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <h1 className="text-3xl font-bold text-gray-800 mb-6">🏢 Gestión de Proveedores</h1>
 
-      {/* Formulario para agregar proveedor */}
-      <form onSubmit={handleSubmit} className="mb-8 bg-white p-6 rounded-lg shadow flex flex-wrap gap-4 items-end">
-  <input name="nombre" value={form.nombre} onChange={handleChange} required placeholder="Nombre (texto)" className="border p-2 rounded w-40" maxLength={100} />
-  <input name="rut" value={form.rut} onChange={handleChange} required placeholder="RUT (ej: 12.345.678-9 o 12.345.678-k)" className="border p-2 rounded w-32" maxLength={15} />
-  {rutError && <span className="text-red-600 ml-4">{rutError}</span>}
-  <input name="direccion" value={form.direccion} onChange={handleChange} placeholder="Dirección (texto)" className="border p-2 rounded w-48" maxLength={255} />
-  <input name="telefono" value={form.telefono} onChange={handleChange} placeholder="Teléfono" className="border p-2 rounded w-32" />
-  <input name="email" value={form.email} onChange={handleChange} placeholder="Email" className="border p-2 rounded w-40" />
-  <input name="sitioweb" value={form.sitioweb} onChange={handleChange} placeholder="Sitio Web (opcional)" className="border p-2 rounded w-40" />
-  <input name="rubros" value={form.rubros} onChange={handleChange} placeholder="Rubros (separados por coma)" className="border p-2 rounded w-48" />
-  <button type="submit" disabled={loading} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">{loading ? 'Agregando...' : 'Agregar Proveedor'}</button>
-  {error && <span className="text-red-600 ml-4">{error}</span>}
-  {success && <span className="text-green-600 ml-4">{success}</span>}
-      </form>
+      {/* Barra superior: búsqueda y botones (ordenadas por prioridad) */}
+      <div className="bg-white p-4 rounded-lg shadow mb-6 flex flex-col md:flex-row items-center justify-between gap-4">
+        {/* Search input + Buscar button (button next to input) */}
+        <div className="flex items-center gap-3 w-full md:w-1/2">
+          <div className="flex w-full">
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Ingrese su búsqueda"
+              className="flex-1 p-3 border rounded-l focus:outline-none"
+              aria-label="Buscar proveedores"
+            />
+            <button
+              onClick={() => { /* trigger explicit search (reactive already) */ }}
+              className="bg-green-500 text-white px-4 py-2 rounded-r hover:bg-green-600"
+              aria-label="Buscar proveedores"
+            >Buscar</button>
+          </div>
+        </div>
 
-      {/* Botón para abrir pop-up de vinculación */}
-      <button onClick={() => setShowPopup(true)} className="mb-4 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Vincular proveedor a proyecto</button>
+        {/* Primary actions: creación y navegación */}
+        <div className="flex items-center gap-3">
+          {/* Crear proveedor - botón principal */}
+          <button onClick={() => setShowCreateModal(true)} className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 font-medium">Nuevo proveedor</button>
+
+          {/* Mostrar todo - recarga lista */}
+          <button onClick={handleShowAll} className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">Mostrar Todo</button>
+        </div>
+
+        {/* Secondary actions: exportar y vincular (menos prioridad) */}
+        <div className="flex items-center gap-3">
+          <button onClick={exportProvidersCSV} title="Exportar CSV" className="bg-teal-400 text-white px-3 py-2 rounded hover:bg-teal-500">📥 Exportar</button>
+          <button onClick={() => setShowPopup(true)} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Vincular proveedor</button>
+        </div>
+      </div>
 
       {/* Pop-up de vinculación */}
       {showPopup && (
@@ -253,51 +320,70 @@ export default function Providers() {
           <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-xl pointer-events-none">🔍</span>
         </div>
       </div>
-      <div className="mt-8">
-        <h2 className="text-xl font-bold mb-4">Listado de Proveedores</h2>
-        <table className="min-w-full bg-white border">
-          <thead>
-            <tr>
-              <th className="border px-2 py-1">Nombre</th>
-              <th className="border px-2 py-1">RUT</th>
-              <th className="border px-2 py-1">Dirección</th>
-              <th className="border px-2 py-1">Teléfono</th>
-              <th className="border px-2 py-1">Email</th>
-              <th className="border px-2 py-1">Sitio Web</th>
-              <th className="border px-2 py-1">Rubros</th>
-              <th className="border px-2 py-1">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {providersList
-              .filter(pr => {
-                const term = search.toLowerCase();
-                return (
-                  pr.nombre?.toLowerCase().includes(term) ||
-                  pr.rut?.toLowerCase().includes(term) ||
-                  pr.direccion?.toLowerCase().includes(term) ||
-                  pr.email?.toLowerCase().includes(term) ||
-                  pr.telefono?.toLowerCase().includes(term) ||
-                  pr.sitioweb?.toLowerCase().includes(term) ||
-                  (Array.isArray(pr.rubros) ? pr.rubros.join(', ').toLowerCase().includes(term) : (pr.rubros?.toLowerCase().includes(term)))
-                );
-              })
-              .map(pr => (
-                <tr key={pr.id}>
-                  <td className="border px-2 py-1">{pr.nombre}</td>
-                  <td className="border px-2 py-1">{pr.rut}</td>
-                  <td className="border px-2 py-1">{pr.direccion}</td>
-                  <td className="border px-2 py-1">{pr.telefono}</td>
-                  <td className="border px-2 py-1">{pr.email}</td>
-                  <td className="border px-2 py-1">{pr.sitioweb}</td>
-                  <td className="border px-2 py-1">{Array.isArray(pr.rubros) ? pr.rubros.join(', ') : pr.rubros}</td>
-                  <td className="border px-2 py-1">
-                    <button className="bg-yellow-500 text-white px-2 py-1 rounded hover:bg-yellow-600" onClick={() => handleEditClick(pr)}>Editar</button>
-                  </td>
-                </tr>
-              ))}
-          </tbody>
-        </table>
+      <div className="mt-2 bg-white rounded-lg shadow">
+        <h2 className="text-xl font-bold mb-2 p-4 border-b">Listado de Proveedores</h2>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="text-left text-sm text-gray-600">
+                <th className="px-4 py-3"> </th>
+                <th className="px-4 py-3">ID</th>
+                <th className="px-4 py-3">NOMBRE</th>
+                <th className="px-4 py-3">DNI/CIF</th>
+                <th className="px-4 py-3">DIRECCIÓN</th>
+                <th className="px-4 py-3">TELEFONO</th>
+                <th className="px-4 py-3">EMAIL</th>
+                <th className="px-4 py-3">SITIO WEB</th>
+                <th className="px-4 py-3">RUBROS</th>
+                <th className="px-4 py-3"> </th>
+              </tr>
+            </thead>
+            <tbody>
+              {providersList
+                .filter(pr => {
+                  const term = search.toLowerCase();
+                  return (
+                    !term ||
+                    pr.nombre?.toLowerCase().includes(term) ||
+                    pr.rut?.toLowerCase().includes(term) ||
+                    pr.direccion?.toLowerCase().includes(term) ||
+                    pr.email?.toLowerCase().includes(term) ||
+                    pr.telefono?.toLowerCase().includes(term) ||
+                    pr.sitioweb?.toLowerCase().includes(term) ||
+                    (Array.isArray(pr.rubros) ? pr.rubros.join(', ').toLowerCase().includes(term) : (pr.rubros?.toLowerCase().includes(term)))
+                  );
+                })
+                .map((pr, idx) => {
+                  const direccion = pr.direccion || '';
+                  return (
+                    <tr key={pr.id || pr._id || idx} className={`${idx % 2 === 0 ? 'bg-gray-50' : ''}`}>
+                      <td className="px-4 py-4 text-center">👥</td>
+                      <td className="px-4 py-4 text-sm text-gray-700">{pr.id || pr._id || ''}</td>
+                      <td className="px-4 py-4 font-medium text-blue-700">{pr.nombre}</td>
+                      <td className="px-4 py-4">{pr.rut || ''}</td>
+                      <td className="px-4 py-4">{direccion}</td>
+                      <td className="px-4 py-4">{pr.telefono || ''}</td>
+                      <td className="px-4 py-4">{pr.email || ''}</td>
+                      <td className="px-4 py-4 break-words">{pr.sitioweb || ''}</td>
+                      <td className="px-4 py-4">{Array.isArray(pr.rubros) ? pr.rubros.join(', ') : (pr.rubros || '')}</td>
+                      <td className="px-4 py-4">
+                        <div className="flex gap-2 justify-end">
+                          <button onClick={() => handleEditClick(pr)} className="bg-yellow-400 text-white px-3 py-1 rounded hover:bg-yellow-500">✏️</button>
+                          <button onClick={async () => {
+                            if (!window.confirm('¿Eliminar proveedor?')) return;
+                            try {
+                              const res = await fetch(`/api/providers/${pr.id || pr._id}`, { method: 'DELETE' });
+                              if (res.ok) { setRefreshKey(k => k + 1); }
+                            } catch (e) { console.error(e); }
+                          }} className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600">🗑️</button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Modal de edición de proveedor */}
@@ -317,6 +403,31 @@ export default function Providers() {
               <button type="submit" disabled={editLoading} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">{editLoading ? 'Guardando...' : 'Guardar cambios'}</button>
               {editError && <span className="text-red-600">{editError}</span>}
               {editSuccess && <span className="text-green-600">{editSuccess}</span>}
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Modal de creación de proveedor (nuevo) */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-lg relative">
+            <button className="absolute top-2 right-2 text-gray-500 hover:text-gray-800" onClick={() => setShowCreateModal(false)}>&times;</button>
+            <h2 className="text-2xl font-bold mb-4">Nuevo Proveedor</h2>
+            <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+              <input name="nombre" value={form.nombre} onChange={handleChange} required placeholder="Nombre" className="border p-2 rounded" maxLength={100} />
+              <input name="rut" value={form.rut} onChange={handleChange} required placeholder="RUT (ej: 12.345.678-9 o 12.345.678-k)" className="border p-2 rounded" maxLength={15} />
+              {rutError && <span className="text-red-600">{rutError}</span>}
+              <input name="direccion" value={form.direccion} onChange={handleChange} placeholder="Dirección" className="border p-2 rounded" maxLength={255} />
+              <input name="telefono" value={form.telefono} onChange={handleChange} placeholder="Teléfono" className="border p-2 rounded" />
+              <input name="email" value={form.email} onChange={handleChange} placeholder="Email" className="border p-2 rounded" />
+              <input name="sitioweb" value={form.sitioweb} onChange={handleChange} placeholder="Sitio Web (opcional)" className="border p-2 rounded" />
+              <input name="rubros" value={form.rubros} onChange={handleChange} placeholder="Rubros (separados por coma)" className="border p-2 rounded" />
+              <div className="flex gap-2 justify-end">
+                <button type="button" onClick={() => setShowCreateModal(false)} className="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50">Cancelar</button>
+                <button type="submit" disabled={loading} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">{loading ? 'Agregando...' : 'Agregar Proveedor'}</button>
+              </div>
+              {error && <span className="text-red-600">{error}</span>}
+              {success && <span className="text-green-600">{success}</span>}
             </form>
           </div>
         </div>
