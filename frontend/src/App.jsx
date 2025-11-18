@@ -28,8 +28,6 @@ import Login from './components/Login';
 import { useLocation, Navigate } from 'react-router-dom';
 
 export default function App() {
-  // ...existing code...
-
   function RequireAuth({ children }) {
     const { user } = useAuth();
     const location = useLocation();

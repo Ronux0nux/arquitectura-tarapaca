@@ -1,7 +1,5 @@
-import React, { useState, useEffect } from 'react';
+  import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-
-// ...existing code...
 
 const Projects = () => {
   // URL base del API - ajustar según el entorno
@@ -741,6 +739,127 @@ const Projects = () => {
     setShowActaDetailsModal(true);
   };
 
+  // ============ GESTIÓN DE ARCHIVOS ============
+  
+  // Subir archivo al proyecto
+  const handleFileUpload = async (file) => {
+    if (!file || !selectedProject) return;
+
+    // Validar tamaño (50MB)
+    if (file.size > 50 * 1024 * 1024) {
+      alert('El archivo es muy grande. Máximo 50MB.');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('archivo', file);
+    formData.append('categoria', 'Documentos'); // Categoría por defecto
+    formData.append('descripcion', ''); // Descripción opcional
+
+    try {
+      const response = await fetch(`http://localhost:5000/api/projects/${selectedProject.id}/archivos`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: formData
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al subir archivo');
+      }
+
+      const archivoSubido = await response.json();
+      
+      // Actualizar el proyecto seleccionado con el nuevo archivo
+      setSelectedProject(prev => ({
+        ...prev,
+        archivos: [...(prev.archivos || []), archivoSubido]
+      }));
+
+      // Refrescar la lista de proyectos
+      fetchProjects();
+      
+      alert('Archivo subido exitosamente');
+    } catch (error) {
+      console.error('Error al subir archivo:', error);
+      alert('Error al subir archivo: ' + error.message);
+    }
+  };
+
+  // Descargar archivo
+  const handleDownloadFile = async (archivo) => {
+    try {
+      const response = await fetch(
+        `http://localhost:5000/api/projects/${selectedProject.id}/archivos/${archivo.id}/download`,
+        {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Error al descargar archivo');
+      }
+
+      // Crear blob del archivo
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      
+      // Crear link temporal para descarga
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = archivo.nombre_original;
+      document.body.appendChild(a);
+      a.click();
+      
+      // Limpiar
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Error al descargar archivo:', error);
+      alert('Error al descargar archivo: ' + error.message);
+    }
+  };
+
+  // Eliminar archivo
+  const handleDeleteFile = async (archivo) => {
+    if (!window.confirm(`¿Estás seguro de eliminar el archivo "${archivo.nombre_original}"?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `http://localhost:5000/api/projects/${selectedProject.id}/archivos/${archivo.id}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Error al eliminar archivo');
+      }
+
+      // Actualizar el proyecto seleccionado removiendo el archivo
+      setSelectedProject(prev => ({
+        ...prev,
+        archivos: prev.archivos.filter(a => a.id !== archivo.id)
+      }));
+
+      // Refrescar la lista de proyectos
+      fetchProjects();
+      
+      alert('Archivo eliminado exitosamente');
+    } catch (error) {
+      console.error('Error al eliminar archivo:', error);
+      alert('Error al eliminar archivo: ' + error.message);
+    }
+  };
+
   // Log para debuguear el user cuando cambia
   useEffect(() => {
     console.log('👤 User del contexto:', user);
@@ -919,6 +1038,83 @@ const Projects = () => {
         </p>
       </div>
 
+      {/* Tarjetas de Métricas */}
+      {projects.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          {/* Card: Presupuesto Total */}
+          <div className="bg-white rounded-lg shadow p-4 border-l-4 border-green-500">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600 mb-1">Presupuesto Total</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  ${projects.reduce((sum, p) => sum + (parseFloat(p.presupuesto_total) || 0), 0).toLocaleString('es-CL')}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Gastado: ${projects.reduce((sum, p) => sum + (parseFloat(p.presupuesto_gastado) || 0), 0).toLocaleString('es-CL')}
+                </p>
+              </div>
+              <svg className="w-12 h-12 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+          </div>
+
+          {/* Card: Avance Promedio */}
+          <div className="bg-white rounded-lg shadow p-4 border-l-4 border-blue-500">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600 mb-1">Avance Promedio</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {Math.round(projects.reduce((sum, p) => sum + (parseInt(p.porcentaje_avance) || 0), 0) / projects.length)}%
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {projects.filter(p => (parseInt(p.porcentaje_avance) || 0) === 100).length} completados
+                </p>
+              </div>
+              <svg className="w-12 h-12 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+            </div>
+          </div>
+
+          {/* Card: Hitos */}
+          <div className="bg-white rounded-lg shadow p-4 border-l-4 border-yellow-500">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600 mb-1">Hitos Totales</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {projects.reduce((sum, p) => sum + (parseInt(p.total_hitos) || 0), 0)}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {projects.reduce((sum, p) => sum + (parseInt(p.hitos_completados) || 0), 0)} completados
+                </p>
+              </div>
+              <svg className="w-12 h-12 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+              </svg>
+            </div>
+          </div>
+
+          {/* Card: Alertas Activas */}
+          <div className="bg-white rounded-lg shadow p-4 border-l-4 border-red-500">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600 mb-1">Alertas Activas</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {projects.reduce((sum, p) => sum + (parseInt(p.alertas_activas) || 0), 0)}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {projects.filter(p => (parseInt(p.alertas_activas) || 0) > 0).length} proyectos afectados
+                </p>
+              </div>
+              <svg className="w-12 h-12 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Tabla de proyectos */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
         {loading ? (
@@ -952,14 +1148,23 @@ const Projects = () => {
                     Coordinador
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Presupuesto
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Avance
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Hitos
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Acciones
                   </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {projects.length === 0 ? (
+                {!Array.isArray(projects) || projects.length === 0 ? (
                   <tr>
-                    <td colSpan="7" className="px-6 py-8 text-center text-gray-500">
+                    <td colSpan="10" className="px-6 py-8 text-center text-gray-500">
                       <div className="flex flex-col items-center">
                         <svg className="w-12 h-12 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -995,6 +1200,40 @@ const Projects = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {getSupervisorName(project.subencargado)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <div className="flex flex-col">
+                          <span className="font-medium text-gray-900">${(parseFloat(project.presupuesto_total) || 0).toLocaleString('es-CL')}</span>
+                          <span className="text-xs text-gray-400">Gastado: ${(parseFloat(project.presupuesto_gastado) || 0).toLocaleString('es-CL')}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <div className="flex items-center">
+                          <div className="w-full bg-gray-200 rounded-full h-2 mr-2">
+                            <div 
+                              className={`h-2 rounded-full ${
+                                (parseInt(project.porcentaje_avance) || 0) >= 80 ? 'bg-green-500' :
+                                (parseInt(project.porcentaje_avance) || 0) >= 50 ? 'bg-yellow-500' :
+                                'bg-red-500'
+                              }`}
+                              style={{ width: `${parseInt(project.porcentaje_avance) || 0}%` }}
+                            ></div>
+                          </div>
+                          <span className="text-xs font-medium text-gray-700">{parseInt(project.porcentaje_avance) || 0}%</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <div className="flex flex-col">
+                          <span className="font-medium text-gray-900">{parseInt(project.hitos_completados) || 0}/{parseInt(project.total_hitos) || 0}</span>
+                          {(parseInt(project.alertas_activas) || 0) > 0 && (
+                            <span className="text-xs text-red-600 flex items-center">
+                              <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                              </svg>
+                              {parseInt(project.alertas_activas) || 0} alerta{(parseInt(project.alertas_activas) || 0) > 1 ? 's' : ''}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                         <button
@@ -1566,6 +1805,305 @@ const Projects = () => {
                   <p className="mt-2 text-gray-700 bg-gray-50 p-4 rounded">
                     {selectedProject.descripcion || 'No hay descripción disponible'}
                   </p>
+                </div>
+
+                {/* Métricas de Gestión */}
+                <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="bg-green-50 p-3 rounded-lg">
+                    <p className="text-xs text-gray-600 mb-1">Presupuesto</p>
+                    <p className="text-lg font-bold text-green-700">${(parseFloat(selectedProject.presupuesto_total) || 0).toLocaleString('es-CL')}</p>
+                    <p className="text-xs text-gray-500">Gastado: ${(parseFloat(selectedProject.presupuesto_gastado) || 0).toLocaleString('es-CL')}</p>
+                  </div>
+                  <div className="bg-blue-50 p-3 rounded-lg">
+                    <p className="text-xs text-gray-600 mb-1">Avance</p>
+                    <p className="text-lg font-bold text-blue-700">{parseInt(selectedProject.porcentaje_avance) || 0}%</p>
+                    <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
+                      <div 
+                        className="bg-blue-600 h-2 rounded-full" 
+                        style={{ width: `${parseInt(selectedProject.porcentaje_avance) || 0}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                  <div className="bg-yellow-50 p-3 rounded-lg">
+                    <p className="text-xs text-gray-600 mb-1">Hitos</p>
+                    <p className="text-lg font-bold text-yellow-700">{parseInt(selectedProject.total_hitos) || 0}</p>
+                    <p className="text-xs text-gray-500">{parseInt(selectedProject.hitos_completados) || 0} completados</p>
+                  </div>
+                  <div className="bg-red-50 p-3 rounded-lg">
+                    <p className="text-xs text-gray-600 mb-1">Alertas</p>
+                    <p className="text-lg font-bold text-red-700">{parseInt(selectedProject.alertas_activas) || 0}</p>
+                    <p className="text-xs text-gray-500">{(parseInt(selectedProject.alertas_activas) || 0) > 0 ? 'Requieren atención' : 'Todo bien'}</p>
+                  </div>
+                </div>
+
+                {/* Sección de Hitos */}
+                {selectedProject.hitos && selectedProject.hitos.length > 0 && (
+                  <div className="mt-6">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
+                      <svg className="w-5 h-5 mr-2 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                      </svg>
+                      Hitos del Proyecto
+                    </h3>
+                    <div className="space-y-2">
+                      {selectedProject.hitos.map((hito, idx) => (
+                        <div key={idx} className="bg-gray-50 p-3 rounded-lg border border-gray-200 hover:border-yellow-300 transition-colors">
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-medium text-gray-900">{hito.nombre}</h4>
+                                <span className={`px-2 py-0.5 text-xs font-medium rounded ${
+                                  hito.estado === 'Completado' ? 'bg-green-100 text-green-800' :
+                                  hito.estado === 'En Progreso' ? 'bg-blue-100 text-blue-800' :
+                                  hito.estado === 'Atrasado' ? 'bg-red-100 text-red-800' :
+                                  'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {hito.estado}
+                                </span>
+                                {hito.es_critico && (
+                                  <span className="px-2 py-0.5 text-xs font-medium rounded bg-red-100 text-red-800">
+                                    Crítico
+                                  </span>
+                                )}
+                              </div>
+                              {hito.descripcion && (
+                                <p className="text-sm text-gray-600 mt-1">{hito.descripcion}</p>
+                              )}
+                              <div className="flex gap-4 mt-2 text-xs text-gray-500">
+                                <span>📅 {new Date(hito.fecha_programada).toLocaleDateString('es-CL')}</span>
+                                <span>📊 Peso: {hito.porcentaje_peso}%</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Sección de Gastos */}
+                {selectedProject.gastos && selectedProject.gastos.length > 0 && (
+                  <div className="mt-6">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
+                      <svg className="w-5 h-5 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Gastos Recientes
+                    </h3>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Fecha</th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Categoría</th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Concepto</th>
+                            <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Monto</th>
+                            <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Estado</th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {selectedProject.gastos.map((gasto, idx) => (
+                            <tr key={idx} className="hover:bg-gray-50">
+                              <td className="px-3 py-2 text-sm text-gray-500">{new Date(gasto.fecha).toLocaleDateString('es-CL')}</td>
+                              <td className="px-3 py-2 text-sm">
+                                <span className={`px-2 py-1 text-xs font-medium rounded ${
+                                  gasto.categoria === 'Materiales' ? 'bg-blue-100 text-blue-800' :
+                                  gasto.categoria === 'Mano de Obra' ? 'bg-purple-100 text-purple-800' :
+                                  gasto.categoria === 'Equipos' ? 'bg-orange-100 text-orange-800' :
+                                  'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {gasto.categoria}
+                                </span>
+                              </td>
+                              <td className="px-3 py-2 text-sm text-gray-900">{gasto.concepto}</td>
+                              <td className="px-3 py-2 text-sm text-right font-medium text-gray-900">${parseFloat(gasto.monto).toLocaleString('es-CL')}</td>
+                              <td className="px-3 py-2 text-center">
+                                {gasto.aprobado ? (
+                                  <span className="px-2 py-1 text-xs font-medium rounded bg-green-100 text-green-800">Aprobado</span>
+                                ) : (
+                                  <span className="px-2 py-1 text-xs font-medium rounded bg-yellow-100 text-yellow-800">Pendiente</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* Sección de Alertas */}
+                {selectedProject.alertas && selectedProject.alertas.length > 0 && (
+                  <div className="mt-6">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
+                      <svg className="w-5 h-5 mr-2 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                      Alertas Activas
+                    </h3>
+                    <div className="space-y-2">
+                      {selectedProject.alertas.map((alerta, idx) => (
+                        <div key={idx} className={`p-3 rounded-lg border-l-4 ${
+                          alerta.nivel === 'critical' ? 'bg-red-50 border-red-500' :
+                          alerta.nivel === 'warning' ? 'bg-yellow-50 border-yellow-500' :
+                          'bg-blue-50 border-blue-500'
+                        }`}>
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h4 className="font-medium text-gray-900">{alerta.titulo}</h4>
+                              <p className="text-sm text-gray-600 mt-1">{alerta.mensaje}</p>
+                              <p className="text-xs text-gray-500 mt-1">{new Date(alerta.fecha_generacion).toLocaleString('es-CL')}</p>
+                            </div>
+                            <span className={`px-2 py-1 text-xs font-medium rounded ${
+                              alerta.nivel === 'critical' ? 'bg-red-100 text-red-800' :
+                              alerta.nivel === 'warning' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-blue-100 text-blue-800'
+                            }`}>
+                              {alerta.tipo}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Sección de Archivos */}
+                <div className="mt-6">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
+                    <svg className="w-5 h-5 mr-2 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                    </svg>
+                    Archivos del Proyecto
+                    <span className="ml-2 px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded-full">
+                      {selectedProject.archivos?.length || 0}
+                    </span>
+                  </h3>
+
+                  {/* Drag & Drop Upload */}
+                  <div className="mb-4">
+                    <label 
+                      htmlFor="file-upload"
+                      className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors"
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        const file = e.dataTransfer.files[0];
+                        if (file) handleFileUpload(file);
+                      }}
+                    >
+                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                        <svg className="w-10 h-10 mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        </svg>
+                        <p className="mb-2 text-sm text-gray-500">
+                          <span className="font-semibold">Click para subir</span> o arrastra aquí
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          PDF, DOC, XLS, IMG, CAD (máx. 50MB)
+                        </p>
+                      </div>
+                      <input 
+                        id="file-upload" 
+                        type="file" 
+                        className="hidden" 
+                        onChange={(e) => {
+                          const file = e.target.files[0];
+                          if (file) handleFileUpload(file);
+                        }}
+                        accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.zip,.rar,.7z,.txt,.csv,.dwg,.dxf"
+                      />
+                    </label>
+                  </div>
+
+                  {/* Lista de Archivos */}
+                  {selectedProject.archivos && selectedProject.archivos.length > 0 ? (
+                    <div className="space-y-2">
+                      {selectedProject.archivos.map((archivo) => (
+                        <div key={archivo.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200 hover:border-purple-300 transition-colors">
+                          <div className="flex items-center space-x-3 flex-1">
+                            {/* Icono según tipo */}
+                            <div className="flex-shrink-0">
+                              {archivo.tipo?.includes('pdf') ? (
+                                <svg className="w-8 h-8 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
+                                </svg>
+                              ) : archivo.tipo?.includes('image') ? (
+                                <svg className="w-8 h-8 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                                </svg>
+                              ) : archivo.tipo?.includes('sheet') || archivo.tipo?.includes('excel') ? (
+                                <svg className="w-8 h-8 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
+                                </svg>
+                              ) : (
+                                <svg className="w-8 h-8 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
+                                </svg>
+                              )}
+                            </div>
+                            
+                            {/* Info del archivo */}
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-gray-900 truncate">
+                                {archivo.nombre_original}
+                              </p>
+                              <div className="flex items-center space-x-3 text-xs text-gray-500 mt-1">
+                                <span className="flex items-center">
+                                  <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+                                  </svg>
+                                  {new Date(archivo.fecha_subida).toLocaleDateString('es-CL')}
+                                </span>
+                                <span>•</span>
+                                <span>{(archivo.tamanio / 1024 / 1024).toFixed(2)} MB</span>
+                                {archivo.categoria && (
+                                  <>
+                                    <span>•</span>
+                                    <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded">
+                                      {archivo.categoria}
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Acciones */}
+                            <div className="flex items-center space-x-2">
+                              <button
+                                onClick={() => handleDownloadFile(archivo)}
+                                className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                title="Descargar"
+                              >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg>
+                              </button>
+                              {canEditProjects() && (
+                                <button
+                                  onClick={() => handleDeleteFile(archivo)}
+                                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                  title="Eliminar"
+                                >
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      <svg className="w-16 h-16 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                      </svg>
+                      <p className="text-sm">No hay archivos subidos</p>
+                      <p className="text-xs mt-1">Arrastra archivos aquí o haz click para subir</p>
+                    </div>
+                  )}
                 </div>
               </>
             )}
